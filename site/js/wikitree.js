@@ -125,13 +125,18 @@
     const a = await ask(key, anc, 0, progress, seen, sib);
     const rootId = a.rootId;
     let list = a.list;
-    // With brothers and sisters, WikiTree can leave out a private stand-in on the direct line while
-    // others still point to it. When that happens, the plain direct line (which has it) is fetched too
-    // and the two answers are lined up.
-    if (sib && dangling(list).length) {
+    // In large answers WikiTree can leave out a private stand-in that others still point to (seen with
+    // and without brothers and sisters). It does include it in a small answer, and private profiles sit in
+    // the last few generations, so a close-up of 6 generations (one page) fills the gap; if a gap remains
+    // with brothers and sisters on, the full direct line is tried too. Each is lined up with the big answer.
+    if (dangling(list).length && anc > 0) {
       progress.stage('Filling in private profiles…');
-      const b = await ask(key, anc, 0, () => {}, new Set(), false);   // its own count, so its pages are not cut short
-      list = merge(b.list, list);
+      const c = await ask(key, Math.min(anc, 6), 0, () => {}, new Set(), false);   // its own count, so its pages are not cut short
+      list = merge(c.list, list);
+      if (sib && anc > 6 && dangling(list).length) {
+        const b = await ask(key, anc, 0, () => {}, new Set(), false);
+        list = merge(b.list, list);
+      }
     }
     for (const p of list) if (!people.has(p.Id)) people.set(p.Id, p);
     if (rootId == null || !people.has(rootId)) throw new Error('WikiTree did not send a profile for ' + key + '. Check the ID, for example Savoie-2387.');
