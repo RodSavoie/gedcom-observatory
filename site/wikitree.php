@@ -6,7 +6,8 @@
 
    Kept deliberately narrow:
    - only the site's own pages may use it (same-site check), and only by POST
-   - only the getPeople question, with checked WikiTree IDs and generation counts; the list of
+   - only the getPeople question, with checked WikiTree IDs, generation counts and the brothers-and-
+     sisters switch; the list of
      fields is fixed here (no biographies, no photos)
    - a limit per visitor and an overall limit, so WikiTree's own limits are respected
    - nothing WikiTree sends is cached or stored (WikiTree's App Policies); only request counts are
@@ -52,6 +53,7 @@ $query = [
   'keys'        => $keys,
   'ancestors'   => $int('ancestors', 0, 25, 0),
   'descendants' => $int('descendants', 0, 10, 0),
+  'siblings'    => $int('siblings', 0, 1, 0),
   'limit'       => $int('limit', 1, 1000, 1000),
   'start'       => $int('start', 0, 1000000, 0),
   'fields'      => 'Id,Name,FirstName,MiddleName,RealName,LastNameAtBirth,LastNameCurrent,Gender,'

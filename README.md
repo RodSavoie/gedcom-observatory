@@ -69,10 +69,10 @@ turns anyone who may be living into an unnamed "Living person" with no dates or 
 
 ### Drawing families from WikiTree
 
-`site/js/wikitree.js` asks the WikiTree API for a person's ancestors (up to 20 generations) and
-descendants (up to 10), turns the answer into GEDCOM text and hands it to the normal loader, so
+`site/js/wikitree.js` asks the WikiTree API for a person's ancestors (up to 20 generations), the
+brothers and sisters of each ancestor with their husbands and wives, and descendants (up to 10), turns the answer into GEDCOM text and hands it to the normal loader, so
 every view works unchanged. A link such as `index.html?wt=Savoie-2387&anc=10&desc=1` opens a
-family directly.
+family directly; `&sib=0` leaves out brothers and sisters.
 
 WikiTree does not always answer browsers on other sites, so `site/wikitree.php` relays the same
 questions from your web host (it needs PHP with curl). The relay answers only the site's own

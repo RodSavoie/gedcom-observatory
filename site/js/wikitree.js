@@ -53,7 +53,10 @@
   function unwrap(res) {
     const o = Array.isArray(res) ? res[0] : res;
     if (!o || typeof o !== 'object') throw new Error('WikiTree sent an empty answer.');
-    if (typeof o.status === 'string' && o.status.trim()) throw new Error('WikiTree says: ' + o.status.trim());
+    const st = typeof o.status === 'string' ? o.status.trim() : '';
+    // "Maximum number of profiles (1025) reached" only means there are more pages to fetch
+    if (/maximum number of profiles/i.test(st)) o.more = true;
+    else if (st) throw new Error('WikiTree says: ' + st);
     return o;
   }
 
@@ -80,21 +83,61 @@
       for (const p of list) if (!seen.has(p.Id)) { seen.add(p.Id); fresh++; }
       out.push(...list);
       progress(seen.size);
-      if (list.filter(p => p.Id !== rootId).length < PAGE || !fresh) break;
+      if ((!o.more && list.length < PAGE) || !fresh) break;
     }
     return { list: out, rootId };
   }
 
+  /* The brothers and sisters of many people at once, 50 per question (WikiTree takes up to 100 when
+     relatives are asked for), page by page */
+  async function siblingsOf(ids, people, progress) {
+    for (let i = 0; i < ids.length; i += 50) {
+      const keys = ids.slice(i, i + 50).join(',');
+      for (let page = 0, start = 0; page < 20; page++, start += PAGE) {
+        const n = ++callNo;
+        const o = unwrap(await call({ action: 'getPeople', keys, siblings: 1, fields: FIELDS, limit: PAGE, start }));
+        const list = normalise(Object.values(o.people || {}).filter(p => p && p.Id != null), n);
+        let fresh = 0;
+        for (const p of list) if (!people.has(p.Id)) { people.set(p.Id, p); fresh++; }
+        progress(people.size);
+        if ((!o.more && list.length < PAGE) || !fresh) break;
+      }
+    }
+  }
+
+  /* Husbands and wives that came along inside each person's spouse list, added as people */
+  function addSpouses(people, ids) {
+    for (const id of ids) {
+      const p = people.get(id);
+      if (!p) continue;
+      for (const s of spousesOf(p)) {
+        if (people.has(s.id)) continue;
+        const q = s.profile;
+        if (q && (q.Name || q.FirstName || q.LastNameAtBirth)) people.set(s.id, Object.assign({}, q, { Id: s.id, Spouses: undefined, Father: idOf(q.Father, 0), Mother: idOf(q.Mother, 0) }));
+      }
+    }
+  }
+
   /* All the people in the tree: the starting profile and its ancestors; then, if asked, its
      descendants with their husbands and wives, so families are whole. */
-  async function fetchTree(key, anc, desc, progress) {
+  async function fetchTree(key, anc, desc, sib, progress) {
     const people = new Map(), seen = new Set();
     const a = await ask(key, anc, 0, progress, seen);
     const rootId = a.rootId;
     for (const p of a.list) if (!people.has(p.Id)) people.set(p.Id, p);
     if (rootId == null || !people.has(rootId)) throw new Error('WikiTree did not send a profile for ' + key + '. Check the ID, for example Savoie-2387.');
 
+    if (sib) {
+      // the brothers and sisters of the starting person and of every ancestor WikiTree named, with their husbands and wives
+      const line = [...people.keys()].filter(id => typeof id === 'number');
+      const before = new Set(people.keys());
+      progress.stage('Adding brothers and sisters…');
+      await siblingsOf(line, people, progress);
+      addSpouses(people, [...people.keys()].filter(id => !before.has(id)));
+    }
+
     if (desc > 0) {
+      progress.stage('Adding descendants…');
       const d = await ask(key, 0, desc, progress, seen);
       const ids = new Set(d.list.map(p => p.Id));
       // a living starting person comes back as a stand-in in this answer: the one person whose parents are not in it
@@ -269,7 +312,7 @@
   }
 
   let busyNow = false;
-  FO.loadWikiTree = async function (input, anc, desc, progress) {
+  FO.loadWikiTree = async function (input, anc, desc, progress, sib) {
     const key = FO.wikitreeKey(input);
     if (!key) throw new Error('Please enter a WikiTree ID, such as Savoie-2387.');
     if (busyNow) throw new Error('A tree is already being fetched.');
@@ -277,15 +320,19 @@
     try {
       anc = Math.max(0, Math.min(MAX.anc, Math.round(+anc) || 0));
       desc = Math.max(0, Math.min(MAX.desc, Math.round(+desc) || 0));
-      waiting(true, 'Asking WikiTree for ' + key + '…');
-      const { people, rootId } = await fetchTree(key, anc, desc, n => { waiting(true, 'Received ' + FO.ui.fmt(n) + ' people so far…'); if (progress) progress(n); });
+      sib = sib !== false;
+      let stage = 'Asking WikiTree for ' + key + '…';
+      waiting(true, stage);
+      const tick = n => { const line = stage + ' ' + FO.ui.fmt(n) + ' people so far.'; waiting(true, line); if (progress) progress(n, line); };
+      tick.stage = t => { stage = t; };
+      const { people, rootId } = await fetchTree(key, anc, desc, sib, tick);
       waiting(true, 'Drawing ' + FO.ui.fmt(people.size) + ' people…');
       await new Promise(r => setTimeout(r, 30));   // let the card show before the drawing starts
       const title = familyTitle(people, rootId);
       const text = FO.wikitreeToGedcom(people, rootId, title);
       const root = people.get(rootId);
       if (!FO.loadText(text, title, 'wikitree')) throw new Error('WikiTree sent no people that could be drawn.');
-      FO.state.wikitree = { key: root && root.Name || key, anc, desc };
+      FO.state.wikitree = { key: root && root.Name || key, anc, desc, sib };
       return { count: people.size, key: root && root.Name || key };
     } finally { busyNow = false; waiting(false); }
   };
@@ -301,6 +348,8 @@
     const id = el('input', { type: 'text', placeholder: 'e.g. Savoie-2387', autocomplete: 'off', spellcheck: 'false', 'aria-label': 'WikiTree ID', value: FO.prefs.get('wt.id', '') });
     const anc = opts(1, MAX.anc, FO.prefs.num('wt.anc', 10, 1, MAX.anc), 'generation');
     const desc = opts(0, MAX.desc, FO.prefs.num('wt.desc', 0, 0, MAX.desc), 'generation');
+    const sib = el('input', { type: 'checkbox' });
+    sib.checked = FO.prefs.get('wt.sib', 1, [0, 1]) === 1;
     const msg = el('p', { class: 'wt-msg', role: 'status' });
     const go = el('button', { type: 'submit', class: 'pill small', text: 'Draw this family' });
     const form = el('form', { class: 'wt-form' },
@@ -308,15 +357,16 @@
       el('div', { class: 'wt-row' },
         el('label', {}, el('span', { text: 'Ancestors' }), anc),
         el('label', {}, el('span', { text: 'Descendants' }), desc)),
+      el('label', { class: 'wt-check' }, sib, el('span', { text: 'Brothers and sisters of each ancestor, with their husbands and wives' })),
       el('div', { class: 'row' }, go), msg);
     form.addEventListener('submit', async e => {
       e.preventDefault();
       const key = FO.wikitreeKey(id.value);
       if (!key) { msg.textContent = 'Please enter a WikiTree ID, such as Savoie-2387, or paste a profile address.'; id.focus(); return; }
-      FO.prefs.set('wt.id', key); FO.prefs.set('wt.anc', +anc.value); FO.prefs.set('wt.desc', +desc.value);
+      FO.prefs.set('wt.id', key); FO.prefs.set('wt.anc', +anc.value); FO.prefs.set('wt.desc', +desc.value); FO.prefs.set('wt.sib', sib.checked ? 1 : 0);
       go.disabled = true; msg.textContent = 'Asking WikiTree for ' + key + '…';
       try {
-        const r = await FO.loadWikiTree(key, anc.value, desc.value, n => { msg.textContent = 'Fetched ' + ui.fmt(n) + ' people so far…'; });
+        const r = await FO.loadWikiTree(key, anc.value, desc.value, (n, line) => { msg.textContent = line; }, sib.checked);
         msg.textContent = '';
         FO.closeMenus();
         ui.toast('Loaded ' + ui.fmt(r.count) + ' people from WikiTree, starting from ' + r.key + '. Nothing is stored.');
@@ -327,7 +377,7 @@
     menu.append(
       el('div', { class: 'caps', text: 'From WikiTree' }),
       el('h3', { text: 'Draw any family on WikiTree' }),
-      el('p', { class: 'muted', text: 'Type a WikiTree ID, or paste the address of a profile, and choose how far to go. Descendants grow quickly: two or three generations is plenty for early families.' }),
+      el('p', { class: 'muted', text: 'Type a WikiTree ID, or paste the address of a profile, and choose how far to go. Descendants and brothers and sisters make trees much larger: the more you ask for, the longer WikiTree takes to answer.' }),
       form,
       el('p', { class: 'muted small-print', text: 'Only what WikiTree shows to everyone is fetched, and people who may be living stay hidden. Nothing is stored: the tree is kept only while this page is open. Data from WikiTree.com, shared by its community of genealogists.' }));
     return { id, anc, desc, form };
@@ -350,7 +400,7 @@
     if (q.get('wt')) {
       const key = FO.wikitreeKey(q.get('wt'));
       if (key) {
-        FO.loadWikiTree(key, q.get('anc') || 10, q.get('desc') || 0, null)
+        FO.loadWikiTree(key, q.get('anc') || 10, q.get('desc') || 0, null, q.get('sib') !== '0')
           .then(r => FO.ui.toast('Loaded ' + FO.ui.fmt(r.count) + ' people from WikiTree, starting from ' + r.key + '. Nothing is stored.'))
           .catch(err => FO.ui.toast(err.message || String(err)));
       }
