@@ -17,7 +17,7 @@
   const FIELDS = 'Id,Name,FirstName,MiddleName,RealName,LastNameAtBirth,LastNameCurrent,Gender,' +
     'BirthDate,DeathDate,BirthLocation,DeathLocation,Father,Mother,Spouses,IsLiving,DataStatus';
   const PAGE = 1000;                 // WikiTree's largest page of relatives
-  const MAX = { anc: 20, desc: 10, ancWithSiblings: 15 }; // what the form offers (WikiTree allows 25 and 10)
+  const MAX = { anc: 20, desc: 10 }; // what the form offers (WikiTree allows 25 and 10)
   const DEF = { anc: 12, desc: 2 };   // first-visit defaults; brothers and sisters are on
   let route = null;                  // 'direct' once WikiTree has answered the browser, 'relay' otherwise
 
@@ -247,7 +247,8 @@
   const one = s => String(s == null ? '' : s).replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim();
   const status = (p, k) => (p.DataStatus && typeof p.DataStatus === 'object' ? p.DataStatus[k] : '') || '';
 
-  FO.wikitreeToGedcom = function (people, rootId, title) {
+  FO.wikitreeToGedcom = function (people, rootId, title, opts) {
+    opts = opts || {};
     const out = ['0 HEAD', '1 SOUR FamilyObservatory', '2 NAME Family Observatory (from WikiTree)', '1 GEDC', '2 VERS 5.5.1', '2 FORM LINEAGE-LINKED', '1 CHAR UTF-8'];
     if (title) out.push('1 _TITLE ' + one(title));
     const ids = [rootId, ...[...people.keys()].filter(id => id !== rootId)];
@@ -304,8 +305,16 @@
       if (famOf.has(id)) out.push('1 FAMC ' + famOf.get(id));
       for (const f of famsOf.get(id) || []) out.push('1 FAMS ' + f);
     }
+    /* Which families came with all their children? With brothers and sisters, the family each person on
+       the direct line was born into; and the families of the starting person and of descendants above the
+       last fetched generation. Any other family holds only the children who reached the tree another way
+       (often by marrying into it), so it is marked partial and left out of family-size figures. */
+    const line = new Set([rootId]); { const todo = [rootId]; while (todo.length) { const p = people.get(todo.pop()); for (const x of [p && p.Father, p && p.Mother]) if (has(x) && !line.has(x)) { line.add(x); todo.push(x); } } }
+    const depth = new Map([[rootId, 0]]); { const todo = [rootId]; while (todo.length) { const id = todo.shift(); for (const f of famsOf.get(id) || []) { const fam = [...fams.values()].find(x => x.id === f); for (const k of fam.kids) if (!depth.has(k)) { depth.set(k, depth.get(id) + 1); todo.push(k); } } } }
+    const complete = f => (opts.sib && f.kids.some(k => line.has(k))) || [f.h, f.w].some(x => x && depth.has(x) && depth.get(x) < (opts.desc || 0));
     for (const f of fams.values()) {
       out.push('0 ' + f.id + ' FAM');
+      if (f.kids.length && !complete(f)) out.push('1 _PARTIAL Y');
       if (f.h) out.push('1 HUSB ' + xref(f.h));
       if (f.w) out.push('1 WIFE ' + xref(f.w));
       for (const k of f.kids) out.push('1 CHIL ' + xref(k));
@@ -355,7 +364,7 @@
     busyNow = true;
     try {
       sib = sib !== false;
-      anc = Math.max(0, Math.min(sib ? MAX.ancWithSiblings : MAX.anc, Math.round(+anc) || 0));
+      anc = Math.max(0, Math.min(MAX.anc, Math.round(+anc) || 0));
       desc = Math.max(0, Math.min(MAX.desc, Math.round(+desc) || 0));
       let stage = 'Asking WikiTree for ' + key + '…';
       waiting(true, stage);
@@ -365,7 +374,7 @@
       waiting(true, 'Drawing ' + FO.ui.fmt(people.size) + ' people…');
       await new Promise(r => setTimeout(r, 30));   // let the card show before the drawing starts
       const title = familyTitle(people, rootId);
-      const text = FO.wikitreeToGedcom(people, rootId, title);
+      const text = FO.wikitreeToGedcom(people, rootId, title, { sib, desc });
       const root = people.get(rootId);
       if (!FO.loadText(text, title, 'wikitree')) throw new Error('WikiTree sent no people that could be drawn.');
       FO.state.wikitree = { key: root && root.Name || key, anc, desc, sib };
@@ -386,12 +395,6 @@
     const desc = opts(0, MAX.desc, FO.prefs.num('wt.desc', DEF.desc, 0, MAX.desc), 'generation');
     const sib = el('input', { type: 'checkbox' });
     sib.checked = FO.prefs.get('wt.sib', 1, [0, 1]) === 1;
-    // with brothers and sisters, at most 15 generations of ancestors (a lighter load on WikiTree)
-    const cap = () => {
-      [...anc.options].forEach(o => { o.disabled = sib.checked && +o.value > MAX.ancWithSiblings; });
-      if (sib.checked && +anc.value > MAX.ancWithSiblings) anc.value = MAX.ancWithSiblings;
-    };
-    sib.addEventListener('change', cap); cap();
     const msg = el('p', { class: 'wt-msg', role: 'status' });
     const go = el('button', { type: 'submit', class: 'pill small', text: 'Draw this family' });
     const form = el('form', { class: 'wt-form' },
@@ -399,7 +402,7 @@
       el('div', { class: 'wt-row' },
         el('label', {}, el('span', { text: 'Ancestors' }), anc),
         el('label', {}, el('span', { text: 'Descendants' }), desc)),
-      el('label', { class: 'wt-check' }, sib, el('span', { text: 'Brothers and sisters of each ancestor, with their husbands and wives (up to 15 generations)' })),
+      el('label', { class: 'wt-check' }, sib, el('span', { text: 'Brothers and sisters of each ancestor, with their husbands and wives' })),
       el('div', { class: 'row' }, go), msg);
     form.addEventListener('submit', async e => {
       e.preventDefault();

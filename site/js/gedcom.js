@@ -168,7 +168,7 @@
           cur = { id: xid, i: people.length, given: '', surname: '', name: '', sex: 'U', b: null, d: null, dead: false, famc: null, fams: [], url: null, flagLiving: false, flagNotLiving: false, flagPrivate: false, flagHome: false, _fc: null, _fs: [] };
           people.push(cur); byId.set(xid, cur); kind = 'I';
         } else if (tag === 'FAM' && xid) {
-          cur = { id: xid, i: families.length, husb: null, wife: null, children: [], m: null, _h: null, _w: null, _c: [] };
+          cur = { id: xid, i: families.length, husb: null, wife: null, children: [], m: null, partial: false, _h: null, _w: null, _c: [] };
           families.push(cur); famById.set(xid, cur); kind = 'F';
         } else if (tag === 'HEAD') { kind = 'H'; cur = head; }
         continue;
@@ -208,6 +208,7 @@
             case 'WIFE': cur._w = val.trim(); break;
             case 'CHIL': cur._c.push(val.trim()); break;
             case 'MARR': ev = cur.m || (cur.m = { date: null, place: null }); break;
+            case '_PARTIAL': cur.partial = /^y/i.test(val.trim()); break;   // only some of the children were fetched (WikiTree)
           }
         } else if (kind === 'H') {
           if (tag === 'SOUR') head.source = val.trim();

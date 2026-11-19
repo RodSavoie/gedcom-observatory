@@ -21,7 +21,10 @@
       const lived = ppl.filter(p => p.by != null && p.dy != null && p.dy >= p.by && p.dy - p.by <= 115);
       const adults = lived.filter(p => p.dy - p.by >= 16);
       const fams = data.families.filter(f => f.husb || f.wife);
-      const withKids = fams.filter(f => f.children.length);
+      // families marked partial hold only the children who reached the tree another way (see wikitree.js): left out of family sizes
+      const withKids = fams.filter(f => f.children.length && !f.partial);
+      const partial = fams.filter(f => f.children.length && f.partial).length;
+      const partialNote = partial ? ' ' + ui.fmt(partial) + ' families where only some of the children were fetched are left out.' : '';
 
       const tile = (big, label, note) => el('div', {}, el('b', { class: 'num', text: big }), el('span', { text: label }), note ? el('small', { text: note }) : null);
       const yrs = [].concat(born.map(p => p.by), ppl.filter(p => p.dy != null).map(p => p.dy));
@@ -79,7 +82,7 @@
       if (famEra.length > 20) {
         const g = d3.rollup(famEra, x => ({ n: x.length, avg: d3.mean(x, d => d.f.children.length) }), d => Math.floor(d.y / 50) * 50);
         const rowsF = [...g.keys()].sort((a, b) => a - b).filter(k => g.get(k).n >= 5).map(k => ({ label: String(k), tip: 'First child born ' + k + '-' + (k + 49) + ' (' + g.get(k).n + ' families)', value: Math.round(g.get(k).avg * 10) / 10 }));
-        if (rowsF.length > 1) grid.append(FO.figure('Children per family, by era', 'Average recorded children, by the half-century the first child was born. Recent families look small because trees often leave out living children.', FO.columns(rowsF, { unit: 'children on average', every: 1, color: '#588C46' })));
+        if (rowsF.length > 1) grid.append(FO.figure('Children per family, by era', 'Average recorded children, by the half-century the first child was born. Recent families look small because trees often leave out living children.' + partialNote, FO.columns(rowsF, { unit: 'children on average', every: 1, color: '#588C46' })));
       }
       // how long people lived, decade by decade of birth
       {
@@ -123,7 +126,7 @@
       if (withKids.length) {
         const cap = 15, bins = d3.range(1, cap + 1).map(n => ({ label: n === cap ? cap + '+' : String(n), tip: n === cap ? cap + ' or more children' : n + (n === 1 ? ' child' : ' children'), value: 0 }));
         withKids.forEach(f => bins[Math.min(cap, f.children.length) - 1].value++);
-        grid.append(FO.figure('Family size', 'Recorded children per couple (' + ui.fmt(withKids.length) + ' couples with children)', FO.columns(bins, { unit: 'families', every: 1 })));
+        grid.append(FO.figure('Family size', 'Recorded children per couple (' + ui.fmt(withKids.length) + ' couples with children).' + partialNote, FO.columns(bins, { unit: 'families', every: 1 })));
       }
       // age at first marriage
       const ages = { M: [], F: [] };
