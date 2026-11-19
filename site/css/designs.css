@@ -55,6 +55,8 @@ html:not([data-design="current"]) .chain button:hover,
 html:not([data-design="current"]) .rel-opt:hover { box-shadow: var(--card-shadow-hover); transform: translateY(-1px); }
 html:not([data-design="current"]) .rel-opt[aria-pressed="true"] { box-shadow: inset 3px 0 0 var(--red), var(--card-shadow-hover); }
 html:not([data-design="current"]) :is(.menu, .picker ul, dialog.how) { border: 0; border-radius: var(--radius); box-shadow: var(--float-shadow); }
+/* text boxes and drop-down lists get the same small rounded corners as the cards */
+html:not([data-design="current"]) :is(.picker input, .ctl select, .ctl input[type="text"], .ctl input[type="search"], .contact-form input, .contact-form textarea, .wt-form input, .wt-form select) { border-radius: var(--radius); }
 html:not([data-design="current"]) .drawer.open { margin-bottom: 2px; }
 html:not([data-design="current"]) .me-photo { box-shadow: var(--card-shadow); border-radius: var(--radius); }
 

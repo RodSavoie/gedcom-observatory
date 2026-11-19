@@ -26,7 +26,12 @@
     if (route !== 'relay') {
       try {
         const r = await fetch(API, { method: 'POST', body: body(), credentials: 'omit' });
-        if (r.ok) { const j = await r.json(); route = 'direct'; return j; }
+        if (r.ok) {
+          const j = await r.json();
+          const o = Array.isArray(j) ? j[0] : j;
+          if (o && typeof o === 'object' && (o.people || o.resultByKey)) { route = 'direct'; return j; }
+          if (route === 'direct') throw new Error('WikiTree sent an answer that could not be read.');
+        }
         if (route === 'direct') throw new Error(r.status === 429 ? busy() : 'WikiTree answered with an error (' + r.status + ').');
       } catch (e) {
         if (route === 'direct') throw e;
@@ -76,7 +81,12 @@
       const want = new Set();
       for (const id of line) {
         const p = people.get(id);
-        for (const s of spousesOf(p)) if (!people.has(s.id)) want.add(s.id);
+        for (const s of spousesOf(p)) {
+          if (people.has(s.id)) continue;
+          const q = s.profile;
+          if (q && (q.Name || q.FirstName || q.LastNameAtBirth)) people.set(s.id, Object.assign({}, q, { Id: s.id, Spouses: undefined, Father: +q.Father || 0, Mother: +q.Mother || 0 }));
+          else want.add(s.id);
+        }
         if (id !== rootId) for (const par of [p.Father, p.Mother]) if (par > 0 && !people.has(par)) want.add(par);
       }
       const ids = [...want];
@@ -102,11 +112,12 @@
     const raw = p && p.Spouses;
     if (!raw || typeof raw !== 'object') return [];
     const list = Array.isArray(raw) ? raw : Object.keys(raw).map(k => Object.assign({ Id: +k }, typeof raw[k] === 'object' ? raw[k] : {}));
-    return list.filter(s => s && !(s.do_not_display === 1 || s.do_not_display === '1')).map(s => ({
+    return list.filter(s => s && !(s.do_not_display === 1 || s.do_not_display === '1' || s.DoNotDisplay === '1')).map(s => ({
       id: +(s.Id != null ? s.Id : s.id),
       date: s.marriage_date || s.MarriageDate || '',
       place: s.marriage_location || s.MarriageLocation || '',
-      status: s.marriage_date_status || ''
+      status: (s.data_status && s.data_status.marriage_date) || (s.DataStatus && s.DataStatus.MarriageDate) || '',
+      profile: s
     })).filter(s => s.id > 0);
   }
 
@@ -139,10 +150,14 @@
       }
       return fams.get(key);
     };
-    const has = id => id > 0 && people.has(id);
+    // WikiTree sends private profiles as stand-ins with negative ids, still linked to their parents
+    const has = id => id != null && +id !== 0 && people.has(+id);
+    const xref = id => '@I' + (id < 0 ? 'P' + (-id) : id) + '@';
+    const role = new Map();
+    for (const p of people.values()) { if (has(p.Father)) role.set(+p.Father, 'M'); if (has(p.Mother)) role.set(+p.Mother, 'F'); }
     for (const id of ids) {
       const p = people.get(id);
-      const fa = has(p.Father) ? p.Father : 0, mo = has(p.Mother) ? p.Mother : 0;
+      const fa = has(p.Father) ? +p.Father : 0, mo = has(p.Mother) ? +p.Mother : 0;
       if (fa || mo) { const f = fam(fa, mo); f.kids.push(id); famOf.set(id, f.id); }
     }
     for (const id of ids) {
@@ -161,8 +176,8 @@
       const p = people.get(id);
       const given = one([p.FirstName || p.RealName, p.MiddleName].filter(Boolean).join(' '));
       const surname = one(p.LastNameAtBirth || p.LastNameCurrent).replace(/\//g, '');
-      out.push('0 @I' + id + '@ INDI', '1 NAME ' + given.replace(/\//g, '') + ' /' + surname + '/');
-      out.push('1 SEX ' + (/^m/i.test(p.Gender || '') ? 'M' : /^f/i.test(p.Gender || '') ? 'F' : 'U'));
+      out.push('0 ' + xref(id) + ' INDI', '1 NAME ' + given.replace(/\//g, '') + ' /' + surname + '/');
+      out.push('1 SEX ' + (/^m/i.test(p.Gender || '') ? 'M' : /^f/i.test(p.Gender || '') ? 'F' : role.get(id) || 'U'));
       const bd = gedDate(p.BirthDate, status(p, 'BirthDate')), bp = one(p.BirthLocation);
       if (bd || bp) { out.push('1 BIRT'); if (bd) out.push('2 DATE ' + bd); if (bp) out.push('2 PLAC ' + bp); }
       const dd = gedDate(p.DeathDate, status(p, 'DeathDate')), dp = one(p.DeathLocation);
@@ -177,9 +192,9 @@
     }
     for (const f of fams.values()) {
       out.push('0 ' + f.id + ' FAM');
-      if (f.h) out.push('1 HUSB @I' + f.h + '@');
-      if (f.w) out.push('1 WIFE @I' + f.w + '@');
-      for (const k of f.kids) out.push('1 CHIL @I' + k + '@');
+      if (f.h) out.push('1 HUSB ' + xref(f.h));
+      if (f.w) out.push('1 WIFE ' + xref(f.w));
+      for (const k of f.kids) out.push('1 CHIL ' + xref(k));
       if (f.m) { out.push('1 MARR'); if (f.m.date) out.push('2 DATE ' + f.m.date); if (f.m.place) out.push('2 PLAC ' + f.m.place); }
     }
     out.push('0 TRLR', '');

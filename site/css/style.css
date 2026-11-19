@@ -78,6 +78,7 @@ h1, h2, h3 { font-weight: 400; line-height: 1.15; margin: 0; letter-spacing: -.0
 .family-menu { max-width: 560px; left: auto; }
 .family-menu h3 { font-size: 20px; margin-bottom: 4px; }
 .family-menu .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-top: 16px; }
+.loads { display: flex; gap: 10px; align-items: center; flex: none; }
 .wt-menu { max-width: 470px; }
 .wt-form label { display: block; margin-top: 14px; }
 .wt-form label > span { display: block; font-size: 13px; color: var(--ink-2); margin-bottom: 5px; letter-spacing: .02em; }
