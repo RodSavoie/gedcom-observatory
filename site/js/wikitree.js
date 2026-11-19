@@ -57,26 +57,57 @@
     return o;
   }
 
-  /* All the people in the tree: the starting profile, its ancestors and descendants (page by page),
-     then the husbands and wives of the starting person and the descendants, so families are whole. */
-  async function fetchTree(key, anc, desc, progress) {
-    const people = new Map();
-    let rootId = null;
+  /* Private profiles arrive as stand-ins with negative ids, numbered afresh in every answer
+     (-1 can be a mother in one answer and a grandchild in the next), so each answer's stand-ins get
+     their own names, such as "s3_1". Real profiles keep their WikiTree number. */
+  let callNo = 0;
+  const idOf = (x, n) => { const v = +x; return v > 0 ? v : v < 0 ? 's' + n + '_' + (-v) : 0; };
+  function normalise(list, n) {
+    return list.map(p => Object.assign({}, p, { Id: idOf(p.Id, n), Father: idOf(p.Father, n), Mother: idOf(p.Mother, n) }));
+  }
+
+  /* One getPeople question, page by page; returns the people (ids normalised) and the key's own id */
+  async function ask(key, anc, desc, progress, seen) {
+    let rootId = null; const out = [];
     for (let page = 0, start = 0; page < 60; page++, start += PAGE) {
+      const n = ++callNo;
       const o = unwrap(await call({ action: 'getPeople', keys: key, ancestors: anc, descendants: desc, fields: FIELDS, limit: PAGE, start }));
       const rk = o.resultByKey ? Object.values(o.resultByKey)[0] : null;
-      if (rk && rk.status) throw new Error(/illegal|invalid/i.test(rk.status) ? 'That is not a WikiTree ID WikiTree recognises.' : 'WikiTree says: ' + rk.status);
-      if (rootId == null && rk && rk.Id) rootId = rk.Id;
-      const list = Object.values(o.people || {}).filter(p => p && p.Id != null);
-      let added = 0;
-      for (const p of list) if (!people.has(p.Id)) { people.set(p.Id, p); added++; }
-      progress(people.size);
-      const related = list.filter(p => p.Id !== rootId).length;
-      if (related < PAGE || !added) break;
+      if (rk && rk.status) throw new Error(/illegal|invalid|not found|no profile/i.test(rk.status) ? 'WikiTree does not recognise ' + key + '. Check the ID, for example Savoie-2387.' : 'WikiTree says: ' + rk.status);
+      if (rootId == null && rk && rk.Id) rootId = +rk.Id;
+      const list = normalise(Object.values(o.people || {}).filter(p => p && p.Id != null), n);
+      let fresh = 0;
+      for (const p of list) if (!seen.has(p.Id)) { seen.add(p.Id); fresh++; }
+      out.push(...list);
+      progress(seen.size);
+      if (list.filter(p => p.Id !== rootId).length < PAGE || !fresh) break;
     }
-    if (rootId == null || !people.has(rootId)) throw new Error('No profile was found for ' + key + '. Check the ID, for example Savoie-2387.');
+    return { list: out, rootId };
+  }
+
+  /* All the people in the tree: the starting profile and its ancestors; then, if asked, its
+     descendants with their husbands and wives, so families are whole. */
+  async function fetchTree(key, anc, desc, progress) {
+    const people = new Map(), seen = new Set();
+    const a = await ask(key, anc, 0, progress, seen);
+    const rootId = a.rootId;
+    for (const p of a.list) if (!people.has(p.Id)) people.set(p.Id, p);
+    if (rootId == null || !people.has(rootId)) throw new Error('WikiTree did not send a profile for ' + key + '. Check the ID, for example Savoie-2387.');
 
     if (desc > 0) {
+      const d = await ask(key, 0, desc, progress, seen);
+      const ids = new Set(d.list.map(p => p.Id));
+      // a living starting person comes back as a stand-in in this answer: the one person whose parents are not in it
+      let alias = null;
+      if (!ids.has(rootId)) {
+        const tops = d.list.filter(p => !ids.has(p.Father) && !ids.has(p.Mother));
+        if (tops.length === 1) alias = tops[0].Id;
+      }
+      for (const p of d.list) {
+        if (p.Id === alias || p.Id === rootId) continue;
+        if (alias != null) { if (p.Father === alias) p.Father = rootId; if (p.Mother === alias) p.Mother = rootId; }
+        if (!people.has(p.Id)) people.set(p.Id, p);
+      }
       const line = descendantsOf(people, rootId);
       const want = new Set();
       for (const id of line) {
@@ -84,15 +115,19 @@
         for (const s of spousesOf(p)) {
           if (people.has(s.id)) continue;
           const q = s.profile;
-          if (q && (q.Name || q.FirstName || q.LastNameAtBirth)) people.set(s.id, Object.assign({}, q, { Id: s.id, Spouses: undefined, Father: +q.Father || 0, Mother: +q.Mother || 0 }));
+          if (q && (q.Name || q.FirstName || q.LastNameAtBirth)) people.set(s.id, Object.assign({}, q, { Id: s.id, Spouses: undefined, Father: idOf(q.Father, 0), Mother: idOf(q.Mother, 0) }));
           else want.add(s.id);
         }
-        if (id !== rootId) for (const par of [p.Father, p.Mother]) if (par > 0 && !people.has(par)) want.add(par);
+        if (id !== rootId) for (const par of [p.Father, p.Mother]) {
+          if (typeof par === 'number' && par > 0 && !people.has(par)) want.add(par);
+          else if (typeof par === 'string' && !people.has(par)) people.set(par, { Id: par, Father: 0, Mother: 0 });   // a private partner, kept as an unnamed stand-in
+        }
       }
-      const ids = [...want];
-      for (let i = 0; i < ids.length && i < 3000; i += 100) {
-        const o = unwrap(await call({ action: 'getPeople', keys: ids.slice(i, i + 100).join(','), fields: FIELDS }));
-        for (const p of Object.values(o.people || {})) if (p && p.Id != null && !people.has(p.Id)) people.set(p.Id, p);
+      const more = [...want];
+      for (let i = 0; i < more.length && i < 3000; i += 100) {
+        const n = ++callNo;
+        const o = unwrap(await call({ action: 'getPeople', keys: more.slice(i, i + 100).join(','), fields: FIELDS }));
+        for (const p of normalise(Object.values(o.people || {}).filter(p => p && p.Id != null), n)) if (!people.has(p.Id)) people.set(p.Id, p);
         progress(people.size);
       }
     }
@@ -101,7 +136,7 @@
 
   function descendantsOf(people, rootId) {
     const kids = new Map();
-    for (const p of people.values()) for (const par of [p.Father, p.Mother]) if (par > 0) { if (!kids.has(par)) kids.set(par, []); kids.get(par).push(p.Id); }
+    for (const p of people.values()) for (const par of [p.Father, p.Mother]) if (par) { if (!kids.has(par)) kids.set(par, []); kids.get(par).push(p.Id); }
     const seen = new Set([rootId]), todo = [rootId];
     while (todo.length) for (const c of kids.get(todo.pop()) || []) if (!seen.has(c)) { seen.add(c); todo.push(c); }
     return seen;
@@ -150,14 +185,14 @@
       }
       return fams.get(key);
     };
-    // WikiTree sends private profiles as stand-ins with negative ids, still linked to their parents
-    const has = id => id != null && +id !== 0 && people.has(+id);
-    const xref = id => '@I' + (id < 0 ? 'P' + (-id) : id) + '@';
+    // private profiles are stand-ins (ids such as "s3_1"), still linked to their parents
+    const has = id => !!id && people.has(id);
+    const xref = id => '@I' + String(id).replace(/[^A-Za-z0-9]/g, '') + '@';
     const role = new Map();
-    for (const p of people.values()) { if (has(p.Father)) role.set(+p.Father, 'M'); if (has(p.Mother)) role.set(+p.Mother, 'F'); }
+    for (const p of people.values()) { if (has(p.Father)) role.set(p.Father, 'M'); if (has(p.Mother)) role.set(p.Mother, 'F'); }
     for (const id of ids) {
       const p = people.get(id);
-      const fa = has(p.Father) ? +p.Father : 0, mo = has(p.Mother) ? +p.Mother : 0;
+      const fa = has(p.Father) ? p.Father : 0, mo = has(p.Mother) ? p.Mother : 0;
       if (fa || mo) { const f = fam(fa, mo); f.kids.push(id); famOf.set(id, f.id); }
     }
     for (const id of ids) {
@@ -166,7 +201,7 @@
         if (!has(s.id)) continue;
         const q = people.get(s.id);
         const male = x => /^m/i.test(x.Gender || '');
-        const [h, w] = male(p) || (!male(q) && id < s.id) ? [id, s.id] : [s.id, id];
+        const [h, w] = male(p) || (!male(q) && String(id) < String(s.id)) ? [id, s.id] : [s.id, id];
         const f = fams.get(h + '|' + w) || fams.get(w + '|' + h) || fam(h, w);
         if (!f.m && (gedDate(s.date) || one(s.place))) f.m = { date: gedDate(s.date, s.status), place: one(s.place) };
       }
@@ -174,7 +209,7 @@
 
     for (const id of ids) {
       const p = people.get(id);
-      const given = one([p.FirstName || p.RealName, p.MiddleName].filter(Boolean).join(' '));
+      const given = typeof id === 'string' ? 'Private' : one([p.FirstName || p.RealName, p.MiddleName].filter(Boolean).join(' '));
       const surname = one(p.LastNameAtBirth || p.LastNameCurrent).replace(/\//g, '');
       out.push('0 ' + xref(id) + ' INDI', '1 NAME ' + given.replace(/\//g, '') + ' /' + surname + '/');
       out.push('1 SEX ' + (/^m/i.test(p.Gender || '') ? 'M' : /^f/i.test(p.Gender || '') ? 'F' : role.get(id) || 'U'));
@@ -212,12 +247,27 @@
   };
 
   function familyTitle(people, rootId) {
-    const p = people.get(rootId), m = p && p.Mother > 0 ? people.get(p.Mother) : null;
+    const p = people.get(rootId), m = p && typeof p.Mother === 'number' && p.Mother > 0 ? people.get(p.Mother) : null;
     const a = p ? one(p.LastNameAtBirth || p.LastNameCurrent) : '', b = m ? one(m.LastNameAtBirth || m.LastNameCurrent) : '';
     return a ? 'The ' + a + (b && b.toLowerCase() !== a.toLowerCase() ? '/' + b : '') + ' family' : 'A WikiTree family';
   }
 
   /* ---------- loading ---------- */
+  /* While WikiTree is being asked, the page fades behind a small card that counts people as they
+     arrive. The header stays clear, so the panel and its messages remain readable. */
+  let waitEl = null;
+  function waiting(on, line) {
+    if (!waitEl) {
+      const el = FO.ui.el;
+      waitEl = el('div', { class: 'wt-wait', role: 'status', 'aria-live': 'polite' },
+        el('div', { class: 'wt-wait-card' }, el('div', { class: 'wt-spin', 'aria-hidden': 'true' }),
+          el('div', { class: 'caps', text: 'From WikiTree' }), el('p', { class: 'wt-wait-line' })));
+      document.body.append(waitEl);
+    }
+    if (line != null) waitEl.querySelector('.wt-wait-line').textContent = line;
+    waitEl.classList.toggle('on', !!on);
+  }
+
   let busyNow = false;
   FO.loadWikiTree = async function (input, anc, desc, progress) {
     const key = FO.wikitreeKey(input);
@@ -227,14 +277,17 @@
     try {
       anc = Math.max(0, Math.min(MAX.anc, Math.round(+anc) || 0));
       desc = Math.max(0, Math.min(MAX.desc, Math.round(+desc) || 0));
-      const { people, rootId } = await fetchTree(key, anc, desc, progress || (() => {}));
+      waiting(true, 'Asking WikiTree for ' + key + '…');
+      const { people, rootId } = await fetchTree(key, anc, desc, n => { waiting(true, 'Received ' + FO.ui.fmt(n) + ' people so far…'); if (progress) progress(n); });
+      waiting(true, 'Drawing ' + FO.ui.fmt(people.size) + ' people…');
+      await new Promise(r => setTimeout(r, 30));   // let the card show before the drawing starts
       const title = familyTitle(people, rootId);
       const text = FO.wikitreeToGedcom(people, rootId, title);
       const root = people.get(rootId);
       if (!FO.loadText(text, title, 'wikitree')) throw new Error('WikiTree sent no people that could be drawn.');
       FO.state.wikitree = { key: root && root.Name || key, anc, desc };
       return { count: people.size, key: root && root.Name || key };
-    } finally { busyNow = false; }
+    } finally { busyNow = false; waiting(false); }
   };
 
   /* ---------- the "From WikiTree" panel ---------- */

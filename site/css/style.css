@@ -88,6 +88,12 @@ h1, h2, h3 { font-weight: 400; line-height: 1.15; margin: 0; letter-spacing: -.0
 .wt-form button[disabled] { opacity: .5; cursor: progress; }
 .wt-msg { min-height: 1.4em; margin: 12px 0 0; font-size: 14px; color: var(--ink-2); }
 .wt-menu .small-print { font-size: 12.5px; line-height: 1.45; margin: 16px 0 0; }
+.wt-wait { position: fixed; inset: 0; z-index: 25; display: none; place-items: center; background: rgba(245,242,236,.6); backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); }
+.wt-wait.on { display: grid; }
+.wt-wait-card { background: var(--snow); padding: 24px 34px 22px; text-align: center; max-width: 26em; border-radius: var(--radius, 6px); box-shadow: var(--float-shadow, var(--shadow)); }
+.wt-wait-line { margin: 6px 0 0; color: var(--ink-2); font-size: 15px; }
+.wt-spin { width: 24px; height: 24px; margin: 0 auto 12px; border: 2.5px solid rgba(27,38,50,.14); border-top-color: var(--teal-deep); border-radius: 50%; animation: wt-spin .9s linear infinite; }
+@keyframes wt-spin { to { transform: rotate(360deg); } }
 
 /* ---------- home ---------- */
 .hero { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 20px; align-items: center; padding: 10px var(--pad) 40px; min-height: min(680px, calc(100vh - 110px)); }
