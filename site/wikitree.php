@@ -60,6 +60,8 @@ $query = [
                  . 'BirthDate,DeathDate,BirthLocation,DeathLocation,Father,Mother,Spouses,IsLiving,DataStatus',
   'appId'       => 'FamilyObservatory',
 ];
+// with brothers and sisters, at most 15 generations of ancestors (as the panel offers)
+if ($query['siblings'] && $query['ancestors'] > 15) $query['ancestors'] = 15;
 
 /* ---------- limits: per visitor, and for the whole site ---------- */
 function within_limit($name, $max, $window) {

@@ -17,26 +17,39 @@
   const FIELDS = 'Id,Name,FirstName,MiddleName,RealName,LastNameAtBirth,LastNameCurrent,Gender,' +
     'BirthDate,DeathDate,BirthLocation,DeathLocation,Father,Mother,Spouses,IsLiving,DataStatus';
   const PAGE = 1000;                 // WikiTree's largest page of relatives
-  const MAX = { anc: 20, desc: 10 }; // what the form offers (WikiTree allows 25 and 10)
+  const MAX = { anc: 20, desc: 10, ancWithSiblings: 15 }; // what the form offers (WikiTree allows 25 and 10)
+  const DEF = { anc: 12, desc: 2 };   // first-visit defaults; brothers and sisters are on
   let route = null;                  // 'direct' once WikiTree has answered the browser, 'relay' otherwise
 
   /* ---------- talking to WikiTree ---------- */
+  /* Can this browser ask WikiTree directly? Found out once per visit with the smallest possible
+     question (one field of one profile), so a refused attempt never costs WikiTree a full tree. */
+  async function probe(key) {
+    try {
+      const r = await fetch(API, { method: 'POST', credentials: 'omit', body: new URLSearchParams({ action: 'getProfile', key: String(key).split(',')[0], fields: 'Id', appId: APP_ID }) });
+      if (!r.ok) return 'relay';
+      const j = await r.json();
+      return Array.isArray(j) && j[0] && typeof j[0] === 'object' ? 'direct' : 'relay';
+    } catch (e) { return 'relay'; }
+  }
+
   async function call(params) {
     const body = () => new URLSearchParams(Object.assign({ appId: APP_ID }, params));
-    if (route !== 'relay') {
+    if (route == null) route = await probe(params.keys || 'Savoie-2387');
+    if (route === 'direct') {
       try {
         const r = await fetch(API, { method: 'POST', body: body(), credentials: 'omit' });
+        if (r.status === 429) throw new Error(busy());
         if (r.ok) {
           const j = await r.json();
           const o = Array.isArray(j) ? j[0] : j;
-          if (o && typeof o === 'object' && (o.people || o.resultByKey)) { route = 'direct'; return j; }
-          if (route === 'direct') throw new Error('WikiTree sent an answer that could not be read.');
+          if (o && typeof o === 'object' && (o.people || o.resultByKey || o.status)) return j;
         }
-        if (route === 'direct') throw new Error(r.status === 429 ? busy() : 'WikiTree answered with an error (' + r.status + ').');
+        route = 'relay';   // an odd answer: carry on through the relay
       } catch (e) {
-        if (route === 'direct') throw e;
+        if (e.message === busy()) throw e;
+        route = 'relay';   // refused by the browser after all: carry on through the relay
       }
-      route = 'relay';
     }
     let r;
     try { r = await fetch(RELAY, { method: 'POST', body: body(), headers: { Accept: 'application/json' } }); }
@@ -341,9 +354,9 @@
     if (busyNow) throw new Error('A tree is already being fetched.');
     busyNow = true;
     try {
-      anc = Math.max(0, Math.min(MAX.anc, Math.round(+anc) || 0));
-      desc = Math.max(0, Math.min(MAX.desc, Math.round(+desc) || 0));
       sib = sib !== false;
+      anc = Math.max(0, Math.min(sib ? MAX.ancWithSiblings : MAX.anc, Math.round(+anc) || 0));
+      desc = Math.max(0, Math.min(MAX.desc, Math.round(+desc) || 0));
       let stage = 'Asking WikiTree for ' + key + '…';
       waiting(true, stage);
       const tick = n => { const line = stage + ' ' + FO.ui.fmt(n) + ' people so far.'; waiting(true, line); if (progress) progress(n, line); };
@@ -369,10 +382,16 @@
       return s;
     };
     const id = el('input', { type: 'text', placeholder: 'e.g. Savoie-2387', autocomplete: 'off', spellcheck: 'false', 'aria-label': 'WikiTree ID', value: FO.prefs.get('wt.id', '') });
-    const anc = opts(1, MAX.anc, FO.prefs.num('wt.anc', 10, 1, MAX.anc), 'generation');
-    const desc = opts(0, MAX.desc, FO.prefs.num('wt.desc', 0, 0, MAX.desc), 'generation');
+    const anc = opts(1, MAX.anc, FO.prefs.num('wt.anc', DEF.anc, 1, MAX.anc), 'generation');
+    const desc = opts(0, MAX.desc, FO.prefs.num('wt.desc', DEF.desc, 0, MAX.desc), 'generation');
     const sib = el('input', { type: 'checkbox' });
     sib.checked = FO.prefs.get('wt.sib', 1, [0, 1]) === 1;
+    // with brothers and sisters, at most 15 generations of ancestors (a lighter load on WikiTree)
+    const cap = () => {
+      [...anc.options].forEach(o => { o.disabled = sib.checked && +o.value > MAX.ancWithSiblings; });
+      if (sib.checked && +anc.value > MAX.ancWithSiblings) anc.value = MAX.ancWithSiblings;
+    };
+    sib.addEventListener('change', cap); cap();
     const msg = el('p', { class: 'wt-msg', role: 'status' });
     const go = el('button', { type: 'submit', class: 'pill small', text: 'Draw this family' });
     const form = el('form', { class: 'wt-form' },
@@ -380,7 +399,7 @@
       el('div', { class: 'wt-row' },
         el('label', {}, el('span', { text: 'Ancestors' }), anc),
         el('label', {}, el('span', { text: 'Descendants' }), desc)),
-      el('label', { class: 'wt-check' }, sib, el('span', { text: 'Brothers and sisters of each ancestor, with their husbands and wives' })),
+      el('label', { class: 'wt-check' }, sib, el('span', { text: 'Brothers and sisters of each ancestor, with their husbands and wives (up to 15 generations)' })),
       el('div', { class: 'row' }, go), msg);
     form.addEventListener('submit', async e => {
       e.preventDefault();
@@ -423,7 +442,7 @@
     if (q.get('wt')) {
       const key = FO.wikitreeKey(q.get('wt'));
       if (key) {
-        FO.loadWikiTree(key, q.get('anc') || 10, q.get('desc') || 0, null, q.get('sib') !== '0')
+        FO.loadWikiTree(key, q.get('anc') || DEF.anc, q.get('desc') || DEF.desc, null, q.get('sib') !== '0')
           .then(r => FO.ui.toast('Loaded ' + FO.ui.fmt(r.count) + ' people from WikiTree, starting from ' + r.key + '. Nothing is stored.'))
           .catch(err => FO.ui.toast(err.message || String(err)));
       }
