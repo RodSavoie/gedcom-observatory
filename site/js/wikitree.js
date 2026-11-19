@@ -70,11 +70,13 @@
   }
 
   /* One getPeople question, page by page; returns the people (ids normalised) and the key's own id */
-  async function ask(key, anc, desc, progress, seen) {
+  async function ask(key, anc, desc, progress, seen, sib) {
     let rootId = null; const out = [];
     for (let page = 0, start = 0; page < 60; page++, start += PAGE) {
       const n = ++callNo;
-      const o = unwrap(await call({ action: 'getPeople', keys: key, ancestors: anc, descendants: desc, fields: FIELDS, limit: PAGE, start }));
+      const q = { action: 'getPeople', keys: key, ancestors: anc, descendants: desc, fields: FIELDS, limit: PAGE, start };
+      if (sib) q.siblings = 1;   // with ancestors, WikiTree adds the brothers and sisters of every ancestor
+      const o = unwrap(await call(q));
       const rk = o.resultByKey ? Object.values(o.resultByKey)[0] : null;
       if (rk && rk.status) throw new Error(/illegal|invalid|not found|no profile/i.test(rk.status) ? 'WikiTree does not recognise ' + key + '. Check the ID, for example Savoie-2387.' : 'WikiTree says: ' + rk.status);
       if (rootId == null && rk && rk.Id) rootId = +rk.Id;
@@ -86,23 +88,6 @@
       if ((!o.more && list.length < PAGE) || !fresh) break;
     }
     return { list: out, rootId };
-  }
-
-  /* The brothers and sisters of many people at once, 50 per question (WikiTree takes up to 100 when
-     relatives are asked for), page by page */
-  async function siblingsOf(ids, people, progress) {
-    for (let i = 0; i < ids.length; i += 50) {
-      const keys = ids.slice(i, i + 50).join(',');
-      for (let page = 0, start = 0; page < 20; page++, start += PAGE) {
-        const n = ++callNo;
-        const o = unwrap(await call({ action: 'getPeople', keys, siblings: 1, fields: FIELDS, limit: PAGE, start }));
-        const list = normalise(Object.values(o.people || {}).filter(p => p && p.Id != null), n);
-        let fresh = 0;
-        for (const p of list) if (!people.has(p.Id)) { people.set(p.Id, p); fresh++; }
-        progress(people.size);
-        if ((!o.more && list.length < PAGE) || !fresh) break;
-      }
-    }
   }
 
   /* Husbands and wives that came along inside each person's spouse list, added as people */
@@ -122,19 +107,14 @@
      descendants with their husbands and wives, so families are whole. */
   async function fetchTree(key, anc, desc, sib, progress) {
     const people = new Map(), seen = new Set();
-    const a = await ask(key, anc, 0, progress, seen);
+    if (sib) progress.stage('Asking WikiTree for ' + key + ', with brothers and sisters…');
+    const a = await ask(key, anc, 0, progress, seen, sib);
     const rootId = a.rootId;
     for (const p of a.list) if (!people.has(p.Id)) people.set(p.Id, p);
     if (rootId == null || !people.has(rootId)) throw new Error('WikiTree did not send a profile for ' + key + '. Check the ID, for example Savoie-2387.');
 
-    if (sib) {
-      // the brothers and sisters of the starting person and of every ancestor WikiTree named, with their husbands and wives
-      const line = [...people.keys()].filter(id => typeof id === 'number');
-      const before = new Set(people.keys());
-      progress.stage('Adding brothers and sisters…');
-      await siblingsOf(line, people, progress);
-      addSpouses(people, [...people.keys()].filter(id => !before.has(id)));
-    }
+    // the husbands and wives of the brothers and sisters (and later marriages of ancestors) come inside each spouse list
+    if (sib) addSpouses(people, [...people.keys()]);
 
     if (desc > 0) {
       progress.stage('Adding descendants…');
