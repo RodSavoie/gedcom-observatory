@@ -1,0 +1,91 @@
+# Copies the site folder to cognitiveoverload.com on SiteGround.
+#
+# Runs by itself whenever changes inside site/ reach GitHub (Sync Changes in VS Code),
+# and can be run by hand from the Actions tab ("Deploy site to SiteGround" > Run workflow).
+#
+# Safe by design:
+#   - it only adds or updates files; it never deletes anything on the server
+#   - it never sends a filled-in fo-contact-config.php
+#   - the SSH key and server details live in GitHub secrets, never in this file
+#
+# Secrets it needs (GitHub > Settings > Secrets and variables > Actions):
+#   SITEGROUND_HOST      server hostname, from SiteGround SSH Keys Manager > SSH Credentials
+#   SITEGROUND_USER      SSH username, from the same place
+#   SITEGROUND_SSH_KEY   the private key (the whole file, including the BEGIN and END lines)
+#   SITEGROUND_PATH      the site's folder, e.g. www/cognitiveoverload.com/public_html
+
+name: Deploy site to SiteGround
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-siteground
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check that the secrets are set
+        env:
+          HOST: ${{ secrets.SITEGROUND_HOST }}
+          SG_USER: ${{ secrets.SITEGROUND_USER }}
+          KEY: ${{ secrets.SITEGROUND_SSH_KEY }}
+          DEST: ${{ secrets.SITEGROUND_PATH }}
+        run: |
+          missing=""
+          [ -z "$HOST" ] && missing="$missing SITEGROUND_HOST"
+          [ -z "$SG_USER" ] && missing="$missing SITEGROUND_USER"
+          [ -z "$KEY" ]  && missing="$missing SITEGROUND_SSH_KEY"
+          [ -z "$DEST" ] && missing="$missing SITEGROUND_PATH"
+          if [ -n "$missing" ]; then
+            echo "::error::These secrets are not set yet:$missing"
+            exit 1
+          fi
+          case "$DEST" in
+            *public_html*) ;;
+            *) echo "::error::SITEGROUND_PATH should point inside public_html (it is: $DEST)"; exit 1 ;;
+          esac
+
+      - name: Get the code
+        uses: actions/checkout@v4
+
+      - name: Set up the SSH key
+        env:
+          HOST: ${{ secrets.SITEGROUND_HOST }}
+          KEY: ${{ secrets.SITEGROUND_SSH_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$KEY" | tr -d '\r' > ~/.ssh/siteground
+          chmod 600 ~/.ssh/siteground
+          ssh-keyscan -p 18765 -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Copy site/ to SiteGround
+        env:
+          HOST: ${{ secrets.SITEGROUND_HOST }}
+          SG_USER: ${{ secrets.SITEGROUND_USER }}
+          DEST: ${{ secrets.SITEGROUND_PATH }}
+        run: |
+          rsync -rltvz --checksum \
+            --chmod=D755,F644 \
+            --exclude 'fo-contact-config.php' \
+            -e "ssh -p 18765 -i $HOME/.ssh/siteground -o IdentitiesOnly=yes" \
+            site/ "$SG_USER@$HOST:${DEST%/}/"
+
+      - name: Reminder
+        run: |
+          echo "Done. If the live site still shows the old version, flush the cache in"
+          echo "SiteGround Site Tools > Speed > Caching (and the CDN if it is on)."
+
+      - name: Remove the key from the runner
+        if: always()
+        run: rm -f ~/.ssh/siteground
