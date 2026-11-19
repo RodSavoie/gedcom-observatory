@@ -117,7 +117,7 @@
     // and the two answers are lined up.
     if (sib && dangling(list).length) {
       progress.stage('Filling in private profiles…');
-      const b = await ask(key, anc, 0, progress, seen, false);
+      const b = await ask(key, anc, 0, () => {}, new Set(), false);   // its own count, so its pages are not cut short
       list = merge(b.list, list);
     }
     for (const p of list) if (!people.has(p.Id)) people.set(p.Id, p);
@@ -274,7 +274,7 @@
 
     for (const id of ids) {
       const p = people.get(id);
-      const given = typeof id === 'string' ? 'Private' : one([p.FirstName || p.RealName, p.MiddleName].filter(Boolean).join(' '));
+      const given = typeof id === 'string' ? '' : one([p.FirstName || p.RealName, p.MiddleName].filter(Boolean).join(' '));
       const surname = one(p.LastNameAtBirth || p.LastNameCurrent).replace(/\//g, '');
       out.push('0 ' + xref(id) + ' INDI', '1 NAME ' + given.replace(/\//g, '') + ' /' + surname + '/');
       out.push('1 SEX ' + (/^m/i.test(p.Gender || '') ? 'M' : /^f/i.test(p.Gender || '') ? 'F' : role.get(id) || 'U'));
@@ -284,6 +284,7 @@
       if (dd || dp) { out.push('1 DEAT'); if (dd) out.push('2 DATE ' + dd); if (dp) out.push('2 PLAC ' + dp); }
       if (p.Name) out.push('1 WWW https://www.WikiTree.com/wiki/' + encodeURI(String(p.Name)));
       if (id === rootId) out.push('1 _HOME Y');
+      if (typeof id === 'string') out.push('1 _PRIVATE Y');   // a WikiTree stand-in: WikiTree keeps this person private
       // WikiTree decides who counts as living; its answer is followed in both directions
       if (p.IsLiving === 1 || p.IsLiving === '1') out.push('1 _LIVING Y');
       else if (p.IsLiving === 0 || p.IsLiving === '0') out.push('1 _LIVING N');

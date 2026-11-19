@@ -19,6 +19,7 @@
   // open arc at radius r; angles clockwise from 12 o'clock
   const arcLine = (r, a, b) => `M${r * Math.sin(a)},${-r * Math.cos(a)}A${r},${r} 0 ${Math.abs(b - a) > Math.PI ? 1 : 0} ${b > a ? 1 : 0} ${r * Math.sin(b)},${-r * Math.cos(b)}`;
   const fitName = (p, maxc) => {
+    if (p.flagPrivate) return 'Private';
     if (p.hidden) return 'Living';
     const first = (p.given || '').split(' ')[0];
     const opts = [p.name, (first + ' ' + p.surname).trim(), first && p.surname ? first[0] + '. ' + p.surname : '', p.surname || first, first];

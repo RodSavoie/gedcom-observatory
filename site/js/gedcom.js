@@ -165,7 +165,7 @@
       if (lvl === 0) {
         cur = null; kind = null; ev = null;
         if (tag === 'INDI' && xid) {
-          cur = { id: xid, i: people.length, given: '', surname: '', name: '', sex: 'U', b: null, d: null, dead: false, famc: null, fams: [], url: null, flagLiving: false, flagNotLiving: false, flagHome: false, _fc: null, _fs: [] };
+          cur = { id: xid, i: people.length, given: '', surname: '', name: '', sex: 'U', b: null, d: null, dead: false, famc: null, fams: [], url: null, flagLiving: false, flagNotLiving: false, flagPrivate: false, flagHome: false, _fc: null, _fs: [] };
           people.push(cur); byId.set(xid, cur); kind = 'I';
         } else if (tag === 'FAM' && xid) {
           cur = { id: xid, i: families.length, husb: null, wife: null, children: [], m: null, _h: null, _w: null, _c: [] };
@@ -200,6 +200,7 @@
             case '_FSFTID': case 'FSID': case '_FSID': if (!cur.url && /^[A-Z0-9]{4}-[A-Z0-9]{2,4}$/i.test(val.trim())) cur.url = 'https://www.familysearch.org/tree/person/details/' + val.trim().toUpperCase(); break;
             case '_LIVING': cur.flagLiving = /^y/i.test(val.trim()); cur.flagNotLiving = /^n/i.test(val.trim()); break;
             case '_HOME': cur.flagHome = /^y/i.test(val.trim()); break;
+            case '_PRIVATE': cur.flagPrivate = /^y/i.test(val.trim()); break;   // a profile its source keeps private (WikiTree stand-ins)
           }
         } else if (kind === 'F') {
           switch (tag) {
@@ -294,10 +295,10 @@
           // the home person keeps a name and a birth year, nothing else
           if (p.b) p.b = { date: p.b.date && p.b.date.y ? { raw: '' + p.b.date.y, y: p.b.date.y, m: null, d: null, q: null, text: '' + p.b.date.y } : null, place: null };
         } else {
-          p.hidden = true; p.given = 'Living'; p.surname = ''; p.b = null; p.d = null; p.by = null; p.dy = null; p.url = null;
+          p.hidden = true; p.given = p.flagPrivate ? 'Private' : 'Living'; p.surname = ''; p.b = null; p.d = null; p.by = null; p.dy = null; p.url = null;
         }
       }
-      p.name = p.hidden ? 'Living person' : ((p.given + ' ' + p.surname).trim() || 'Unknown');
+      p.name = p.flagPrivate ? 'Private' : p.hidden ? 'Living person' : ((p.given + ' ' + p.surname).trim() || 'Unknown');
     }
     for (const f of families) {
       if ((f.husb && f.husb.hidden) || (f.wife && f.wife.hidden)) f.m = null;
