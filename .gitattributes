@@ -1,0 +1,10 @@
+# Keep text files with Unix line endings everywhere, so Windows and
+# other computers never show every line as "changed".
+* text=auto eol=lf
+
+# Never touch these
+*.jpg   binary
+*.jpeg  binary
+*.png   binary
+*.woff2 binary
+*.pdf   binary

@@ -1,0 +1,28 @@
+# ---------------------------------------------------------------
+# Files Git must never send to GitHub
+# ---------------------------------------------------------------
+
+# The real Contact me settings, with the mailbox password.
+# Only the empty sample (site/fo-contact-config.sample.php) is published.
+fo-contact-config.php
+
+# Rod's private working files: design sources, the filled-in mail
+# settings, notes. Everything in this folder stays on this computer.
+private/
+
+# Full genealogy exports can hold living relatives, e-mail addresses
+# and private notes. Only the cleaned site/data/family.ged.txt is published.
+*.ged
+*.GED
+
+# Windows, macOS and editor clutter
+Thumbs.db
+desktop.ini
+.DS_Store
+~$*
+*.tmp
+*.bak
+.vscode/
+
+# Node.js, if the tools ever grow dependencies
+node_modules/

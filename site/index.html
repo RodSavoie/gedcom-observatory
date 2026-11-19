@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Family Observatory</title>
+<meta name="description" content="Fourteen interactive ways to look at one family tree. Load your own GEDCOM file; it never leaves your device.">
+<link rel="icon" type="image/svg+xml" href="img/co-logo.svg">
+<link id="base-css" rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/designs.css">
+<script src="js/designs.js"></script>
+</head>
+<body>
+<header class="top">
+  <a class="logo" href="#/" aria-label="Cognitive Overload: Family Observatory home"><svg viewBox="0 0 95.973145 95.973145" aria-hidden="true" focusable="false"><g fill="currentColor" opacity=".85"><path d="M65.725952,36.997009c-5.724121,0-9.558105,4.644043-9.558105,10.098145v.10791c0,5.454102,3.941895,10.206055,9.666016,10.206055,5.77832,0,9.612305-4.644043,9.612305-10.098145v-.10791c0-5.454102-3.942383-10.206055-9.720215-10.206055Z"/><path d="M83.970703,0H12.00238C5.401062,0,0,5.401062,0,12.00238v71.968384c0,6.601318,5.401062,12.00238,12.00238,12.00238h71.968323c6.601318,0,12.002441-5.401062,12.002441-12.00238V12.00238c0-6.601318-5.401123-12.00238-12.002441-12.00238ZM29.275757,66.859314c-10.800293,0-19.494141-8.262207-19.494141-19.54834v-.10791c0-11.016113,8.478027-19.65625,19.92627-19.65625,7.722168,0,12.689941,3.240234,16.038086,7.884277l-7.884277,6.102051c-2.159668-2.700195-4.644043-4.428223-8.262207-4.428223-5.291992,0-9.018066,4.481934-9.018066,9.990234v.10791c0,5.67041,3.726074,10.098145,9.018066,10.098145,3.942383,0,6.26416-1.835938,8.532227-4.589844l7.884277,5.616211c-3.563965,4.914062-8.370117,8.531738-16.740234,8.531738ZM86.138062,47.203064c0,10.854492-8.748047,19.65625-20.412109,19.65625s-20.304199-8.693848-20.304199-19.54834v-.10791c0-10.854004,8.748047-19.65625,20.412109-19.65625s20.304199,8.694336,20.304199,19.54834v.10791Z"/></g></svg></a>
+  <nav class="nav main" aria-label="Main">
+    <button type="button" id="btn-views" aria-expanded="false" aria-controls="menu-views">The views</button>
+    <button type="button" id="btn-family" aria-expanded="false" aria-controls="menu-family">The family</button>
+    <a href="#/me">About me</a>
+    <a href="#/contact">Contact me</a>
+  </nav>
+  <div id="finder"></div>
+  <nav class="nav side" aria-label="Secondary">
+    <a href="#/about">About</a>
+    <a href="#/about?privacy">Privacy</a>
+  </nav>
+  <button type="button" class="pill" id="load-btn">Load your file</button>
+  <div class="menu" id="menu-views"></div>
+  <div class="menu family-menu" id="menu-family"></div>
+</header>
+<main id="page"><div class="loading">Reading the family file…</div></main>
+<input type="file" id="file" accept=".ged,.gedcom,text/plain" hidden>
+<div class="drop" id="drop">Drop your family file to open it here</div>
+<div class="toast" id="toast" role="status"></div>
+<noscript><p style="padding:40px">Family Observatory needs JavaScript to draw the family.</p></noscript>
+<script src="js/vendor/d3.min.js"></script>
+<script src="js/gedcom.js"></script>
+<script src="js/kin.js"></script>
+<script src="js/app.js"></script>
+<script src="js/aboutme.js"></script>
+<script src="js/contact.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/views/sky.js"></script>
+<script src="js/views/fan.js"></script>
+<script src="js/views/hourglass.js"></script>
+<script src="js/views/time.js"></script>
+<script src="js/views/river.js"></script>
+<script src="js/views/tangle.js"></script>
+<script src="js/views/related.js"></script>
+<script src="js/views/story.js"></script>
+<script src="js/views/numbers.js"></script>
+<script src="js/views/descendants.js"></script>
+<script src="js/views/places.js"></script>
+<script src="js/views/checks.js"></script>
+<script src="js/views/missing.js"></script>
+<script src="js/views/collapse.js"></script>
+</body>
+</html>
