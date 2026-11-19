@@ -387,6 +387,19 @@
     } finally { busyNow = false; waiting(false); }
   };
 
+  /* ---------- families drawn before ----------
+     Kept in this browser only: the WikiTree ID and the choices used with it, never names or anything
+     else WikiTree sent (WikiTree asks outside sites not to keep its data). Shown most-used first. */
+  const RECENT = 12, SHOW = 6;
+  function recents() { const r = FO.prefs.get('wt.recent', []); return Array.isArray(r) ? r.filter(x => x && typeof x.id === 'string') : []; }
+  function remember(id, anc, desc, sib) {
+    const all = recents(), old = all.find(x => x.id.toLowerCase() === id.toLowerCase());
+    const rest = all.filter(x => x !== old);
+    FO.prefs.set('wt.recent', [{ id, a: +anc, d: +desc, s: sib ? 1 : 0, n: (old ? old.n || 0 : 0) + 1, t: Date.now() }, ...rest].slice(0, RECENT));
+  }
+  function forget(id) { FO.prefs.set('wt.recent', recents().filter(x => x.id !== id)); }
+  const ranked = () => recents().slice().sort((a, b) => (b.n - a.n) || (b.t - a.t));
+
   /* ---------- the "From WikiTree" panel ---------- */
   function buildPanel(menu) {
     const ui = FO.ui, el = ui.el;
@@ -395,7 +408,9 @@
       for (let i = from; i <= to; i++) s.append(el('option', { value: i, text: i === 0 ? 'None' : i + ' ' + (i === 1 ? word : word + 's'), selected: i === sel ? 'selected' : null }));
       return s;
     };
-    const id = el('input', { type: 'text', placeholder: 'e.g. Savoie-2387', autocomplete: 'off', spellcheck: 'false', 'aria-label': 'WikiTree ID', value: FO.prefs.get('wt.id', '') });
+    const id = el('input', { type: 'text', placeholder: 'e.g. Savoie-2387', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'off', spellcheck: 'false', list: 'wt-ids', 'aria-label': 'WikiTree ID', value: FO.prefs.get('wt.id', '') });
+    const ids = el('datalist', { id: 'wt-ids' });
+    const used = el('div', { class: 'wt-recent' });
     const anc = opts(1, MAX.anc, FO.prefs.num('wt.anc', DEF.anc, 1, MAX.anc), 'generation');
     const desc = opts(0, MAX.desc, FO.prefs.num('wt.desc', DEF.desc, 0, MAX.desc), 'generation');
     const sib = el('input', { type: 'checkbox' });
@@ -403,12 +418,31 @@
     const msg = el('p', { class: 'wt-msg', role: 'status' });
     const go = el('button', { type: 'submit', class: 'pill small', text: 'Draw this family' });
     const form = el('form', { class: 'wt-form' },
-      el('label', {}, el('span', { text: 'WikiTree ID' }), id),
+      el('label', {}, el('span', { text: 'WikiTree ID' }), id), ids, used,
       el('div', { class: 'wt-row' },
         el('label', {}, el('span', { text: 'Ancestors' }), anc),
         el('label', {}, el('span', { text: 'Descendants' }), desc)),
       el('label', { class: 'wt-check' }, sib, el('span', { text: 'Brothers and sisters of each ancestor, with their husbands and wives' })),
       el('div', { class: 'row' }, go), msg);
+    // the "Used before" chips: one click draws that family again with the choices used last time
+    const showUsed = () => {
+      const list = ranked();
+      ids.innerHTML = '';
+      list.forEach(x => ids.append(el('option', { value: x.id })));
+      used.innerHTML = '';
+      if (!list.length) return;
+      used.append(el('small', { text: 'Used before' }));
+      list.slice(0, SHOW).forEach(x => {
+        const what = (x.a || DEF.anc) + ' generations of ancestors, ' + (x.d ? x.d + ' of descendants' : 'no descendants') + (x.s ? ', with brothers and sisters' : '');
+        used.append(el('span', { class: 'namechip' },
+          el('button', { type: 'button', class: 'go', text: x.id, title: 'Draw ' + x.id + ' again: ' + what, onclick: () => {
+            id.value = x.id; anc.value = x.a || DEF.anc; desc.value = x.d || 0; sib.checked = !!x.s; form.requestSubmit();
+          } }),
+          el('button', { type: 'button', class: 'x', text: '×', title: 'Forget ' + x.id, 'aria-label': 'Forget ' + x.id, onclick: () => { forget(x.id); showUsed(); } })));
+      });
+    };
+    showUsed();
+
     form.addEventListener('submit', async e => {
       e.preventDefault();
       const key = FO.wikitreeKey(id.value);
@@ -418,6 +452,7 @@
       try {
         const r = await FO.loadWikiTree(key, anc.value, desc.value, (n, line) => { msg.textContent = line; }, sib.checked);
         msg.textContent = '';
+        remember(r.key, anc.value, desc.value, sib.checked); showUsed();
         FO.closeMenus();
         ui.toast('Loaded ' + ui.fmt(r.count) + ' people from WikiTree, starting from ' + r.key + '. Nothing is stored.');
       } catch (err) {
@@ -429,8 +464,8 @@
       el('h3', { text: 'Draw any family on WikiTree' }),
       el('p', { class: 'muted', text: 'Type a WikiTree ID, or paste the address of a profile, and choose how far to go. Descendants and brothers and sisters make trees much larger: the more you ask for, the longer WikiTree takes to answer.' }),
       form,
-      el('p', { class: 'muted small-print', text: 'Only what WikiTree shows to everyone is fetched, and people who may be living stay hidden. Nothing is stored: the tree is kept only while this page is open. Data from WikiTree.com, shared by its community of genealogists.' }));
-    return { id, anc, desc, form };
+      el('p', { class: 'muted small-print', text: 'Only what WikiTree shows to everyone is fetched, and people who may be living stay hidden. Nothing is stored: the tree is kept only while this page is open, and this browser remembers only the IDs you used and your choices. Data from WikiTree.com, shared by its community of genealogists.' }));
+    return { id, anc, desc, form, showUsed };
   }
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -451,7 +486,7 @@
       const key = FO.wikitreeKey(q.get('wt'));
       if (key) {
         FO.loadWikiTree(key, q.get('anc') || DEF.anc, q.get('desc') || DEF.desc, null, q.get('sib') !== '0')
-          .then(r => FO.ui.toast('Loaded ' + FO.ui.fmt(r.count) + ' people from WikiTree, starting from ' + r.key + '. Nothing is stored.'))
+          .then(r => { remember(r.key, FO.state.wikitree.anc, FO.state.wikitree.desc, FO.state.wikitree.sib); panel.showUsed(); FO.ui.toast('Loaded ' + FO.ui.fmt(r.count) + ' people from WikiTree, starting from ' + r.key + '. Nothing is stored.'); })
           .catch(err => FO.ui.toast(err.message || String(err)));
       }
     }

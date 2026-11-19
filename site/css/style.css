@@ -89,6 +89,15 @@ h1, h2, h3 { font-weight: 400; line-height: 1.15; margin: 0; letter-spacing: -.0
 .wt-form label.wt-check { display: flex; gap: 10px; align-items: flex-start; margin-top: 16px; font-size: 14px; line-height: 1.4; }
 .wt-form .wt-check input { width: auto; flex: none; padding: 0; margin: 2px 0 0; accent-color: var(--teal-deep); }
 .wt-form .wt-check span { display: inline; margin: 0; font-size: 14px; color: var(--text); }
+.wt-recent { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 9px; }
+.wt-recent:empty { display: none; }
+.wt-recent small { color: var(--ink-3); font-size: 12px; margin-right: 2px; }
+.wt-recent .namechip { display: inline-flex; align-items: center; gap: 2px; padding: 0 4px 0 0; }
+.wt-recent .namechip:hover { border-color: rgba(27,38,50,.45); }
+.wt-recent button { border: 0; background: none; font: inherit; color: inherit; cursor: pointer; }
+.wt-recent .go { padding: 3px 4px 3px 11px; font-size: 13px; }
+.wt-recent .x { padding: 0 5px; font-size: 15px; line-height: 1; color: var(--ink-3); }
+.wt-recent .x:hover { color: var(--text); }
 .wt-msg { min-height: 1.4em; margin: 12px 0 0; font-size: 14px; color: var(--ink-2); }
 .wt-menu .small-print { font-size: 12.5px; line-height: 1.45; margin: 16px 0 0; }
 .wt-wait { position: fixed; inset: 0; z-index: 25; display: none; place-items: center; background: rgba(245,242,236,.6); backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); }
