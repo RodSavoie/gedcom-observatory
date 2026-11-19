@@ -60,9 +60,10 @@
     return o;
   }
 
-  /* Private profiles arrive as stand-ins with negative ids, numbered afresh in every answer
-     (-1 can be a mother in one answer and a grandchild in the next), so each answer's stand-ins get
-     their own names, such as "s3_1". Real profiles keep their WikiTree number. */
+  /* Private profiles arrive as stand-ins with negative ids. The numbering holds across all the pages
+     of one question but starts again with the next question (-1 can be a mother in one and a grandchild
+     in another), so each question's stand-ins get their own names, such as "s3_1". Real profiles keep
+     their WikiTree number. */
   let callNo = 0;
   const idOf = (x, n) => { const v = +x; return v > 0 ? v : v < 0 ? 's' + n + '_' + (-v) : 0; };
   function normalise(list, n) {
@@ -72,8 +73,8 @@
   /* One getPeople question, page by page; returns the people (ids normalised) and the key's own id */
   async function ask(key, anc, desc, progress, seen, sib) {
     let rootId = null; const out = [];
+    const n = ++callNo;   // one namespace for the whole question
     for (let page = 0, start = 0; page < 60; page++, start += PAGE) {
-      const n = ++callNo;
       const q = { action: 'getPeople', keys: key, ancestors: anc, descendants: desc, fields: FIELDS, limit: PAGE, start };
       if (sib) q.siblings = 1;   // with ancestors, WikiTree adds the brothers and sisters of every ancestor
       const o = unwrap(await call(q));
@@ -110,7 +111,16 @@
     if (sib) progress.stage('Asking WikiTree for ' + key + ', with brothers and sisters…');
     const a = await ask(key, anc, 0, progress, seen, sib);
     const rootId = a.rootId;
-    for (const p of a.list) if (!people.has(p.Id)) people.set(p.Id, p);
+    let list = a.list;
+    // With brothers and sisters, WikiTree can leave out a private stand-in on the direct line while
+    // others still point to it. When that happens, the plain direct line (which has it) is fetched too
+    // and the two answers are lined up.
+    if (sib && dangling(list).length) {
+      progress.stage('Filling in private profiles…');
+      const b = await ask(key, anc, 0, progress, seen, false);
+      list = merge(b.list, list);
+    }
+    for (const p of list) if (!people.has(p.Id)) people.set(p.Id, p);
     if (rootId == null || !people.has(rootId)) throw new Error('WikiTree did not send a profile for ' + key + '. Check the ID, for example Savoie-2387.');
 
     // the husbands and wives of the brothers and sisters (and later marriages of ancestors) come inside each spouse list
@@ -154,7 +164,39 @@
         progress(people.size);
       }
     }
+    // anyone still pointed to but never sent becomes an unnamed private box, so the line is not cut
+    for (const p of [...people.values()]) for (const par of [p.Father, p.Mother]) if (typeof par === 'string' && !people.has(par)) people.set(par, { Id: par, Father: 0, Mother: 0 });
     return { people, rootId };
+  }
+
+  function dangling(list) {
+    const ids = new Set(list.map(p => p.Id));
+    return list.filter(p => [p.Father, p.Mother].some(x => typeof x === 'string' && !ids.has(x)));
+  }
+
+  /* Line up two answers about the same tree: the direct line (base) and the larger one (extra).
+     Stand-ins in the larger answer are matched to the base's through the real people both contain
+     (the same real child has the same private mother), then up through the matched stand-ins'
+     own parents. Unmatched stand-ins (living brothers and sisters) are added as they are. */
+  function merge(base, extra) {
+    const B = new Map(base.map(p => [p.Id, p])), X = new Map(extra.map(p => [p.Id, p]));
+    const map = new Map();
+    const align = (x, y) => {
+      if (typeof x !== 'string' || !y || map.has(x)) return;
+      map.set(x, y);
+      const px = X.get(x), py = B.get(y);
+      if (px && py) { align(px.Father, py.Father); align(px.Mother, py.Mother); }
+    };
+    for (const p of extra) if (typeof p.Id === 'number' && B.has(p.Id)) { const q = B.get(p.Id); align(p.Father, q.Father); align(p.Mother, q.Mother); }
+    const m = x => map.has(x) ? map.get(x) : x;
+    const out = base.slice(), have = new Set(B.keys());
+    for (const p of extra) {
+      const id = m(p.Id);
+      if (have.has(id)) continue;
+      have.add(id);
+      out.push(Object.assign({}, p, { Id: id, Father: m(p.Father), Mother: m(p.Mother) }));
+    }
+    return out;
   }
 
   function descendantsOf(people, rootId) {
