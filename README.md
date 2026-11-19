@@ -13,6 +13,8 @@ Savoie / Breau family.
   Living people are hidden by default.
 - **Works with any GEDCOM.** WikiTree files get profile links on every person; files from
   elsewhere work too, just without the links.
+- **Or straight from WikiTree.** Type a WikiTree ID under **From WikiTree** and the family is
+  fetched live from the [WikiTree API](https://github.com/wikitree/wikitree-api), no export needed.
 
 ## The fourteen views
 
@@ -64,6 +66,23 @@ addresses and private notes. Make a cleaned copy first, either way:
 The cleaned copy keeps names, sex, birth, death and marriage dates and places, profile links
 and relationships. It drops biographies, notes, sources, images and e-mail addresses, and
 turns anyone who may be living into an unnamed "Living person" with no dates or places.
+
+### Drawing families from WikiTree
+
+`site/js/wikitree.js` asks the WikiTree API for a person's ancestors (up to 20 generations) and
+descendants (up to 10), turns the answer into GEDCOM text and hands it to the normal loader, so
+every view works unchanged. A link such as `index.html?wt=Savoie-2387&anc=10&desc=1` opens a
+family directly.
+
+WikiTree does not always answer browsers on other sites, so `site/wikitree.php` relays the same
+questions from your web host (it needs PHP with curl). The relay answers only the site's own
+pages, accepts only checked WikiTree IDs and generation counts, limits requests per visitor and
+for the whole site, and stores nothing.
+
+Following WikiTree's [App Policies](https://www.wikitree.com/wiki/Help:App_Policies), only what
+WikiTree shows publicly is fetched, biographies and photos are never requested, and nothing is
+cached or kept beyond the open page. If you run your own copy, change `APP_ID` in
+`wikitree.js` and `appId` in `wikitree.php` to a name of your own.
 
 ### The Contact me form (optional)
 

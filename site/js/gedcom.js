@@ -165,7 +165,7 @@
       if (lvl === 0) {
         cur = null; kind = null; ev = null;
         if (tag === 'INDI' && xid) {
-          cur = { id: xid, i: people.length, given: '', surname: '', name: '', sex: 'U', b: null, d: null, dead: false, famc: null, fams: [], url: null, flagLiving: false, flagHome: false, _fc: null, _fs: [] };
+          cur = { id: xid, i: people.length, given: '', surname: '', name: '', sex: 'U', b: null, d: null, dead: false, famc: null, fams: [], url: null, flagLiving: false, flagNotLiving: false, flagHome: false, _fc: null, _fs: [] };
           people.push(cur); byId.set(xid, cur); kind = 'I';
         } else if (tag === 'FAM' && xid) {
           cur = { id: xid, i: families.length, husb: null, wife: null, children: [], m: null, _h: null, _w: null, _c: [] };
@@ -198,7 +198,7 @@
             case 'FAMS': cur._fs.push(val.trim()); break;
             case 'WWW': case 'URL': case '_URL': if (!cur.url && /^https?:/i.test(val.trim())) cur.url = val.trim(); break;
             case '_FSFTID': case 'FSID': case '_FSID': if (!cur.url && /^[A-Z0-9]{4}-[A-Z0-9]{2,4}$/i.test(val.trim())) cur.url = 'https://www.familysearch.org/tree/person/details/' + val.trim().toUpperCase(); break;
-            case '_LIVING': cur.flagLiving = /^y/i.test(val.trim()); break;
+            case '_LIVING': cur.flagLiving = /^y/i.test(val.trim()); cur.flagNotLiving = /^n/i.test(val.trim()); break;
             case '_HOME': cur.flagHome = /^y/i.test(val.trim()); break;
           }
         } else if (kind === 'F') {
@@ -284,7 +284,7 @@
     for (const p of people) {
       const proof = p.dead && p.d && (p.d.date || p.d.place);
       const standIn = /^(living|private|vivant|vivante)$/i.test(p.given) || /^(living|private)$/i.test(p.surname);
-      p.living = p.flagLiving || (!proof && (p.est == null || p.est > cutoff)) || (standIn && !proof && !(p.est != null && p.est <= cutoff));
+      p.living = p.flagLiving || (!p.flagNotLiving && ((!proof && (p.est == null || p.est > cutoff)) || (standIn && !proof && !(p.est != null && p.est <= cutoff))));
       if (p.living) livingCount++;
     }
     for (const p of people) {

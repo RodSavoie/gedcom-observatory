@@ -490,6 +490,7 @@
       '<li><b>No AI looks at your file.</b> Everything you see is drawn by ordinary code running in your browser.</li>' +
       '<li><b>Living people are hidden.</b> Anyone with no death or burial recorded with a date or a place, who was born in the last ' + FO.LIVING_YEARS + ' years or whose age cannot be worked out, is shown only as “Living person”, without dates or places. In the built-in family those details were removed from the file itself before it was published; only the home person’s name and birth year remain.</li></ul>' +
       '<h2>Loading your own family</h2><p>Export a GEDCOM (.ged) file from your genealogy program or website (WikiTree, Ancestry, FamilySearch-compatible software, Gramps, RootsMagic and so on), then use <b>Load your file</b> at the top of the page, or drag the file onto the window. From <b>The family</b> menu you can then save a cleaned copy: the same family without notes, sources or living people. The first person in the file becomes the home person; you can re-centre on anyone from their details panel.</p>' +
+      '<h2>Drawing a family from WikiTree</h2><p>Use <b>From WikiTree</b> at the top of the page and type a WikiTree ID, such as Savoie-2387, to draw that person&rsquo;s ancestors (and, if you like, descendants) straight from <a href="https://www.wikitree.com/" target="_blank" rel="noopener">WikiTree</a>. Only what WikiTree shows to everyone is fetched; biographies and photos are not. Nothing is stored: the family is kept only while the page is open, and people who may be living stay hidden. A link such as <code>?wt=Savoie-2387&amp;anc=10</code> opens a family directly.</p>' +
       '<h2>What the pictures can and cannot tell you</h2><p>Every picture draws what a family file records. A recorded parent, date or place is a conclusion someone entered; it may rest on good documents, on a guess, or on another person’s tree, and the pictures cannot tell those apart. Use them to see patterns and to find things worth checking. Every view has a <b>How to read this</b> button beside its title.</p><h2>Reading the views</h2><p>Dark marks are the family. The <span style="color:#A35139">warm accent colour</span> marks the line or the people you have chosen, and anyone who appears more than once in a chart. Underlined text and outlined buttons are things you can press. Estimated years are used where a birth date is missing, so positions for those people are approximate.</p>' +
       '<h2>Credit</h2>' +
       '<p>The idea and the set of views follow <a href="https://observatory.vibegenealogy.ai/" target="_blank" rel="noopener">Kinfolk Observatory</a>, a Vibe Genealogy project by Steve Little, described in <a href="https://vibegenealogy.ai/p/fun-prompt-friday-fable-make-something-incredible-kinfolk-observatory" target="_blank" rel="noopener">his write-up of 13 November 2026</a>. This version was built separately, with its own code and a lighter look.</p>' +
@@ -513,7 +514,7 @@
 
     const fm = document.getElementById('menu-family');
     fm.innerHTML = '';
-    fm.append(el('div', { class: 'caps', text: s.builtin ? 'Built-in family' : 'Your file' }), el('h3', { text: s.title }),
+    fm.append(el('div', { class: 'caps', text: s.builtin ? 'Built-in family' : s.source === 'wikitree' ? 'From WikiTree' + (s.wikitree ? ': ' + s.wikitree.key : '') : 'Your file' }), el('h3', { text: s.title }),
       el('p', { class: 'muted', style: { margin: '2px 0 0' }, text: ui.fmt(s.data.people.length) + ' people, ' + ui.fmt(s.data.families.length) + ' families' + (s.data.livingCount ? ', ' + s.data.livingCount + ' possibly living' + (s.data.hideLiving ? ' (hidden)' : '') : '') }));
     const pick = ui.picker('Home person', s.home, p => FO.setHome(p));
     fm.append(el('div', { class: 'row' }, pick));
@@ -522,12 +523,12 @@
     if (!s.builtin) row.append(el('button', { class: 'pill small dark', text: 'Back to the built-in family', onclick: loadBuiltin }));
     fm.append(row);
     if (!s.builtin) {
-      row.append(el('button', { class: 'pill small dark', text: 'Save a cleaned copy', title: 'A copy without notes, sources or living people, safe to share or to publish as a built-in family', onclick: saveClean }));
-      const cb = el('input', { type: 'checkbox', onchange: () => { s.hideLiving = cb.checked; useText(s.text, s.title, false); } });
+      if (s.source !== 'wikitree') row.append(el('button', { class: 'pill small dark', text: 'Save a cleaned copy', title: 'A copy without notes, sources or living people, safe to share or to publish as a built-in family', onclick: saveClean }));
+      const cb = el('input', { type: 'checkbox', onchange: () => { s.hideLiving = cb.checked; useText(s.text, s.title, false, s.source); } });
       cb.checked = s.hideLiving;
       fm.append(el('label', { class: 'row', style: { fontSize: '14px', gap: '8px' } }, cb, 'Hide people who may be living'));
     }
-    fm.append(el('p', { class: 'muted', style: { fontSize: '13px', margin: '14px 0 0' }, text: 'A file you load is read in your browser only. It is never uploaded.' }));
+    fm.append(el('p', { class: 'muted', style: { fontSize: '13px', margin: '14px 0 0' }, text: s.source === 'wikitree' ? 'Fetched from WikiTree when you asked: only what WikiTree shows publicly, kept only while this page is open.' : 'A file you load is read in your browser only. It is never uploaded.' }));
   }
 
   function saveClean() {
@@ -579,20 +580,22 @@
   FO.titleParts = titleParts;
 
   /* ---------- loading ---------- */
-  function useText(text, title, builtin) {
+  function useText(text, title, builtin, source) {
     const s = FO.state;
     const data = FO.parseGedcom(text, { hideLiving: builtin ? true : s.hideLiving });
     if (!data.people.length) { ui.toast('No people were found in that file. Is it a GEDCOM (.ged) file?'); return false; }
-    s.data = data; s.text = builtin ? null : text; s.builtin = builtin; s.home = data.home; s.subject = null; s.pair = null; s.founder = null;
+    s.data = data; s.text = builtin ? null : text; s.builtin = builtin; s.source = builtin ? 'builtin' : (source || 'file'); if (s.source !== 'wikitree') s.wikitree = null; s.home = data.home; s.subject = null; s.pair = null; s.founder = null;
     s.title = data.head.title || title;   // a title written in the file wins; otherwise the file's name
     kinCache = null;
     render();
     return true;
   }
-  function loadBuiltin() {
+  function loadBuiltin(atBoot) {
     fetch('data/family.ged.txt').then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
-      .then(buf => useText(FO.decodeBuffer(buf), 'The built-in family', true))
+      // at start-up, a family the visitor asked for while this one was loading (a WikiTree link) wins
+      .then(buf => { if (atBoot === true && FO.state.source && FO.state.source !== 'builtin') return; useText(FO.decodeBuffer(buf), 'The built-in family', true); })
       .catch(() => {
+        if (atBoot === true && FO.state.source && FO.state.source !== 'builtin') return;
         const page = document.getElementById('page');
         page.innerHTML = '';
         page.append(el('div', { class: 'loading' }, el('div', { style: { textAlign: 'center', maxWidth: '30em' } },
@@ -607,11 +610,14 @@
     rd.onload = () => {
       const name = file.name.replace(/\.[^.]+$/, '');
       FO.state.hideLiving = true;
-      if (useText(FO.decodeBuffer(rd.result), name, false)) ui.toast('Loaded ' + file.name + '. It stays on this device.');
+      if (useText(FO.decodeBuffer(rd.result), name, false, 'file')) ui.toast('Loaded ' + file.name + '. It stays on this device.');
     };
     rd.onerror = () => ui.toast('That file could not be read.');
     rd.readAsArrayBuffer(file);
   }
+
+  FO.loadText = function (text, title, source) { FO.state.hideLiving = true; return useText(text, title, false, source); };
+  FO.closeMenus = function () { closeMenus(); const b = document.getElementById('wt-btn'); if (b) b.setAttribute('aria-expanded', 'false'); };
 
   /* ---------- boot ---------- */
   document.addEventListener('DOMContentLoaded', () => {
@@ -636,6 +642,6 @@
     window.addEventListener('drop', e => { e.preventDefault(); depth = 0; drop.classList.remove('on'); if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]); });
     window.addEventListener('hashchange', render);
     render();
-    loadBuiltin();
+    loadBuiltin(true);
   });
 })();

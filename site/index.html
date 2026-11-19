@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Family Observatory</title>
-<meta name="description" content="Fourteen interactive ways to look at one family tree. Load your own GEDCOM file; it never leaves your device.">
+<meta name="description" content="Fourteen interactive ways to look at one family tree. Load your own GEDCOM file, which never leaves your device, or draw any family on WikiTree.">
 <link rel="icon" type="image/svg+xml" href="img/co-logo.svg">
 <link id="base-css" rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/designs.css">
@@ -25,8 +25,10 @@
     <a href="#/about?privacy">Privacy</a>
   </nav>
   <button type="button" class="pill" id="load-btn">Load your file</button>
+  <button type="button" class="pill" id="wt-btn" aria-expanded="false" aria-controls="menu-wt">From WikiTree</button>
   <div class="menu" id="menu-views"></div>
   <div class="menu family-menu" id="menu-family"></div>
+  <div class="menu family-menu wt-menu" id="menu-wt"></div>
 </header>
 <main id="page"><div class="loading">Reading the family file…</div></main>
 <input type="file" id="file" accept=".ged,.gedcom,text/plain" hidden>
@@ -37,6 +39,7 @@
 <script src="js/gedcom.js"></script>
 <script src="js/kin.js"></script>
 <script src="js/app.js"></script>
+<script src="js/wikitree.js"></script>
 <script src="js/aboutme.js"></script>
 <script src="js/contact.js"></script>
 <script src="js/charts.js"></script>

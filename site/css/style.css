@@ -78,6 +78,15 @@ h1, h2, h3 { font-weight: 400; line-height: 1.15; margin: 0; letter-spacing: -.0
 .family-menu { max-width: 560px; left: auto; }
 .family-menu h3 { font-size: 20px; margin-bottom: 4px; }
 .family-menu .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-top: 16px; }
+.wt-menu { max-width: 470px; }
+.wt-form label { display: block; margin-top: 14px; }
+.wt-form label > span { display: block; font-size: 13px; color: var(--ink-2); margin-bottom: 5px; letter-spacing: .02em; }
+.wt-form input, .wt-form select { width: 100%; font: inherit; font-size: 16px; color: var(--text); background: var(--white); border: 2px solid rgba(27,38,50,.12); border-radius: 4px; padding: 8px 11px; }
+.wt-form input:focus, .wt-form select:focus { outline: none; border-color: rgba(43,128,170,.6); }
+.wt-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.wt-form button[disabled] { opacity: .5; cursor: progress; }
+.wt-msg { min-height: 1.4em; margin: 12px 0 0; font-size: 14px; color: var(--ink-2); }
+.wt-menu .small-print { font-size: 12.5px; line-height: 1.45; margin: 16px 0 0; }
 
 /* ---------- home ---------- */
 .hero { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 20px; align-items: center; padding: 10px var(--pad) 40px; min-height: min(680px, calc(100vh - 110px)); }
