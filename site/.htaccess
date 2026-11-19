@@ -1,0 +1,18 @@
+# Family Observatory: make every update show up right away.
+#
+# "private" switches off SiteGround's server-side page cache (Dynamic Cache) for this site, as
+# SiteGround's own help for non-WordPress sites describes. "no-cache" lets browsers keep their copy
+# but makes them ask the server whether it changed before using it; when nothing changed the
+# server answers in a few bytes, so pages stay fast.
+#
+# Fonts and images rarely change, so browsers may keep them for a week without asking.
+#
+# For these lines to reach CSS, JavaScript and images too, NGINX Direct Delivery must be off for
+# this site (Site Tools > Speed > Caching), since it serves those files without reading this file.
+
+<IfModule mod_headers.c>
+  Header set Cache-Control "private, no-cache"
+  <FilesMatch "\.(woff2|jpe?g|png|svg|ico)$">
+    Header set Cache-Control "public, max-age=604800"
+  </FilesMatch>
+</IfModule>
