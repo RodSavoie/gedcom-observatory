@@ -15,6 +15,7 @@
   'use strict';
   const FO = window.FO;
   const BASE = 'data/map/';
+  const MAP_VERSION = 2;   // raise when world.json or regions.json is rebuilt, so browsers fetch the new files
   const strip = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   const key = s => strip(s).replace(/\(.*?\)/g, ' ').replace(/[-‐‑–’'`.]/g, ' ').replace(/\bste\b/g, 'sainte').replace(/\bst\b/g, 'saint').replace(/\s+/g, ' ').trim();
   // "Colony of Nova Scotia", "Province de Québec", "Nova Scotia Colony" → the name itself
@@ -107,7 +108,7 @@
   const getJSON = u => fetch(u).then(r => { if (!r.ok) throw new Error(u + ' ' + r.status); return r.json(); });
   function loadBase() {
     if (base) return base;
-    base = Promise.all([getJSON(BASE + 'world.json'), getJSON(BASE + 'regions.json')]).then(([world, reg]) => {
+    base = Promise.all([getJSON(BASE + 'world.json?v=' + MAP_VERSION), getJSON(BASE + 'regions.json?v=' + MAP_VERSION)]).then(([world, reg]) => {
       const country = new Map(), a1 = new Map(), dep = new Map(), a1byCode = new Map();
       for (const [cc, v] of Object.entries(reg.c)) { const o = { lat: v[2], lon: v[3], cc, kind: 'c', name: v[0] }; country.set(key(v[0]), o); country.set(key(v[1]), o); }
       for (const [k, cc] of Object.entries(COUNTRY_EXTRA)) { const c = [...country.values()].find(o => o.cc === cc); if (c) country.set(k, c); }

@@ -52,6 +52,22 @@ fs.mkdirSync(path.join(OUT, 'gaz'), { recursive: true });
   for (const arc of topo.arcs) for (const pt of arc) if (isFinite(pt[2]) && FINE.some(b => pt[0] >= b[0] && pt[0] <= b[2] && pt[1] >= b[1] && pt[1] <= b[3])) pt[2] *= BOOST;
   topo = tsim.simplify(topo, KEEP);
   topo = tsim.filter(topo, tsim.filterWeight(topo, KEEP));
+  // Long straight stretches (the 49th parallel, lines across the Great Lakes) are left with few points; a map draws a
+  // line between two far-apart points as the shortest route over the globe, which bows north. Add a point every half
+  // degree so these borders follow their parallel as they should.
+  const STEP = 0.5;
+  topo.arcs = topo.arcs.map(arc => {
+    const out = [];
+    for (let i = 0; i < arc.length; i++) {
+      const p = arc[i];
+      if (i) {
+        const q = arc[i - 1], dx = p[0] - q[0], dy = p[1] - q[1], n = Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / STEP);
+        if (Math.abs(dx) < 180) for (let k = 1; k < n; k++) out.push([q[0] + dx * k / n, q[1] + dy * k / n]);
+      }
+      out.push([p[0], p[1]]);
+    }
+    return out;
+  });
   topo = tc.quantize(topo, 1e5);
   fs.writeFileSync(path.join(OUT, 'world.json'), JSON.stringify(topo));
 }
