@@ -243,6 +243,17 @@
   /* ---------- search ---------- */
   const strip = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   FO.norm = strip;
+  /* One surname, however it is spelled: accents, capitals, spaces, apostrophes and hyphens are ignored,
+     so Hébert / Hebert, LeBlanc / Le Blanc and D'Amours / D Amours count as one name. */
+  FO.surnameKey = s => strip(s || '').replace(/[^a-z0-9]/g, '');
+  /* For a list of people: a function giving each person's surname in its commonest spelling in that list. */
+  FO.surnameCanon = function (people) {
+    const raw = new Map();
+    for (const p of people) if (p && p.surname && !p.hidden) raw.set(p.surname, (raw.get(p.surname) || 0) + 1);
+    const canon = new Map(), best = new Map();
+    for (const [name, n] of raw) { const k = FO.surnameKey(name); if (k && (!best.has(k) || n > best.get(k))) { best.set(k, n); canon.set(k, name); } }
+    return p => (p && p.surname ? canon.get(FO.surnameKey(p.surname)) || p.surname : '');
+  };
   FO.search = function (data, q, max) {
     const toks = strip(q).split(/\s+/).filter(Boolean);
     if (!toks.length) return [];

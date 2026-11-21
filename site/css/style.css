@@ -364,7 +364,7 @@ dialog.how { border: 2px solid rgba(27,38,50,.33); }
 .timeline { border-left: 2px solid rgba(27,38,50,.4); }
 .timeline li::before { border: 2px solid rgba(27,38,50,.55); left: -29px; }
 .timeline li.key::before { border-color: var(--red); }
-.tabs { border-bottom: 2px solid rgba(27,38,50,.08); }
+.tabs { border-bottom: 1px solid rgba(27,38,50,.1); }
 /* the views sit straight on the page; white is kept for tiles */
 .stage { background: transparent; box-shadow: none; }
 .stage .hint { background: rgba(238,233,223,.82); }
@@ -393,7 +393,8 @@ a.wt:hover { border-bottom-color: var(--teal); }
 .legend, .sidecard { border: 0; box-shadow: 0 1px 3px rgba(27,38,50,.1); background: rgba(255,255,255,.94); }
 .drawer { box-shadow: 0 1px 4px rgba(27,38,50,.14); }
 .fan-veil { opacity: 0; transition: opacity .18s ease; }
-.fan-veil.on { opacity: .42; }
+/* Ancestor Fan: how much the rest of the fan fades while you point at someone (0 = no fade, 1 = everyone else disappears) */
+.fan-veil.on { opacity: .66; }
 
 /* ---- round four ---- */
 .logo { background: rgba(27,38,50,.4); border-color: transparent; color: rgba(255,255,255,.9); font-weight: 800; }
@@ -466,7 +467,7 @@ body.in-view .logo { width: 42px; height: 42px; }
 .contact-fallback { margin: 14px 0 0; font-size: 15px; }
 .contact-done h3 { font-size: 22px; margin-bottom: 6px; }
 .contact-done p { margin: 0; }
-.contact-side h3 { font-size: 17px; margin: 0 0 6px; }
+.contact-side h3 { font-size: 17px; font-weight: 600; margin: 0 0 6px; }
 .contact-side h3 + p { margin-top: 0; }
 .contact-side p { font-size: 15px; color: var(--ink-2); line-height: 1.55; }
 .contact-side .links { margin: 12px 0 26px; }
@@ -509,3 +510,21 @@ body.in-view .logo { width: 42px; height: 42px; }
 .about-views tr:last-child > * { border-bottom: 0; }
 .about-views tbody th[rowspan] { border-bottom: 1px solid var(--line-soft); }
 @media (max-width: 640px) { .about-views td.av-view { white-space: normal; } .about-views tbody th { width: auto; } }
+
+/* ---------- back to top: a quiet arrow at the bottom right, shown once a page has been scrolled ---------- */
+.to-top { position: fixed; right: 22px; bottom: 22px; z-index: 60; width: 42px; height: 42px; border-radius: 50%; border: 0; padding: 0; cursor: pointer;
+  display: grid; place-items: center; background: rgba(27,38,50,.32); color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.12);
+  opacity: 0; transform: translateY(8px); pointer-events: none; transition: opacity .25s ease, transform .25s ease, background-color .2s ease; }
+.to-top.show { opacity: .55; transform: none; pointer-events: auto; }
+.to-top.show:hover, .to-top.show:focus-visible { opacity: 1; background: rgba(27,38,50,.72); }
+.to-top svg { width: 18px; height: 18px; }
+@media print { .to-top { display: none; } }
+
+/* Ancestors Through Time: the person card slides in over the chart instead of narrowing it, and the legend steps aside */
+@media (min-width: 801px) {
+  body[data-view="time"] .stage-wrap { position: relative; }
+  body[data-view="time"] .drawer.open { position: absolute; right: var(--pad); top: 0; bottom: 18px; z-index: 20; margin: 0; box-shadow: 0 4px 18px rgba(27,38,50,.18); }
+  body[data-view="time"] .stage .legend { transition: right .2s ease; }
+  body[data-view="time"] .stage-wrap:has(.drawer.open) .stage .legend { right: 344px; }
+  body[data-view="time"] .stage-wrap:has(.drawer.open) .stage .hint { padding-right: 344px; }
+}

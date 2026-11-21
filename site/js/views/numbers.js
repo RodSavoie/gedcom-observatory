@@ -36,7 +36,7 @@
         tile(yrs.length ? ui.fmt(d3.max(yrs) - d3.min(yrs)) + ' years' : '-', 'span of time covered', yrs.length ? 'earliest recorded year ' + d3.min(yrs) + ', latest ' + d3.max(yrs) : ''),
         tile(grown.length ? Math.round(d3.median(grown, p => p.dy - p.by)) + ' years' : '-', 'typical age at death for adults', 'the middle value for ' + ui.fmt(grown.length) + ' people with both years who reached 18'),
         tile(ppl.length ? Math.round(placed / ppl.length * 100) + '%' : '-', 'have a recorded birthplace', ui.fmt(placed) + ' of the ' + ui.fmt(ppl.length) + ' people who are no longer living'),
-        tile(ui.fmt(new Set(ppl.map(p => p.surname && FO.norm(p.surname)).filter(Boolean)).size), 'surnames', 'spellings that differ only by accents count once'),
+        tile(ui.fmt(new Set(ppl.map(p => p.surname && FO.surnameKey(p.surname)).filter(Boolean)).size), 'surnames', 'spellings that differ only by accents, spaces or apostrophes count once'),
         tile(ui.fmt(data.people.length - ppl.length), 'living relatives left out', 'their names, dates and places are not shown or counted')));
 
       const grid = el('div', { class: 'grid2' });
@@ -162,9 +162,26 @@
       }
       // names
       const top = (arr, key, n) => [...d3.rollup(arr, x => x.length, key).entries()].filter(d => d[0]).sort((a, b) => b[1] - a[1]).slice(0, n).map(([label, value]) => ({ label, value }));
-      const firstName = p => (p.given || '').split(' ')[0].replace(/[^\p{L}'-]/gu, '');
-      const skip = p => /^(unknown|living|inconnue?|n)$/i.test(firstName(p)) ? '' : firstName(p);
-      grid.append(FO.figure('Most common surnames', 'Counting everyone who carries the name', FO.bars(top(ppl, p => p.surname, 15), { unit: 'people', labelWidth: 130 })));
+      // first names, keeping compound names together: anything written with a hyphen (Jean-Baptiste), and the first two
+      // given names when the first is Marie, Jean or Anne, or when that pair is written with a hyphen somewhere in the file
+      const words = p => (p.given || '').split(/\s+/).map(w => w.replace(/[^\p{L}'-]/gu, '')).filter(Boolean);
+      const COMPOUND_FIRST = ['marie', 'jean', 'anne'];
+      const hyphenPairs = new Set();
+      ppl.forEach(p => { const w = words(p)[0]; if (w && w.includes('-')) hyphenPairs.add(FO.norm(w).replace(/-/g, ' ')); });
+      const rawFirst = p => {
+        const w = words(p); if (!w.length) return '';
+        if (w[0].includes('-') || w.length < 2) return w[0];
+        const pair = w[0] + ' ' + w[1];
+        return COMPOUND_FIRST.includes(FO.norm(w[0])) || hyphenPairs.has(FO.norm(pair)) ? pair : w[0];
+      };
+      // one count per name however it is accented or joined (Marie Josephe, Marie-Josèphe), shown hyphenated in its commonest spelling
+      const nameKey = n => FO.norm(n).replace(/[\s-]+/g, ' ');
+      const spell = new Map();
+      ppl.forEach(p => { const n = rawFirst(p); if (!n) return; const k = nameKey(n), m = spell.get(k) || new Map(); m.set(n, (m.get(n) || 0) + 1); spell.set(k, m); });
+      const shown = new Map([...spell].map(([k, m]) => [k, [...m].sort((a, b) => b[1] - a[1])[0][0].replace(/\s+/g, '-')]));
+      const firstName = p => { const n = rawFirst(p); return n ? shown.get(nameKey(n)) : ''; };
+      const skip = p => /^(unknown|living|inconnue?|n|private)$/i.test(firstName(p)) ? '' : firstName(p);
+      grid.append(FO.figure('Most common surnames', 'Counting everyone who carries the name; spellings such as LeBlanc and Le Blanc count as one', FO.bars(top(ppl, FO.surnameCanon(ppl), 15), { unit: 'people', labelWidth: 130 })));
       // first names by era
       const namedBorn = born.filter(p => skip(p));
       if (namedBorn.length >= 40) {
@@ -179,7 +196,7 @@
           [['M', BLUE], ['F', PINK]].forEach(([sx, colr]) => top(inEra.filter(p => p.sex === sx), skip, 4).forEach(d => row.append(el('span', { class: 'namechip', style: { borderColor: colr }, title: d.value + ' ' + (sx === 'M' ? 'men' : 'women') + ' born in these years' }, d.label, el('small', { text: d.value })))));
           box.append(el('b', { text: lo + '-' + (i === 4 ? hi : hi - 1) }), row);
         }
-        grid.append(FO.figure('First names through the eras', 'The four most common first names for men (blue outline) and women (pink outline) in each era, with how many carried each. Eras are fitted so each holds about a fifth of the tree.', box));
+        grid.append(FO.figure('First names through the eras', 'The four most common first names for men (blue outline) and women (pink outline) in each era, with how many carried each; compound names count on their own. Eras are fitted so each holds about a fifth of the tree.', box));
       }
       // record holders
       {
@@ -205,8 +222,9 @@
         if (f0) add('Most recorded descendants', f0.p, ui.fmt(f0.n) + ' (among the home person’s ancestors)');
         if (recs.length) { const ul = el('ul', { class: 'plist' }); recs.forEach(r => ul.append(r)); grid.append(FO.figure('Record holders', 'As recorded in the file. Click a name for details.', ul)); }
       }
-      grid.append(FO.figure('Most common first names, women', 'First given name only', FO.bars(top(ppl.filter(p => p.sex === 'F'), skip, 12), { unit: 'women', color: PINK, labelWidth: 130 })));
-      grid.append(FO.figure('Most common first names, men', 'First given name only', FO.bars(top(ppl.filter(p => p.sex === 'M'), skip, 12), { unit: 'men', color: BLUE, labelWidth: 130 })));
+      const NAMES_NOTE = 'The 20 most common. Compound names such as Marie-Josèphe and Jean-Baptiste count on their own.';
+      grid.append(FO.figure('Most common first names, women', NAMES_NOTE, FO.bars(top(ppl.filter(p => p.sex === 'F'), skip, 20), { unit: 'women', color: PINK, labelWidth: 130 })));
+      grid.append(FO.figure('Most common first names, men', NAMES_NOTE, FO.bars(top(ppl.filter(p => p.sex === 'M'), skip, 20), { unit: 'men', color: BLUE, labelWidth: 130 })));
       return () => {};
     }
   });

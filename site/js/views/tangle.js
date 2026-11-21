@@ -16,11 +16,8 @@
     icon: '<path d="M18 20 L44 16 M18 20 L28 44 M44 16 L28 44 M44 16 L52 40 M28 44 L52 40" stroke="#C9C1B1" stroke-width="2"/><path d="M18 20 L28 44" stroke="#A35139" stroke-width="2.6"/><circle cx="18" cy="20" r="9" fill="#fff"/><circle cx="44" cy="16" r="6" fill="#fff"/><circle cx="28" cy="44" r="8" fill="#fff"/><circle cx="52" cy="40" r="5" fill="#fff"/>',
     render(v) {
       const s = v.state, data = FO.scoped(v.data);
-      // spellings that differ only by accents or capitals are treated as one name, shown in its commonest spelling
-      const raw = d3.rollup(data.people.filter(p => p.surname && !p.hidden), x => x.length, p => p.surname);
-      const canon = new Map(), bestN = new Map();
-      for (const [name, n] of raw) { const k = FO.norm(name); if (!bestN.has(k) || n > bestN.get(k)) { bestN.set(k, n); canon.set(k, name); } }
-      const sn = p => (p && p.surname ? canon.get(FO.norm(p.surname)) : '');
+      // spellings of one surname (accents, capitals, spaces, apostrophes, hyphens) count as one name, shown in its commonest spelling
+      const sn = FO.surnameCanon(data.people);
       const count = d3.rollup(data.people.filter(p => p.surname && !p.hidden), x => x.length, sn);
       const all = [...count.entries()].sort((a, b) => b[1] - a[1]);
       if (all.length < 2) { ui.empty(v.stage, 'Not enough surnames', 'This file has fewer than two surnames, so there is nothing to tangle.'); return; }

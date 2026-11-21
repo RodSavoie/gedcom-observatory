@@ -128,12 +128,41 @@
   };
 
   /* ---------- text decoding (browser) ---------- */
+  FO.joinSplitLetters = function (u8) {
+    const out = new Uint8Array(u8.length);
+    let o = 0;
+    for (let i = 0; i < u8.length; i++) {
+      const c = u8[i];
+      if (c === 0x0d || c === 0x0a) {
+        // how many bytes of an unfinished UTF-8 letter end the line so far?
+        let k = o - 1, cont = 0;
+        while (k >= 0 && cont < 3 && (out[k] & 0xc0) === 0x80) { k--; cont++; }
+        const lead = k >= 0 ? out[k] : 0, need = lead >= 0xf0 ? 3 : lead >= 0xe0 ? 2 : lead >= 0xc0 ? 1 : 0;
+        if (need > cont) {
+          // the next line must be "<level> CONC " followed by the rest of the letter
+          let j = i + (c === 0x0d && u8[i + 1] === 0x0a ? 2 : 1);
+          while (j < u8.length && u8[j] === 0x20) j++;
+          const d0 = j; while (j < u8.length && u8[j] >= 0x30 && u8[j] <= 0x39) j++;
+          if (j > d0 && u8[j] === 0x20 && u8[j + 1] === 0x43 && u8[j + 2] === 0x4f && u8[j + 3] === 0x4e && u8[j + 4] === 0x43 && u8[j + 5] === 0x20 && (u8[j + 6] & 0xc0) === 0x80) {
+            i = j + 5;   // skip the line break and "n CONC "; the loop's i++ lands on the continuation byte
+            continue;
+          }
+        }
+      }
+      out[o++] = c;
+    }
+    return out.subarray(0, o);
+  };
+
   FO.decodeBuffer = function (buf) {
     const u8 = new Uint8Array(buf);
     if (u8[0] === 0xff && u8[1] === 0xfe) return new TextDecoder('utf-16le').decode(u8);
     if (u8[0] === 0xfe && u8[1] === 0xff) return new TextDecoder('utf-16be').decode(u8);
-    try { return new TextDecoder('utf-8', { fatal: true }).decode(u8); }
-    catch (e) { return new TextDecoder('windows-1252').decode(u8); }
+    try { return new TextDecoder('utf-8', { fatal: true }).decode(u8); } catch (e) {}
+    // WikiTree (and some other programs) break long lines into CONC lines in the middle of an accented
+    // letter: "Cyr\xc3" / "3 CONC \xa9nus". Join those halves back together, then read it as UTF-8 again.
+    try { return new TextDecoder('utf-8', { fatal: true }).decode(FO.joinSplitLetters(u8)); } catch (e) {}
+    return new TextDecoder('windows-1252').decode(u8);
   };
 
   /* ---------- parser ---------- */

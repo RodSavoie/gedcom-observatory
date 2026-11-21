@@ -14,7 +14,7 @@
     blurb: s => 'The recorded ancestors of ' + s.home.name + ', placed by birth year or by generation, with a line from every child to each parent.',
     how: {
       see: 'Each dot is the home person or one of their recorded ancestors. “Arrange” sets left to right: pedigree order (father’s side left, mother’s side right) or untangled, where people are moved so the lines that reach them come together. “Scale” sets up and down: by birth year, earliest at the top, or by generation. The home person is at the foot.',
-      marks: ['Lines join each child to their father and mother.', 'Colour shows men and women, or which grandparent’s side a person belongs to.', 'A red ring marks a person where separate lines meet: two or more of their children are also ancestors, usually because cousins married. Everyone above a ring is reached by more than one line too; point at anyone to see how many lines reach them. Each person is drawn only once.', 'In pedigree order, a small dashed ring shows where the pedigree meets someone again; a faint dashed line joins it to their dot. Nothing above a dashed ring is repeated.', 'A hollow dot has no recorded birth year. On the scale of years it is placed by a guess. Grey dots may be living.'],
+      marks: ['Lines join each child to their father and mother.', 'Colour shows men and women, or which grandparent’s side a person belongs to.', 'A red ring marks a person where separate lines meet: two or more of their children are also ancestors, usually because cousins married. A lighter ring marks someone reached by more than one line through a single child: the lines split further down. Everyone above a ring is reached by more than one line too; point at anyone to see how many lines reach them. Each person is drawn only once.', 'In pedigree order, a small dashed ring shows where the pedigree meets someone again; a faint dashed line joins it to their dot. Nothing above a dashed ring is repeated.', 'A hollow dot has no recorded birth year. On the scale of years it is placed by a guess. Grey dots may be living.'],
       can: ['Point at a dot for a short card; click it to light up its line down to the home person and open its details.', 'Switch Arrange, Scale and Colour; the picture slides to its new places.', 'Press a DNA button to light the people and lines that carry it: Y-DNA father to son, mitochondrial DNA mother to child, X-DNA by its own zig-zag rule.', 'Change the number of generations, show lifetimes on the scale of years, or press Play to watch the generations appear.', 'Scroll to zoom into a crowded part and drag to move around; more names appear as there is room for them. Reset zoom goes back to the whole chart.'],
       care: 'People with no recorded birth year are placed by a guess. The picture shows what the file records, not what is certain. The untangled arrangement follows an idea from B. F. Lyon’s work on visualising family trees.'
     },
@@ -28,6 +28,8 @@
       const on = { y: false, mt: false, x: false };
       let nodes = [], marks = [], byP = new Map(), maxG = 1, yMin = 0, yHome = 0, legendBox = null;
       const lines = p => anc.paths.get(p) || 1; // every line from the home person, in all generations (as in the details panel)
+      // a lighter ring for ancestors reached by more than one line, all through one of their children (their line forks further down)
+      const TWICE_RING = 'rgba(163,81,57,.45)';
       const meets = n => new Set(n.kids).size > 1; // separate lines come together here: two or more of this person's children are ancestors
 
       function compute() {
@@ -84,12 +86,13 @@
           };
         });
         marks.forEach(m => { m.pos = { 'pedigree|gen': [m.x, m.g / maxG], 'pedigree|year': [m.x, Math.min(1, (yHome - m.ref.yr) / span)] }; });
-        const repeats = nodes.filter(meets).length;
-        baseHint = hint.textContent = ui.fmt(nodes.length - 1) + ' ancestors in ' + G + ' generations' + (repeats ? '; ' + ui.fmt(repeats) + ' of them are where separate lines meet (red rings): two or more of their children are ancestors too' : '') + (G < maxDepth ? '. The file records ' + maxDepth + ' generations; raise Generations to see more.' : '.') + ' Scroll to zoom, drag to move.';
+        const repeats = nodes.filter(meets).length, twice = nodes.filter(n => !meets(n) && lines(n.p) > 1).length;
+        baseHint = hint.textContent = ui.fmt(nodes.length - 1) + ' ancestors in ' + G + ' generations' + (repeats ? '; ' + ui.fmt(repeats) + ' of them are where separate lines meet (red rings): two or more of their children are ancestors too' : '') +
+          (twice ? '; ' + ui.fmt(twice) + ' more are reached by more than one line through a single child (light rings)' : '') + (G < maxDepth ? '. The file records ' + maxDepth + ' generations; raise Generations to see more.' : '.') + ' Scroll to zoom, drag to move.';
         if (legendBox) legendBox.remove();
         legendBox = FO.legend(v.stage, colorBy === 'sex' ? 'Colour' : 'Grandparent’s side',
           (colorBy === 'sex' ? [{ label: 'Men', color: SEX.M }, { label: 'Women', color: SEX.F }] : SIDES.map((t, i) => ({ label: t, color: SIDE_COL[i] })))
-            .concat([{ label: 'Where separate lines meet', color: C.red }, { label: 'May be living', color: C.frost }]));
+            .concat([{ label: 'Where separate lines meet', color: C.red }, { label: 'More than one line, through one child', color: TWICE_RING }, { label: 'May be living', color: C.frost }]));
       }
 
       const m = { l: 58, r: 26, t: 26, b: 48 };
@@ -176,6 +179,7 @@
           else { ctx.fillStyle = colOf(n); ctx.fill(); }
           if (lit) { ctx.strokeStyle = DNA[lit].color; ctx.lineWidth = 2.4; ctx.beginPath(); ctx.arc(n.xy[0], n.xy[1], r + 2.2, 0, 6.3); ctx.stroke(); }
           else if (meets(n)) { ctx.strokeStyle = C.red; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(n.xy[0], n.xy[1], r + 2.2, 0, 6.3); ctx.stroke(); }
+          else if (lines(n.p) > 1) { ctx.strokeStyle = TWICE_RING; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(n.xy[0], n.xy[1], r + 2.2, 0, 6.3); ctx.stroke(); }
         });
         // names where there is room: nearest generations first, never over another name or a dot
         ctx.font = '11px ' + font; ctx.fillStyle = '#1B2632';

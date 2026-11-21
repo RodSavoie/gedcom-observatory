@@ -331,7 +331,7 @@
     page.innerHTML = '';
     const r = route();
     const s = FO.state;
-    document.body.classList.remove('in-view');
+    document.body.classList.remove('in-view'); delete document.body.dataset.view;
     document.querySelectorAll('.nav a').forEach(a => a.classList.toggle('on', a.getAttribute('href') === (location.hash || '#/')));
     if (!s.data) { page.append(el('div', { class: 'loading', text: 'Reading the family file…' })); return; }
     buildMenus();
@@ -343,7 +343,7 @@
     const v = FO.views.find(v => v.id === r);
     if (!v) { renderHome(page); return; }
 
-    document.body.classList.add('in-view');
+    document.body.classList.add('in-view'); document.body.dataset.view = v.id;
     document.title = v.title + ' | Family Observatory';
     const tabs = el('nav', { class: 'tabs', 'aria-label': 'Views' });
     FO.views.forEach(x => {
@@ -375,7 +375,7 @@
     const ys = d.people.filter(p => p.by != null).map(p => p.by);
     const anc = FO.kin().anc;
     return { people: d.people.length, families: d.families.length, gens: anc.gens.length, from: ys.length ? d3.min(ys) : null, to: ys.length ? d3.max(ys) : null,
-      surnames: new Set(d.people.map(p => p.surname && FO.norm(p.surname)).filter(Boolean)).size, places: new Set(d.people.map(p => p.b && p.b.place && FO.placeKey(p.b.place)).filter(Boolean)).size, living: d.livingCount };
+      surnames: new Set(d.people.map(p => p.surname && FO.surnameKey(p.surname)).filter(Boolean)).size, places: new Set(d.people.map(p => p.b && p.b.place && FO.placeKey(p.b.place)).filter(Boolean)).size, living: d.livingCount };
   }
   function renderHome(page) {
     const s = FO.state, f = familyFacts();
@@ -523,13 +523,17 @@
     if (!s.builtin) row.append(el('button', { class: 'pill small dark', text: 'Back to the built-in family', onclick: loadBuiltin }));
     fm.append(row);
     if (!s.builtin) {
-      if (s.source !== 'wikitree') row.append(el('button', { class: 'pill small dark', text: 'Save a cleaned copy', title: 'A copy without notes, sources or living people, safe to share or to publish as a built-in family', onclick: saveClean }));
+      if (s.source !== 'wikitree' || CLEAN_COPY_FROM_WIKITREE) row.append(el('button', { class: 'pill small dark', text: 'Save a cleaned copy', title: 'A copy without notes, sources or living people, safe to share or to publish as a built-in family', onclick: saveClean }));
       const cb = el('input', { type: 'checkbox', onchange: () => { s.hideLiving = cb.checked; useText(s.text, s.title, false, s.source); } });
       cb.checked = s.hideLiving;
       fm.append(el('label', { class: 'row', style: { fontSize: '14px', gap: '8px' } }, cb, 'Hide people who may be living'));
     }
     fm.append(el('p', { class: 'muted', style: { fontSize: '13px', margin: '14px 0 0' }, text: s.source === 'wikitree' ? 'Fetched from WikiTree when you asked: only what WikiTree shows publicly, kept only while this page is open.' : 'A file you load is read in your browser only. It is never uploaded.' }));
   }
+
+  /* "Save a cleaned copy" for a family fetched from WikiTree: switched on for testing while WikiTree
+     considers the feature. Set to false to hide the button again for WikiTree families. */
+  const CLEAN_COPY_FROM_WIKITREE = true;
 
   function saveClean() {
     const s = FO.state;

@@ -90,7 +90,8 @@
           fill = p => p.hidden ? '#fff' : cat.color(p);
           legend = ['Born in', cat.legend];
         } else if (mode === 'surname') {
-          const cat = FO.topCategories([...new Set(anc)], p => (p.hidden ? null : p.surname));
+          const sn = FO.surnameCanon(anc);
+          const cat = FO.topCategories([...new Set(anc)], p => (p.hidden ? null : sn(p)));
           fill = p => p.hidden ? '#fff' : cat.color(p);
           legend = ['Surname', cat.legend];
         } else if (mode === 'repeat') {
@@ -228,7 +229,7 @@
         lit.innerHTML = '';
         let n = 0;
         if (p) g.querySelectorAll('path[data-i]').forEach(node => {
-          if (slots[+node.getAttribute('data-i')].p === p) { n++; const c = node.cloneNode(false); c.removeAttribute('data-i'); c.setAttribute('stroke', '#1B2632'); c.setAttribute('stroke-opacity', .55); c.setAttribute('stroke-width', 1.5); lit.append(c); }
+          if (slots[+node.getAttribute('data-i')].p === p) { n++; const c = node.cloneNode(false); c.removeAttribute('data-i'); c.setAttribute('stroke', '#1B2632'); c.setAttribute('stroke-opacity', .8); c.setAttribute('stroke-width', 1.6); lit.append(c); }
         });
         veil.classList.toggle('on', n > 0);
         return n;

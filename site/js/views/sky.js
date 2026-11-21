@@ -20,7 +20,8 @@
     };
     // every surname gets a slice of the circle in proportion to its size; children follow their father
     const has = q => q && q.est != null;
-    const bySurname = d3.rollup(ppl, v => v.length, p => p.surname || '-');
+    const sn = FO.surnameCanon(ppl), sur = p => (p && sn(p)) || '-';   // one slice per surname, however it is spelled
+    const bySurname = d3.rollup(ppl, v => v.length, sur);
     const names = [...bySurname.keys()].sort((a, b) => a.localeCompare(b));
     const sector = new Map();
     let acc = 0;
@@ -28,10 +29,10 @@
     const angle = new Map();
     const get = (p, depth) => {
       if (angle.has(p)) return angle.get(p);
-      const s = sector.get(p.surname || '-');
+      const s = sector.get(sur(p));
       let a;
       const lead = has(p.father) ? p.father : null;
-      if (!lead || depth > 80 || (lead.surname || '-') !== (p.surname || '-')) a = s[0] + s[1] * (0.08 + 0.84 * hash(p.id));
+      if (!lead || depth > 80 || sur(lead) !== sur(p)) a = s[0] + s[1] * (0.08 + 0.84 * hash(p.id));
       else {
         angle.set(p, 0); // guard against loops in bad data
         const sibs = p.famc ? p.famc.children : [p];
