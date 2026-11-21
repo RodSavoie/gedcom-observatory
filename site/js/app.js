@@ -339,7 +339,7 @@
     if (fd && !fd.firstChild) fd.append(ui.picker('', null, p => { if (!document.getElementById('drawer')) FO.go('hourglass'); setTimeout(() => FO.select(p), 60); }, 'Find a person…'));
     if (r === 'me' && FO.renderMe) { FO.renderMe(page); window.scrollTo(0, 0); return; }
     if (r === 'contact' && FO.renderContact) { FO.renderContact(page); window.scrollTo(0, 0); return; }
-    if (r === 'about') { renderAbout(page); const pv = /\?privacy/.test(location.hash) && document.getElementById('privacy'); if (pv) pv.scrollIntoView(); else window.scrollTo(0, 0); return; }
+    if (r === 'about') { renderAbout(page); const m = location.hash.match(/\?([\w-]+)/), pv = m && document.getElementById(m[1]); if (pv) pv.scrollIntoView(); else window.scrollTo(0, 0); return; }
     const v = FO.views.find(v => v.id === r);
     if (!v) { renderHome(page); return; }
 
@@ -450,7 +450,7 @@
       ['When and where?', [
         ['sky', 'One star for every person, with the oldest births at the centre.'],
         ['river', 'Every life as a line from birth to death, stacked through the centuries, with historical events alongside.'],
-        ['places', 'A grid of births by place and period, or ribbons from parents’ birthplaces to their children’s.'],
+        ['places', 'A zoomable map of where people were born and died, a grid of births by place and period, or ribbons from parents’ birthplaces to their children’s.'],
         ['story', 'One person’s life told in sentences, beside a timeline of their years.']]],
       ['What does the whole tree look like?', [
         ['numbers', 'Births by decade, lifespans, family sizes and the names that keep returning.']]],
@@ -467,8 +467,8 @@
     page.append(el('article', { class: 'about', html:
       '<div class="caps">About</div><h1>A place to look at a family</h1>' +
       '<p>Family Observatory draws one family tree ' + nViews + ' different ways, so you can see what no single chart shows: where the family lived, how often cousins married, and which ancestors turn up again and again.</p>' +
-      '<p>' + (s.builtin ? 'It opens on ' : 'You are looking at ') + ui.esc(inSentence(s.title)) + ': ' + ui.fmt(f.people) + ' people' + (gens ? ' across ' + gens + ' generations' : '') + '. ' +
-        (s.builtin ? 'Anyone can load their own family file and explore it the same way. ' : '') + 'There is nothing to install, no account, and nothing is uploaded.</p>' +
+      '<p>' + (s.family === FAMILIES[0].id ? 'It opens on ' : 'You are looking at ') + ui.esc(inSentence(s.title)) + ': ' + ui.fmt(f.people) + ' people' + (gens ? ' across ' + gens + ' generations' : '') + '. ' +
+        'Two larger families can be opened too (see <a href="#/about?families">Families on this site</a>), and anyone can load their own family file and explore it the same way. There is nothing to install, no account, and nothing is uploaded.</p>' +
       '<h2 id="views">The ' + nViews + ' views</h2>' +
       '<p>Each view answers one question about the family, and each has a <b>How to read this</b> guide beside its title.</p>' +
       '<table class="about-views"><thead><tr><th>Question</th><th>View</th><th>What it shows</th></tr></thead><tbody>' + viewRows + '</tbody></table>' +
@@ -478,27 +478,35 @@
       '<li><b>Click anyone</b> to open their details: birth, death, parents, spouses and children, with buttons to make them the home person, read their life story, see how they are related, or show their descendants.</li>' +
       '<li><b>Find a person</b> by name from the search box at the top of every page.</li>' +
       '<li><b>Go to the source:</b> people link to their WikiTree profile wherever they appear, so corrections can be made where the research lives.</li>' +
-      '<li><b>Zoom and drag</b> the busier charts (the fan, Ancestors Through Time and The Tangle) to look closely at crowded areas.</li></ul>' +
+      '<li><b>Zoom and drag</b> the busier charts (the fan, Ancestors Through Time, The Tangle and the map in Where They Lived) to look closely at crowded areas.</li>' +
+      '<li><b>See where they lived</b> on the map in ' + v('places') + ': every birthplace or place of death as a bubble, for one century or all of them. Click a bubble to list its people.</li>' +
+      '<li><b>Back to the top:</b> on long pages, a small arrow at the bottom right brings you back up.</li></ul>' +
       '<h2>Look and feel</h2><ul>' +
       (designs.length ? '<li><b>' + ((['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight'][designs.length]) || designs.length) + ' designs</b> can be picked from the strip at the top of every page: ' + designs.join(', ').replace(/, ([^,]*)$/, ' and $1') + '. Each recolours the whole site, charts included.</li>' : '') +
-      '<li><b>Choices are remembered</b> between visits: the design, the number of generations on each chart, the fan’s colouring, and the settings on Where They Lived.</li>' +
+      '<li><b>Choices are remembered</b> between visits: the design, the number of generations on each chart, the fan’s colouring, and the settings on Where They Lived, map included.</li>' +
       '<li><b>The home page</b> shows the family’s ancestor fan beside its title; click it to open the full chart.</li>' +
       '<li><b><a href="#/contact">Contact me</a></b> sends a message to Rod from a simple form on the site.</li></ul>' +
       '<h2 id="privacy">Privacy</h2><ul>' +
       '<li><b>Your file stays on your device.</b> When you load a family file it is read by your own browser. It is not uploaded, stored or sent anywhere.</li>' +
       '<li><b>No account, no tracking.</b> There is nothing to sign in to and the site keeps nothing about you or your file.</li>' +
       '<li><b>No AI looks at your file.</b> Everything you see is drawn by ordinary code running in your browser.</li>' +
+      '<li><b>The map asks no one.</b> Places are found in lists of place names that come with this site; no place name is sent to a map service.</li>' +
       '<li><b>Living people are hidden.</b> Anyone with no death or burial recorded with a date or a place, who was born in the last ' + FO.LIVING_YEARS + ' years or whose age cannot be worked out, is shown only as “Living person”, without dates or places. In the built-in family those details were removed from the file itself before it was published; only the home person’s name and birth year remain.</li></ul>' +
+      '<h2 id="families">Families on this site</h2><p>Besides the Savoie · Breau family the site opens on, two larger families made from the <a href="https://www.wikitree.com/wiki/Project:Acadians" target="_blank" rel="noopener">WikiTree Acadians Project</a> can be opened from <b>The family</b> menu, or straight from a link:</p><ul>' +
+        FAMILIES.map((fm, k) => '<li><b><a href="?family=' + fm.id + '#/">' + ui.esc(fm.label) + '</a></b>' + (k ? '' : ', the family the site opens on') + (fm.note ? ': ' + ui.esc(fm.note) : '') + '. Link: <code style="white-space:nowrap">?family=' + fm.id + '</code></li>').join('') +
+        '</ul><p>These files are updated from time to time; the newest version is always the one shown.</p>' +
       '<h2>Loading your own family</h2><p>Export a GEDCOM (.ged) file from your genealogy program or website (WikiTree, Ancestry, FamilySearch-compatible software, Gramps, RootsMagic and so on), then use <b>Load your file</b> at the top of the page, or drag the file onto the window. From <b>The family</b> menu you can then save a cleaned copy: the same family without notes, sources or living people. The first person in the file becomes the home person; you can re-centre on anyone from their details panel.</p>' +
       '<h2>Drawing a family from WikiTree</h2><p>Use <b>From WikiTree</b> at the top of the page and type a WikiTree ID, such as Savoie-2387, to draw that person&rsquo;s ancestors, with the brothers and sisters along every line and, if you like, descendants, straight from <a href="https://www.wikitree.com/" target="_blank" rel="noopener">WikiTree</a>. Only what WikiTree shows to everyone is fetched; biographies and photos are not. Nothing is stored: the family is kept only while the page is open, and people who may be living stay hidden. A link such as <code>?wt=Savoie-2387&amp;anc=10</code> opens a family directly (add <code>&amp;desc=2</code> for descendants, or <code>&amp;sib=0</code> to leave out brothers and sisters).</p>' +
-      '<h2>What the pictures can and cannot tell you</h2><p>Every picture draws what a family file records. A recorded parent, date or place is a conclusion someone entered; it may rest on good documents, on a guess, or on another person’s tree, and the pictures cannot tell those apart. Use them to see patterns and to find things worth checking. Every view has a <b>How to read this</b> button beside its title.</p><h2>Reading the views</h2><p>Dark marks are the family. The <span style="color:#A35139">warm accent colour</span> marks the line or the people you have chosen, and anyone who appears more than once in a chart. Underlined text and outlined buttons are things you can press. Estimated years are used where a birth date is missing, so positions for those people are approximate.</p>' +
+      '<h2>What the pictures can and cannot tell you</h2><p>Every picture draws what a family file records. A recorded parent, date or place is a conclusion someone entered; it may rest on good documents, on a guess, or on another person’s tree, and the pictures cannot tell those apart. Use them to see patterns and to find things worth checking. Every view has a <b>How to read this</b> button beside its title.</p><p>Names are grouped where only their writing differs: surnames that differ by accents, capitals, spaces or apostrophes (LeBlanc and Le Blanc, Hébert and Hebert) count as one, and so do first names written with a space or a hyphen (Jean Baptiste and Jean-Baptiste). On the map, a place is found from its name, old Acadian and French names included; one known only by its region (“Acadie”, “France”) is shown at that region’s centre, and a small French village missing from the world list is placed at the centre of its département. The note under the map says how many of each.</p><h2>Reading the views</h2><p>Dark marks are the family. The <span style="color:#A35139">warm accent colour</span> marks the line or the people you have chosen, and anyone who appears more than once in a chart. Underlined text and outlined buttons are things you can press. Estimated years are used where a birth date is missing, so positions for those people are approximate.</p>' +
       '<h2>Credit</h2>' +
       '<p>The idea and the set of views follow <a href="https://observatory.vibegenealogy.ai/" target="_blank" rel="noopener">Kinfolk Observatory</a>, a Vibe Genealogy project by Steve Little, described in <a href="https://vibegenealogy.ai/p/fun-prompt-friday-fable-make-something-incredible-kinfolk-observatory" target="_blank" rel="noopener">his write-up of 13 November 2026</a>. This version was built separately, with its own code and a lighter look.</p>' +
       '<p>The untangled pedigree in Ancestors Through Time owes a debt to B.&nbsp;F. Lyon’s <a href="https://learnforeverlearn.com/ancestors/" target="_blank" rel="noopener">Exploring Family Trees</a>.</p>' +
       '<p>The built-in family is drawn from profiles on <a href="https://www.wikitree.com/" target="_blank" rel="noopener">WikiTree</a>, the shared tree built by many volunteers, including the <a href="https://www.wikitree.com/wiki/Project:Acadians" target="_blank" rel="noopener">Acadians Project</a>. Each person’s panel links to their WikiTree profile.</p>' +
+      '<p>The map is drawn from <a href="https://www.naturalearthdata.com/" target="_blank" rel="noopener">Natural Earth</a> (public domain). Place names and positions come from <a href="https://www.geonames.org/" target="_blank" rel="noopener">GeoNames</a> (Creative Commons Attribution 4.0), Natural Resources Canada’s geolocated place names (Open Government Licence – Canada) and the French communes list from INSEE and Etalab (Licence Ouverte); Acadian settlements and old French provinces were placed by hand.</p>' +
       '<p>The kinship and inbreeding figures use coefficients that go back to Sewall Wright (1922) and Gustave Malécot (1948). Drawing each life as a line along a scale of years has a long history; an early example is Joseph Priestley’s <i>Chart of Biography</i> (1765).</p>' +
       '<h2>Built with</h2><ul>' +
       '<li><a href="https://d3js.org/" target="_blank" rel="noopener">D3</a> 7.9.2, copyright 2010–2026 Mike Bostock, ISC License.</li>' +
+      '<li><a href="https://github.com/topojson/topojson-client" target="_blank" rel="noopener">topojson-client</a> 3.1.0, copyright 2012–2019 Michael Bostock, ISC License.</li>' +
       '<li><a href="https://github.com/googlefonts/roboto-classic" target="_blank" rel="noopener">Roboto</a> 3.015, copyright 2011 The Roboto Project Authors, SIL Open Font License 1.1, from the Fontsource package.</li>' +
       '<li>The <a href="https://gedcom.io/" target="_blank" rel="noopener">GEDCOM</a> standard from FamilySearch, which every family file uses.</li></ul>' }));
   }
@@ -514,21 +522,28 @@
 
     const fm = document.getElementById('menu-family');
     fm.innerHTML = '';
-    fm.append(el('div', { class: 'caps', text: s.builtin ? 'Built-in family' : s.source === 'wikitree' ? 'From WikiTree' + (s.wikitree ? ': ' + s.wikitree.key : '') : 'Your file' }), el('h3', { text: s.title }),
+    fm.append(el('div', { class: 'caps', text: s.builtin ? (s.family === FAMILIES[0].id ? 'Built-in family' : 'A family on this site') : s.source === 'wikitree' ? 'From WikiTree' + (s.wikitree ? ': ' + s.wikitree.key : '') : 'Your file' }), el('h3', { text: s.title }),
       el('p', { class: 'muted', style: { margin: '2px 0 0' }, text: ui.fmt(s.data.people.length) + ' people, ' + ui.fmt(s.data.families.length) + ' families' + (s.data.livingCount ? ', ' + s.data.livingCount + ' possibly living' + (s.data.hideLiving ? ' (hidden)' : '') : '') }));
     const pick = ui.picker('Home person', s.home, p => FO.setHome(p));
     fm.append(el('div', { class: 'row' }, pick));
     const row = el('div', { class: 'row' });
     row.append(el('button', { class: 'pill small', text: 'Load your family file', onclick: () => document.getElementById('file').click() }));
-    if (!s.builtin) row.append(el('button', { class: 'pill small dark', text: 'Back to the built-in family', onclick: loadBuiltin }));
     fm.append(row);
+    // the other families published with the site
+    const others = FAMILIES.filter(f => f.id !== s.family);
+    if (others.length) {
+      fm.append(el('div', { class: 'caps', style: { marginTop: '16px' }, text: s.family ? 'Other families on this site' : 'Families on this site' }));
+      const fr = el('div', { class: 'row' });
+      others.forEach(f => fr.append(el('button', { class: 'pill small dark', text: f.label, title: f.note || '', onclick: () => loadBuiltin(false, f.id) })));
+      fm.append(fr);
+    }
     if (!s.builtin) {
       if (s.source !== 'wikitree' || CLEAN_COPY_FROM_WIKITREE) row.append(el('button', { class: 'pill small dark', text: 'Save a cleaned copy', title: 'A copy without notes, sources or living people, safe to share or to publish as a built-in family', onclick: saveClean }));
       const cb = el('input', { type: 'checkbox', onchange: () => { s.hideLiving = cb.checked; useText(s.text, s.title, false, s.source); } });
       cb.checked = s.hideLiving;
       fm.append(el('label', { class: 'row', style: { fontSize: '14px', gap: '8px' } }, cb, 'Hide people who may be living'));
     }
-    fm.append(el('p', { class: 'muted', style: { fontSize: '13px', margin: '14px 0 0' }, text: s.source === 'wikitree' ? 'Fetched from WikiTree when you asked: only what WikiTree shows publicly, kept only while this page is open.' : 'A file you load is read in your browser only. It is never uploaded.' }));
+    fm.append(el('p', { class: 'muted', style: { fontSize: '13px', margin: '14px 0 0' }, text: s.source === 'wikitree' ? 'Fetched from WikiTree when you asked: only what WikiTree shows publicly, kept only while this page is open.' : s.family ? 'Published on this site, cleaned of notes, sources and living people, and always shown in its newest version. A file you load yourself is read in your browser only; it is never uploaded.' : 'A file you load is read in your browser only. It is never uploaded.' }));
   }
 
   /* "Save a cleaned copy" for a family fetched from WikiTree: switched on for testing while WikiTree
@@ -583,23 +598,50 @@
   }
   FO.titleParts = titleParts;
 
+  /* ---------- the families published with the site ----------
+     Each is a cleaned GEDCOM in site/data. The first is the one the site opens on. A link such as ?family=acadians
+     opens another one directly. Replace a file in site/data to update it: visitors always get the newest copy.
+     title: shown as the family's name; leave it out to use the title written in the file (_TITLE). */
+  const FAMILIES = [
+    { id: 'savoie', file: 'data/family.ged.txt', label: 'My Savoie · Breau family' },
+    { id: 'acadians', file: 'data/Acadians.GED.txt', label: 'The Acadians', note: 'about 23,000 people from the WikiTree Acadians Project' },
+    { id: 'acadians-plus', file: 'data/AcadiansPlus.GED.txt', label: 'The Acadians and their spouses', title: 'The Acadians and their spouses', note: 'the Acadians with the spouses who married into them, about 27,000 people' }];
+  FO.FAMILIES = FAMILIES;
+  const familyOf = id => FAMILIES.find(f => f.id === id);
+  // keep ?family= in the address in step with the family shown, so the link can be shared or bookmarked
+  function setFamilyParam(id) {
+    const u = new URL(location.href);
+    if (id && id !== FAMILIES[0].id) u.searchParams.set('family', id); else u.searchParams.delete('family');
+    if (id) u.searchParams.delete('wt');
+    if (u.href !== location.href) history.replaceState(null, '', u.href);
+  }
+
   /* ---------- loading ---------- */
-  function useText(text, title, builtin, source) {
+  function useText(text, title, builtin, source, family) {
     const s = FO.state;
     const data = FO.parseGedcom(text, { hideLiving: builtin ? true : s.hideLiving });
     if (!data.people.length) { ui.toast('No people were found in that file. Is it a GEDCOM (.ged) file?'); return false; }
     s.data = data; s.text = builtin ? null : text; s.builtin = builtin; s.source = builtin ? 'builtin' : (source || 'file'); if (s.source !== 'wikitree') s.wikitree = null; s.home = data.home; s.subject = null; s.pair = null; s.founder = null;
-    s.title = data.head.title || title;   // a title written in the file wins; otherwise the file's name
+    s.family = builtin ? (family || FAMILIES[0]).id : null;
+    s.title = (family && family.title) || data.head.title || title;   // a title written in the file wins; otherwise the file's name
+    if (!builtin) setFamilyParam(null);
     kinCache = null;
     render();
     return true;
   }
-  function loadBuiltin(atBoot) {
-    fetch('data/family.ged.txt').then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+  function loadBuiltin(atBoot, id) {
+    const fam = familyOf(id) || FAMILIES[0];
+    if (atBoot !== true) { closeMenus(); ui.toast('Loading ' + fam.label + '…'); }
+    // "no-cache": the browser checks with the server first, so an updated file is always the one shown
+    fetch(fam.file, { cache: 'no-cache' }).then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
       // at start-up, a family the visitor asked for while this one was loading (a WikiTree link) wins
-      .then(buf => { if (atBoot === true && FO.state.source && FO.state.source !== 'builtin') return; useText(FO.decodeBuffer(buf), 'The built-in family', true); })
+      .then(buf => {
+        if (atBoot === true && FO.state.source && FO.state.source !== 'builtin') return;
+        if (useText(FO.decodeBuffer(buf), fam.label, true, null, fam)) { setFamilyParam(fam.id); if (atBoot !== true) ui.toast('Loaded ' + FO.state.title + ': ' + ui.fmt(FO.state.data.people.length) + ' people.'); }
+      })
       .catch(() => {
         if (atBoot === true && FO.state.source && FO.state.source !== 'builtin') return;
+        if (fam !== FAMILIES[0]) { ui.toast(fam.label + ' could not be fetched.'); if (!FO.state.data) loadBuiltin(atBoot); return; }
         const page = document.getElementById('page');
         page.innerHTML = '';
         page.append(el('div', { class: 'loading' }, el('div', { style: { textAlign: 'center', maxWidth: '30em' } },
@@ -646,6 +688,8 @@
     window.addEventListener('drop', e => { e.preventDefault(); depth = 0; drop.classList.remove('on'); if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]); });
     window.addEventListener('hashchange', render);
     render();
-    loadBuiltin(true);
+    // ?family=acadians opens one of the site's other families; a WikiTree link (?wt=) is handled in wikitree.js
+    const asked = new URLSearchParams(location.search).get('family');
+    loadBuiltin(true, familyOf(asked) ? asked : null);
   });
 })();

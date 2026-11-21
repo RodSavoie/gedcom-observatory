@@ -53,7 +53,7 @@
   add(['Tintamarre'], [45.9, -64.37, 'CA', '04', 'p']);
   add(['Chignecto', 'Isthmus of Chignecto'], [45.8, -64.3, 'CA', '07', 'r']);
   add(['Beauséjour', 'Fort Beauséjour'], [45.865, -64.29, 'CA', '04', 'p']);
-  add(['Port-la-Joye', 'Port La Joie', 'Port-Lajoie'], [46.195, -63.13, 'CA', '09', 'p']);
+  add(['Port-la-Joye', 'Port La Joie', 'Port-Lajoie', 'Port LaJoye', 'Port-LaJoye', 'Port la Joye'], [46.195, -63.13, 'CA', '09', 'p']);
   add(['Pobomcoup'], [43.68, -65.78, 'CA', '07', 'p']);
   add(['Cap-Sable', 'Cap Sable', 'Cape Sable'], [43.47, -65.62, 'CA', '07', 'p']);
   add(['La Hève', 'La Heve', 'LaHave'], [44.29, -64.36, 'CA', '07', 'p']);
@@ -67,6 +67,10 @@
   add(['Cap-des-Maringouins', 'Cap des Maringouins', 'Cape Maringouin'], [45.83, -64.47, 'CA', '04', 'p']);
   add(['Chezzetcook', 'Chézetcook'], [44.71, -63.25, 'CA', '07', 'p']);
   add(['Ekoupahag', 'Ekoupag', 'Aukpaque'], [45.95, -66.8, 'CA', '04', 'p']);
+  add(['Saint-Pierre-du-Nord', 'St-Pierre-du-Nord', 'Saint-Pierre du Nord'], [46.42, -62.58, 'CA', '09', 'p']);
+  add(['Saint-Ours'], [45.884, -73.15, 'CA', '10', 'p']);
+  add(["Saint-Jacques-de-l'Achigan", "St-Jacques-de-l'Achigan"], [45.95, -73.574, 'CA', '10', 'p']);
+  add(['Plattenville'], [29.995, -91.033, 'US', 'LA', 'p']);
   add(['Port Toulouse', 'Port-Toulouse'], [45.655, -60.87, 'CA', '07', 'p']);
   add(['Sillery'], [46.77, -71.25, 'CA', '10', 'p']);
   add(['Pointe-de-Lévy', 'Pointe-Lévy', 'Pointe de Levy'], [46.8, -71.18, 'CA', '10', 'p']);
@@ -118,6 +122,11 @@
   const atSea = k => /^(at sea|en mer|lost at sea|aboard|a bord)\b/.test(k);
   const COUNTRY_EXTRA = { usa: 'US', 'u s a': 'US', us: 'US', 'united states': 'US', 'etats unis': 'US', 'etats unis d amerique': 'US', america: 'US',
     uk: 'GB', 'great britain': 'GB', 'grande bretagne': 'GB', 'royaume uni': 'GB', holland: 'NL', 'pays bas': 'NL', 'canada': 'CA' };
+
+  /* Old names that today belong to another place elsewhere, used only when their province is named:
+     [name, country, region code, lat, lon]. Plaisance, Newfoundland is today's Placentia (there is a Plaisance in Quebec). */
+  const LOCAL = new Map([
+    ['Plaisance', 'CA', '05', 47.244, -53.963]].map(([n, cc, a1, lat, lon]) => [key(n) + '|' + cc + '|' + a1, { lat, lon, name: n, pop: 0 }]));
 
   const pinKey = place => String(place).split(',').map(p => key(p)).filter(Boolean).join(',');
   const PINNED = new Map(Object.entries(PINS).map(([k, v]) => [pinKey(k), v]));
@@ -217,9 +226,10 @@
   function findPlace(part, cc, ctx, a1) {
     const h = HISTORIC[key(part)];
     if (h && h[4] === 'p') return { name: part, lat: h[0], lon: h[1] };
+    const k = key(part); if (!k) return null;
+    if (a1 && LOCAL.has(k + '|' + cc + '|' + a1)) return LOCAL.get(k + '|' + cc + '|' + a1);
     const g = cc && gazReady.get(cc);
     if (!g) return null;
-    const k = key(part); if (!k) return null;
     const regional = ctx && ctx.kind !== 'c';
     let rows = (g.byKey.get(k) || g.byKey.get(bare(k)) || []).slice();
     // "Mortagne" for Mortagne-au-Perche: longer names starting with this one count too, but only near a named region
@@ -228,6 +238,7 @@
       while (lo < hi) { const m = (lo + hi) >> 1; if (g.keys[m] < k + ' ') lo = m + 1; else hi = m; }
       for (let i = lo; i < g.keys.length && g.keys[i].startsWith(k + ' '); i++) rows.push(...g.byKey.get(g.keys[i]).map(r => Object.assign({ longer: true }, r)));
     }
+    if (!rows.length && /^(le|la|les|l) /.test(k)) return findPlace(k.replace(/^(le|la|les|l) /, ''), cc, ctx, a1);   // "Le Mirebalais"
     if (!rows.length) {
       // parish names: "Notre-Dame de Québec", "Sainte-Anne-de-la-Pocatière", "Hôtel-Dieu de Québec" → the town after "de"
       const at = k.lastIndexOf(' de ');
