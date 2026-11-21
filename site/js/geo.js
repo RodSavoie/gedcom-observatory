@@ -22,6 +22,12 @@
   const bare = k => k.replace(/^(the )?(colonial|province|colony|colonie|state|etat|county|comte|parish|paroisse|diocese|region|kingdom|royaume|duchy|duche|territory|territoire|dominion)( of| de la| de l| du| des| de| d)? /, '')
     .replace(/ (colony|province|county|parish|territory|state)$/, '').trim();
 
+  /* Places pinned by hand, for names the map cannot settle on its own: the place as written in the file (any capitals
+     or accents), then where it is: [latitude, longitude]. Add a line to correct any place. */
+  const PINS = {
+    'Tracadie, Colony of Nova Scotia': [47.514, -64.915],   // Tracadie, New Brunswick (Rod, 2026-11-21)
+  };
+
   /* Places and regions the gazetteers don't know, or know under a modern name: [lat, lon, country, region code, kind, reach]
      kind: 'p' a settlement, 'r' a region (people placed there are "known only by region"), 'x' ignore this part.
      reach: for a region, how far (km) from its centre a town named with it may lie (default 400). */
@@ -33,13 +39,13 @@
   add(['British North America', 'Amérique du Nord britannique', 'British Colonial America', 'Amérique coloniale britannique', 'Amérique du Nord', 'North America'], [46.0, -66.0, 'CA', '', 'r', 2500]);
   add(['Bas-Canada', 'Lower Canada', 'Canada East', 'Canada-Est', 'Province de Québec', 'Quebec Province'], [46.8, -71.5, 'CA', '10', 'r']);
   add(['Haut-Canada', 'Upper Canada', 'Canada West', 'Canada-Ouest'], [44.0, -79.0, 'CA', '08', 'r']);
-  add(['Île Saint-Jean', 'Isle Saint-Jean', "St. John's Island", 'Isle St. John'], [46.35, -63.25, 'CA', '09', 'r']);
+  add(['Île Saint-Jean', 'Isle Saint-Jean', "St. John's Island", 'Isle St. John', 'Saint John Island', 'St. John Island'], [46.35, -63.25, 'CA', '09', 'r']);
   add(['Île Royale', 'Isle Royale', 'Cape Breton', 'Cap-Breton', 'Cape Breton Island'], [46.1, -60.75, 'CA', '07', 'r']);
-  add(['Port-Royal', 'Port Royal'], [44.745, -65.511, 'CA', '07', 'p']);   // today's Annapolis Royal, so the two names share one bubble
+  add(['Port-Royal', 'Port Royal', 'Annapolis Royale'], [44.745, -65.511, 'CA', '07', 'p']);   // today's Annapolis Royal, so the two names share one bubble
   add(['Beaubassin'], [45.855, -64.29, 'CA', '07', 'p']);
   add(['Grand-Pré', 'Grand Pré', 'Grand-Pre'], [45.104, -64.307, 'CA', '07', 'p']);
   add(['Les Mines', 'Mines', 'Minas', 'Bassin des Mines'], [45.1, -64.35, 'CA', '07', 'p']);
-  add(['Pisiguit', 'Pisiquid', 'Pisiquit', 'Piziquid', 'Pigiguit'], [44.99, -64.13, 'CA', '07', 'p']);
+  add(['Pisiguit', 'Pisiquid', 'Pisiquit', 'Pisiguid', 'Piziquid', 'Pigiguit'], [44.99, -64.13, 'CA', '07', 'p']);
   add(['Cobequid', 'Cobequit', 'Cobeguit'], [45.37, -63.3, 'CA', '07', 'p']);
   add(['Rivière-aux-Canards', 'Riviere aux Canards'], [45.15, -64.42, 'CA', '07', 'p']);
   add(['Rivière-aux-Gaspereaux', 'Gaspereau'], [45.07, -64.3, 'CA', '07', 'p']);
@@ -57,6 +63,10 @@
   add(['Jemseg'], [45.83, -66.12, 'CA', '04', 'p']);
   add(['Pentagouet', 'Pentagoët'], [44.39, -68.8, 'US', 'ME', 'p']);
   add(['Restigouche', 'Ristigouche'], [48.0, -66.7, 'CA', '04', 'r']);
+  add(['Baie Sainte-Marie', 'Baie-Ste-Marie', 'Baie-Sainte-Marie', "St. Mary's Bay"], [44.33, -66.12, 'CA', '07', 'p']);
+  add(['Cap-des-Maringouins', 'Cap des Maringouins', 'Cape Maringouin'], [45.83, -64.47, 'CA', '04', 'p']);
+  add(['Chezzetcook', 'Chézetcook'], [44.71, -63.25, 'CA', '07', 'p']);
+  add(['Ekoupahag', 'Ekoupag', 'Aukpaque'], [45.95, -66.8, 'CA', '04', 'p']);
   add(['Port Toulouse', 'Port-Toulouse'], [45.655, -60.87, 'CA', '07', 'p']);
   add(['Sillery'], [46.77, -71.25, 'CA', '10', 'p']);
   add(['Pointe-de-Lévy', 'Pointe-Lévy', 'Pointe de Levy'], [46.8, -71.18, 'CA', '10', 'p']);
@@ -89,17 +99,28 @@
   fr(['Quercy'], 44.5, 1.5); fr(['Rouergue'], 44.3, 2.6); fr(['Beauce'], 48.3, 1.6); fr(['Brie'], 48.6, 3.0); fr(['Vexin'], 49.2, 1.8);
   fr(['Aquitaine'], 44.8, 0.0); fr(['Île-de-France', 'Ile de France'], 48.85, 2.35);
   add(['Saint-Servan'], [48.632, -2.01, 'FR', '', 'p']);
+  add(['Larochelle'], [46.16, -1.151, 'FR', '', 'p']);
   // British Isles and the United States
   add(['England', 'Angleterre', 'Kingdom of England'], [52.5, -1.5, 'GB', 'ENG', 'r']);
   add(['Scotland', 'Écosse'], [56.5, -4.0, 'GB', 'SCT', 'r']);
   add(['Wales', 'Pays de Galles'], [52.3, -3.7, 'GB', 'WLS', 'r']);
   add(['Louisiane', 'Spanish Louisiana', 'Louisiane espagnole'], [30.5, -91.5, 'US', 'LA', 'r']);
+  add(['Upper Louisiana', 'Haute-Louisiane'], [38.6, -90.2, 'US', '', 'r', 600]);
+  add(['Attakapas', 'Attakapas Post', 'Poste des Attakapas', 'Les Attakapas'], [30.13, -91.83, 'US', 'LA', 'r', 80]);
+  add(['Opelousas Post', 'Poste des Opelousas'], [30.533, -92.081, 'US', 'LA', 'p']);
+  add(['Cabanocey', 'Cabahannocer', 'Cabahanocé', 'Cabahanosse', 'Cabanocé'], [30.03, -90.8, 'US', 'LA', 'p']);
+  add(['Lafourche-des-Chitimachas', 'Lafourche des Chitimachas'], [30.101, -90.994, 'US', 'LA', 'p']);
+  add(['Fausse Pointe', 'Fausse-Pointe'], [30.05, -91.74, 'US', 'LA', 'p']);
+  add(['Colony of Nova Scotia', 'Nova Scotia Colony', 'Province of Nova Scotia', 'Colonie de la Nouvelle-Écosse', 'Colonie de Nouvelle-Écosse'], [45.6, -64.5, 'CA', '', 'r', 450]);
   add(['Massachusetts Bay'], [42.3, -71.6, 'US', 'MA', 'r']);
   // parts that say nothing about where
-  add(['At Sea', 'En mer', 'Lost at sea', 'Unknown', 'Inconnu', 'New Spain', 'Nouvelle-Espagne'], [0, 0, '', '', 'x']);
+  add(['At Sea', 'En mer', 'Lost at sea', 'Unknown', 'Inconnu', 'New Spain', 'Nouvelle-Espagne', 'Nueva España', 'Spanish Empire'], [0, 0, '', '', 'x']);
   const atSea = k => /^(at sea|en mer|lost at sea|aboard|a bord)\b/.test(k);
   const COUNTRY_EXTRA = { usa: 'US', 'u s a': 'US', us: 'US', 'united states': 'US', 'etats unis': 'US', 'etats unis d amerique': 'US', america: 'US',
     uk: 'GB', 'great britain': 'GB', 'grande bretagne': 'GB', 'royaume uni': 'GB', holland: 'NL', 'pays bas': 'NL', 'canada': 'CA' };
+
+  const pinKey = place => String(place).split(',').map(p => key(p)).filter(Boolean).join(',');
+  const PINNED = new Map(Object.entries(PINS).map(([k, v]) => [pinKey(k), v]));
 
   let base = null, idx = null;
   const gaz = new Map();          // country → {byKey: Map(key → rows), keys: sorted keys}
@@ -144,7 +165,7 @@
   };
   const partsOf = place => {
     const out = [];
-    for (const raw of String(place).split(',')) {
+    for (const raw of String(place).replace(/(\p{L}{3,})\. (?=\p{Lu})/gu, '$1, ').split(',')) {
       const main = raw.replace(/\(.*?\)/g, ' ').trim();
       if (main) out.push(main);
       (raw.match(/\((.*?)\)/g) || []).forEach(m => out.push(m.slice(1, -1)));   // "Montreuil (Seine-Saint-Denis)" also says where
@@ -158,15 +179,26 @@
     for (const kk of [k, bare(k)]) {
       const h = HISTORIC[kk];
       if (h) return h[4] === 'x' ? { skip: true } : h[4] === 'r' ? { lat: h[0], lon: h[1], cc: h[2], a1: h[3], kind: 'h', name: part, reach: h[5] || 400 } : null;
-      const c = idx.country.get(kk); if (c) return c;
+      const c = idx.country.get(kk); if (c && (!cc || c.cc === cc)) return c;
       const d = idx.dep.get(kk);
       if (d && cc) { const same = d.filter(o => o.cc === cc && (!a1 || o.a1 === a1)); if (same.length) return same[0]; }
+      if (c) { const a = idx.a1.get(kk); if (!a || !a.some(o => o.cc === cc)) return c; }   // "St. Martin, Louisiana": the parish, not Saint-Martin
       const a = idx.a1.get(kk);
       if (a) return (cc && a.find(o => o.cc === cc)) || (!cc && a.length === 1 ? a[0] : null) || (cc ? null : a[0]);
     }
     return null;
   }
-  // first pass, before the country lists are loaded: which country is each place in?
+  // first pass, before the country lists are loaded: every country a place's parts point to
+  function countriesOf(place) {
+    const out = new Set(), parts = partsOf(place);
+    for (const p of parts) {
+      const h = HISTORIC[key(p)] || HISTORIC[bare(key(p))];
+      if (h && h[2]) out.add(h[2]);
+      else { const r = regionOf(p, ''); if (r && r.cc) out.add(r.cc); }
+    }
+    const c = countryOf(place); if (c) out.add(c);
+    return out;
+  }
   function countryOf(place) {
     let cc = '';
     const parts = partsOf(place);
@@ -202,7 +234,11 @@
       return at > 0 ? findPlace(k.slice(at + 4), cc, ctx, a1) : null;
     }
     let inside = false;
-    if (a1) { const same = rows.filter(r => r.a1 === a1); if (same.length) { rows = same; inside = true; } }
+    if (a1) {
+      const same = rows.filter(r => r.a1 === a1);
+      if (same.length) { rows = same; inside = true; }
+      else if (ctx && (ctx.kind === 'a' || ctx.kind === 'd')) return null;   // "St. Martin Parish, Louisiana" is not in Mississippi
+    }
     let best = null;
     if (ctx && ctx.kind !== 'c') {
       let bd = Infinity;
@@ -218,15 +254,20 @@
   /* Where one place is: {lat, lon, level: 'place' | 'region', name, approx} or null */
   function locate(place) {
     if (cache.has(place)) return cache.get(place);
+    const pin = PINNED.get(pinKey(place));
+    if (pin) { const o = { lat: pin[0], lon: pin[1], level: 'place', name: partsOf(place)[0] || place, approx: false }; cache.set(place, o); return o; }
     const parts = partsOf(place);
     if (parts.some(p => atSea(key(p)))) { cache.set(place, null); return null; }
     let cc = '', ctx = null, ctxI = parts.length;
+    const vast = () => ctx && ctx.kind === 'h' && !ctx.a1 && (ctx.reach || 0) >= 1000;
     for (let i = parts.length - 1; i >= 1; i--) {
-      const r = regionOf(parts[i], cc, ctx && ctx.a1);
+      let r = regionOf(parts[i], cc, ctx && ctx.a1);
+      if (!r && vast()) { r = regionOf(parts[i], ''); if (r && !r.skip && r.cc) cc = r.cc; }
       if (!r || r.skip) continue;
-      if (r.cc && cc && r.cc !== cc) continue;
+      if (r.cc && cc && r.cc !== cc) { if (!vast()) continue; cc = r.cc; }
       if (r.cc) cc = r.cc;
       if (r.kind === 'c' && ctx) { ctxI = i; continue; }   // "…, Acadie, Canada": keep Acadie
+      if (r.kind === 'h' && !r.a1 && ctx && ctx.a1) continue;   // "…, Acadia, New Brunswick": keep New Brunswick
       ctx = r; ctxI = i;
     }
     if (!cc) cc = countryOf(place);
@@ -234,15 +275,23 @@
     for (let i = 0; i < ctxI && !out; i++) {
       // a part that names a country or a historic region is that region, not a hamlet that shares its name
       const asRegion = regionOf(parts[i], cc);
-      if (asRegion && !asRegion.skip && (asRegion.kind === 'c' || asRegion.kind === 'h')) continue;
-      // a province or state with nothing after it ("Louisiana") is the province, not Louisiana, Missouri
-      if (asRegion && !asRegion.skip && asRegion.kind === 'a' && i === parts.length - 1) continue;
-      const p = findPlace(parts[i], cc, ctx || (cc && idx.country.get(key(regionsName(cc)))), ctx && ctx.a1);
+      const townToo = asRegion && asRegion.kind === 'h' && !asRegion.a1 && ctx && ctx.a1;   // L'Acadie, Quebec, is also a town
+      if (asRegion && !asRegion.skip && (asRegion.kind === 'c' || asRegion.kind === 'h') && !townToo) continue;
+      // a province or state named with nothing more precise after it: a town of that name only if it lies inside
+      // ("Québec, Canada" is the city; "Louisiana, New Spain" is the province, not Louisiana, Missouri)
+      if (asRegion && !asRegion.skip && asRegion.kind === 'a' && (!ctx || ctx.kind === 'c') && (parts.length < 2 || key(parts[i]) !== bare(key(parts[i])))) continue;
+      if (asRegion && !asRegion.skip && asRegion.kind === 'a' && (!ctx || ctx.kind === 'c')) {
+        const t = findPlace(parts[i], asRegion.cc, asRegion, asRegion.a1);
+        if (t) out = { lat: t.lat, lon: t.lon, level: 'place', name: parts[i], approx: !!t.approx };
+        continue;
+      }
+      let p = findPlace(parts[i], cc, ctx || (cc && idx.country.get(key(regionsName(cc)))), ctx && ctx.a1);
+      if (p && townToo && (p.longer || p.approx)) p = null;   // only a town of exactly that name, not a village called "Perche-something"
       if (p) out = { lat: p.lat, lon: p.lon, level: 'place', name: parts[i], approx: !!p.approx };
     }
     if (!out && parts.length) {
       // the most specific region named: "Acadie, Nouvelle-France" is Acadie; "Canada, Nouvelle-France" is New France
-      const x = regionOf(parts[0], cc), r0 = x && !x.skip ? x : null;
+      const x = regionOf(parts[0], cc, ctx && ctx.a1), r0 = x && !x.skip ? x : null;
       const r = (r0 && r0.kind !== 'c' ? r0 : null) || ctx || r0;
       if (r) out = { lat: r.lat, lon: r.lon, level: 'region', name: r === r0 ? parts[0] : r.name || parts[ctxI] };
     }
@@ -267,7 +316,7 @@
   FO.geoLoad = function (places) {
     return loadBase().then(world => {
       const ccs = new Set();
-      for (const p of places) { const c = countryOf(p); if (c) ccs.add(c); }
+      for (const p of places) for (const c of countriesOf(p)) ccs.add(c);
       return Promise.all([...ccs].map(cc => loadCountry(cc).then(g => gazReady.set(cc, g)))).then(() => { cache.clear(); return { world, locate }; });
     });
   };
