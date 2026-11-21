@@ -125,18 +125,22 @@
     const a = await ask(key, anc, 0, progress, seen, sib);
     const rootId = a.rootId;
     let list = a.list;
+    // The siblings query can represent a public ancestor as a private stand-in even when that
+    // stand-in is present and fully linked. Missing-record checks cannot detect this. Always use
+    // the ancestor-only answer for the direct line, and align the siblings' parent links to it.
+    // Give this query its own seen set so overlap with the siblings does not stop pagination.
+    if (sib && anc > 0) {
+      progress.stage('Checking the direct ancestor line.');
+      const b = await ask(key, anc, 0, () => {}, new Set(), false);
+      list = merge(b.list, list);
+    }
     // In large answers WikiTree can leave out a private stand-in that others still point to (seen with
-    // and without brothers and sisters). It does include it in a small answer, and private profiles sit in
-    // the last few generations, so a close-up of 6 generations (one page) fills the gap; if a gap remains
-    // with brothers and sisters on, the full direct line is tried too. Each is lined up with the big answer.
+    // and without brothers and sisters). A close-up of 6 generations (one page) can fill gaps
+    // near the starting profile. Align its stand-ins with those in the larger answer.
     if (dangling(list).length && anc > 0) {
       progress.stage('Filling in private profiles…');
       const c = await ask(key, Math.min(anc, 6), 0, () => {}, new Set(), false);   // its own count, so its pages are not cut short
       list = merge(c.list, list);
-      if (sib && anc > 6 && dangling(list).length) {
-        const b = await ask(key, anc, 0, () => {}, new Set(), false);
-        list = merge(b.list, list);
-      }
     }
     for (const p of list) if (!people.has(p.Id)) people.set(p.Id, p);
     if (rootId == null || !people.has(rootId)) throw new Error('WikiTree did not send a profile for ' + key + '. Check the ID, for example Savoie-2387.');

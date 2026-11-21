@@ -74,6 +74,11 @@ brothers and sisters of each ancestor with their husbands and wives, and descend
 every view works unchanged. A link such as `index.html?wt=Savoie-2387&anc=10&desc=1` opens a
 family directly; `&sib=0` leaves out brothers and sisters.
 
+With brothers and sisters selected, the importer also fetches the direct ancestor line without
+siblings and uses that answer for ancestor details and parent links. This prevents a private
+placeholder in the larger response from hiding an ancestor whose public details are available
+in the direct response. Both queries are anonymous; private relatives remain private.
+
 WikiTree does not always answer browsers on other sites, so `site/wikitree.php` relays the same
 questions from your web host (it needs PHP with curl). The relay answers only the site's own
 pages, accepts only checked WikiTree IDs and generation counts, limits requests per visitor and
