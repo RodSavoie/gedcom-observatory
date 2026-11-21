@@ -162,24 +162,15 @@
       }
       // names
       const top = (arr, key, n) => [...d3.rollup(arr, x => x.length, key).entries()].filter(d => d[0]).sort((a, b) => b[1] - a[1]).slice(0, n).map(([label, value]) => ({ label, value }));
-      // first names, keeping compound names together: anything written with a hyphen (Jean-Baptiste), and the first two
-      // given names when the first is Marie, Jean or Anne, or when that pair is written with a hyphen somewhere in the file
-      const words = p => (p.given || '').split(/\s+/).map(w => w.replace(/[^\p{L}'-]/gu, '')).filter(Boolean);
-      const COMPOUND_FIRST = ['marie', 'jean', 'anne'];
-      const hyphenPairs = new Set();
-      ppl.forEach(p => { const w = words(p)[0]; if (w && w.includes('-')) hyphenPairs.add(FO.norm(w).replace(/-/g, ' ')); });
-      const rawFirst = p => {
-        const w = words(p); if (!w.length) return '';
-        if (w[0].includes('-') || w.length < 2) return w[0];
-        const pair = w[0] + ' ' + w[1];
-        return COMPOUND_FIRST.includes(FO.norm(w[0])) || hyphenPairs.has(FO.norm(pair)) ? pair : w[0];
-      };
-      // one count per name however it is accented or joined (Marie Josephe, Marie-Josèphe), shown hyphenated in its commonest spelling
+      // first names are counted as the whole given name, so compound names stay together; hyphens were seldom written,
+      // so a space and a hyphen count the same (Jean Baptiste = Jean-Baptiste), and so do accents (Josèphe = Josephe).
+      // Each name is shown in its commonest spelling in the file.
+      const fullGiven = p => (p.given || '').split(/\s+/).map(w => w.replace(/[^\p{L}'-]/gu, '')).filter(Boolean).join(' ');
       const nameKey = n => FO.norm(n).replace(/[\s-]+/g, ' ');
       const spell = new Map();
-      ppl.forEach(p => { const n = rawFirst(p); if (!n) return; const k = nameKey(n), m = spell.get(k) || new Map(); m.set(n, (m.get(n) || 0) + 1); spell.set(k, m); });
-      const shown = new Map([...spell].map(([k, m]) => [k, [...m].sort((a, b) => b[1] - a[1])[0][0].replace(/\s+/g, '-')]));
-      const firstName = p => { const n = rawFirst(p); return n ? shown.get(nameKey(n)) : ''; };
+      ppl.forEach(p => { const n = fullGiven(p); if (!n) return; const k = nameKey(n), m = spell.get(k) || new Map(); m.set(n, (m.get(n) || 0) + 1); spell.set(k, m); });
+      const shown = new Map([...spell].map(([k, m]) => [k, [...m].sort((a, b) => b[1] - a[1])[0][0]]));
+      const firstName = p => { const n = fullGiven(p); return n ? shown.get(nameKey(n)) : ''; };
       const skip = p => /^(unknown|living|inconnue?|n|private)$/i.test(firstName(p)) ? '' : firstName(p);
       grid.append(FO.figure('Most common surnames', 'Counting everyone who carries the name; spellings such as LeBlanc and Le Blanc count as one', FO.bars(top(ppl, FO.surnameCanon(ppl), 15), { unit: 'people', labelWidth: 130 })));
       // first names by era
@@ -196,7 +187,7 @@
           [['M', BLUE], ['F', PINK]].forEach(([sx, colr]) => top(inEra.filter(p => p.sex === sx), skip, 4).forEach(d => row.append(el('span', { class: 'namechip', style: { borderColor: colr }, title: d.value + ' ' + (sx === 'M' ? 'men' : 'women') + ' born in these years' }, d.label, el('small', { text: d.value })))));
           box.append(el('b', { text: lo + '-' + (i === 4 ? hi : hi - 1) }), row);
         }
-        grid.append(FO.figure('First names through the eras', 'The four most common first names for men (blue outline) and women (pink outline) in each era, with how many carried each; compound names count on their own. Eras are fitted so each holds about a fifth of the tree.', box));
+        grid.append(FO.figure('First names through the eras', 'The four most common first names for men (blue outline) and women (pink outline) in each era, with how many carried each, counting the whole given name (Jean Baptiste and Jean-Baptiste are one name). Eras are fitted so each holds about a fifth of the tree.', box));
       }
       // record holders
       {
@@ -222,7 +213,7 @@
         if (f0) add('Most recorded descendants', f0.p, ui.fmt(f0.n) + ' (among the home person’s ancestors)');
         if (recs.length) { const ul = el('ul', { class: 'plist' }); recs.forEach(r => ul.append(r)); grid.append(FO.figure('Record holders', 'As recorded in the file. Click a name for details.', ul)); }
       }
-      const NAMES_NOTE = 'The 20 most common. Compound names such as Marie-Josèphe and Jean-Baptiste count on their own.';
+      const NAMES_NOTE = 'The 20 most common, counting the whole given name: Jean Baptiste and Jean-Baptiste are one name, and Jean on its own is another.';
       grid.append(FO.figure('Most common first names, women', NAMES_NOTE, FO.bars(top(ppl.filter(p => p.sex === 'F'), skip, 20), { unit: 'women', color: PINK, labelWidth: 130 })));
       grid.append(FO.figure('Most common first names, men', NAMES_NOTE, FO.bars(top(ppl.filter(p => p.sex === 'M'), skip, 20), { unit: 'men', color: BLUE, labelWidth: 130 })));
       return () => {};
