@@ -7,6 +7,22 @@ travel with the files.
 |---|---|---|---|
 | D3 (data-driven documents), by Mike Bostock | `site/js/vendor/d3.min.js` | ISC | `site/js/vendor/LICENSE-d3.txt` |
 | Roboto font, by The Roboto Project Authors | `site/fonts/roboto-*.woff2` | SIL Open Font Licence 1.1 | `site/fonts/OFL.txt` |
+| topojson-client, by Mike Bostock | `site/js/vendor/topojson-client.min.js` | ISC | `site/js/vendor/LICENSE-topojson-client.txt` |
+
+## Map data (Where They Lived, Map)
+
+The files in `site/data/map/` are built by `tools/build-map-data.js` from these sources:
+
+| What | Used for | Licence |
+|---|---|---|
+| Natural Earth, 1:10m countries (via the world-atlas package) and states and provinces | the base map | Public domain |
+| GeoNames, cities500 (via the cities-500-structured package) and region names (via cities.json) | place names and coordinates worldwide | Creative Commons Attribution 4.0 (geonames.org) |
+| Geolocated placenames in Canada, Natural Resources Canada and Crown-Indigenous Relations and Northern Affairs Canada (via the R package loon.data) | Canadian villages and hamlets | Open Government Licence – Canada |
+| Découpage administratif, Etalab / INSEE | every French commune and its département | Licence Ouverte 2.0 |
+| i18n-iso-countries | country names in English and French | MIT |
+
+The map credits Natural Earth, GeoNames, Natural Resources Canada and INSEE in its corner, as these licences ask.
+The Acadian, colonial and old French place names and their positions in `site/js/geo.js` were added by hand.
 
 ## Not covered by the MIT licence
 
