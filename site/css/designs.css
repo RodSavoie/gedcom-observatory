@@ -16,7 +16,7 @@ html.fo-pending body { visibility: hidden; }
 body.in-view .design-bar { padding-top: 4px; padding-bottom: 3px; }
 
 /* ---------- the top band (all designs): a light black wash behind the switcher, the header and the view tabs ---------- */
-:root { --band: rgba(0,0,0,.055); --band-top: rgba(0,0,0,.085); }
+:root { --band: rgba(0,0,0,.055); --band-top: rgba(0,0,0,.125); }
 .design-bar, .top, .tabs { background-color: var(--band); }
 /* the DESIGN row sits a shade darker than the rest of the band */
 .design-bar { background-color: var(--band-top); }
