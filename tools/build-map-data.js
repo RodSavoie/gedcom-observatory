@@ -2,7 +2,8 @@
 
    Sources (all free to reuse):
      world-atlas            Natural Earth countries, 1:10m (public domain), ISC packaging
-     Natural Earth          ne_10m_admin_1_states_provinces.geojson (public domain), for Canadian and US borders
+     Natural Earth          ne_10m_admin_1_states_provinces.geojson (public domain), for Canadian and US borders,
+                            and ne_10m_lakes.geojson (public domain), for lakes
      cities-500-structured  GeoNames cities500: every place of the world with 500 people or more (CC BY 4.0)
      cities.json            GeoNames names of regions and counties (CC BY 4.0)
      map-sources/placenames-canada.csv   10,676 Canadian places, including small villages (Open Government Licence – Canada)
@@ -11,11 +12,12 @@
 
    Run once, from this folder:
      npm i world-atlas topojson-client topojson-server topojson-simplify cities-500-structured cities.json @etalab/decoupage-administratif i18n-iso-countries
-     (download ne_10m_admin_1_states_provinces.geojson from github.com/nvkelso/natural-earth-vector, folder geojson)
-     node build-map-data.js ne_10m_admin_1_states_provinces.geojson ../site/data/map
+     (download ne_10m_admin_1_states_provinces.geojson and ne_10m_lakes.geojson from github.com/nvkelso/natural-earth-vector,
+      folder geojson)
+     node build-map-data.js ne_10m_admin_1_states_provinces.geojson ../site/data/map ne_10m_lakes.geojson
 
    Output:
-     world.json     the base map (TopoJSON): countries, plus province and state borders for Canada and the US.
+     world.json     the base map (TopoJSON): countries, lakes, and province and state borders for Canada and the US.
                     Simplified hard over most of the world, kept fine around Atlantic Canada, New England, the
                     St. Lawrence and western Europe, where Acadian and French-Canadian families lived.
      regions.json   countries (English and French names) and their first-level regions, each with a centre point;
@@ -26,6 +28,7 @@
 const fs = require('fs'), path = require('path');
 const NE_ADMIN1 = process.argv[2] || 'ne_10m_admin_1_states_provinces.geojson';
 const OUT = process.argv[3] || '../site/data/map';
+const NE_LAKES = process.argv[4] || 'ne_10m_lakes.geojson';
 const req = m => require(path.resolve('node_modules', m));
 const tc = req('topojson-client'), ts = req('topojson-server'), tsim = req('topojson-simplify');
 const strip = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -43,7 +46,9 @@ fs.mkdirSync(path.join(OUT, 'gaz'), { recursive: true });
   const provinces = { type: 'FeatureCollection', features: a1.features.filter(f => ['CAN', 'USA'].includes(f.properties.adm0_a3)).map(f => ({ type: 'Feature', properties: {}, geometry: f.geometry })) };
   const KEEP = 0.03, BOOST = 100;   // a point survives if its weight is above KEEP; inside FINE its weight counts BOOST times
   const FINE = [[-80, 40, -52, 53.5], [-6, 41, 10, 52]];
-  let topo = tsim.presimplify(ts.topology({ countries, provinces }));
+  const lk = JSON.parse(fs.readFileSync(NE_LAKES));
+  const lakes = { type: 'FeatureCollection', features: lk.features.filter(f => f.geometry).map(f => ({ type: 'Feature', properties: {}, geometry: f.geometry })) };
+  let topo = tsim.presimplify(ts.topology({ countries, provinces, lakes }));
   for (const arc of topo.arcs) for (const pt of arc) if (isFinite(pt[2]) && FINE.some(b => pt[0] >= b[0] && pt[0] <= b[2] && pt[1] >= b[1] && pt[1] <= b[3])) pt[2] *= BOOST;
   topo = tsim.simplify(topo, KEEP);
   topo = tsim.filter(topo, tsim.filterWeight(topo, KEEP));

@@ -7,6 +7,7 @@
 
   // how the map looks: change these to taste
   const LAND = '#F7F4EE', COAST = '#B9B09F', BORDER = '#CFC7B8';
+  const FRAME = C.line, FRAME_OPACITY = 0.7;   // the faint border around the map
   const BIRTH = C.teal, DEATH = C.red;
   const BUBBLE_OPACITY = 0.5;      // fill of a bubble (0 to 1)
   const MAX_R = 30;                // the biggest bubble's radius, in pixels, before zooming
@@ -61,7 +62,10 @@
       root.append(zoomG);
       const countries = topojson.feature(world, world.objects.countries);
       const ns = { 'vector-effect': 'non-scaling-stroke' };
-      zoomG.append(svg('path', { d: path(countries), fill: LAND, stroke: 'none' }));
+      // land with the lakes cut out of it, so lakes show the same background as the sea
+      const lakes = world.objects.lakes ? topojson.feature(world, world.objects.lakes) : null;
+      zoomG.append(svg('path', { d: path(countries) + (lakes ? path(lakes) : ''), fill: LAND, 'fill-rule': 'evenodd', stroke: 'none' }));
+      if (lakes) zoomG.append(svg('path', Object.assign({ d: path(lakes), fill: 'none', stroke: COAST, 'stroke-width': 0.6 }, ns)));
       zoomG.append(svg('path', Object.assign({ d: path(topojson.mesh(world, world.objects.provinces, (a, b) => a !== b)), fill: 'none', stroke: BORDER, 'stroke-width': 0.7, 'stroke-dasharray': '3 2' }, ns)));
       zoomG.append(svg('path', Object.assign({ d: path(topojson.mesh(world, world.objects.countries, (a, b) => a !== b)), fill: 'none', stroke: BORDER, 'stroke-width': 1 }, ns)));
       zoomG.append(svg('path', Object.assign({ d: path(topojson.mesh(world, world.objects.countries, (a, b) => a === b)), fill: 'none', stroke: COAST, 'stroke-width': 0.8 }, ns)));
@@ -79,10 +83,11 @@
         const what = o.what === 'birth' ? (s.n === 1 ? ' birth' : ' births') : (s.n === 1 ? ' death' : ' deaths');
         const yrs = d3.extent(s.people.map(year).filter(y => y != null));
         const others = s.spell.size - 1;
-        const tip = '<b>' + ui.esc(s.top) + '</b><span>' + ui.fmt(s.n) + what + (yrs[0] != null ? ', ' + (yrs[0] === yrs[1] ? yrs[0] : yrs[0] + '–' + yrs[1]) : '') + '</span>' +
-          (others ? '<span>and ' + others + ' other spelling' + (others > 1 ? 's' : '') + ' of this place</span>' : '') +
-          (region ? '<span>Known only as “' + ui.esc(s.label) + '”: shown at the centre of the region</span>' : '') +
-          (s.approx ? '<span>Village placed at the centre of its département</span>' : '');
+        const lines = [ui.fmt(s.n) + what + (yrs[0] != null ? ', ' + (yrs[0] === yrs[1] ? yrs[0] : yrs[0] + '–' + yrs[1]) : '')];
+        if (others) lines.push('and ' + others + ' other spelling' + (others > 1 ? 's' : '') + ' of this place');
+        if (region) lines.push('Known only as “' + ui.esc(s.label) + '”: shown at the centre of the region');
+        if (s.approx) lines.push('Village placed at the centre of its département');
+        const tip = '<b>' + ui.esc(s.top) + '</b><span>' + lines.join('<br>') + '</span>';
         c.addEventListener('mousemove', e => { c.setAttribute('fill-opacity', region ? 0.2 : 0.85); ui.tip(tip, e.clientX, e.clientY); });
         c.addEventListener('mouseleave', () => { c.setAttribute('fill-opacity', region ? 0.08 : BUBBLE_OPACITY); ui.untip(); });
         c.addEventListener('click', () => FO.showList(s.top, ui.fmt(s.n) + what + (region ? ', known only by region' : ''), s.people.slice().sort((a, b) => (year(a) || 0) - (year(b) || 0))));
@@ -124,6 +129,7 @@
       const credit = svg('text', { x: 12, y: 18, style: 'font-size:10.5px;fill:#7C8088;paint-order:stroke;stroke:#F7F4EE;stroke-width:3px;stroke-linejoin:round' });
       credit.textContent = 'Map: Natural Earth. Places: GeoNames (CC BY 4.0), Natural Resources Canada, INSEE.';
       root.append(credit);
+      root.append(svg('rect', { x: 0.5, y: 0.5, width: W - 1, height: H - 1, rx: 4, fill: 'none', stroke: FRAME, 'stroke-opacity': FRAME_OPACITY, 'pointer-events': 'none' }));
 
       const placed = ppl.length - missing - atRegion;
       const noun = o.what === 'birth' ? 'births' : 'deaths';
