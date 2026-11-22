@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const FO = window.FO, ui = FO.ui, el = ui.el, svg = ui.svg, C = FO.C;
-  const LIVING_FILL = 'rgba(255,255,255,0.5)';   // a living person's place on the fan: half-transparent white
+  const LIVING_FILL = 'rgba(255,255,255,0.33)';   // a living person's place on the fan: half-transparent white
 
   FO.pedigreeSlots = function (home, G, cap) {
     const out = [];
