@@ -17,7 +17,7 @@
         '“Expected share” adds up one half for every generation along every line. It is the share of the home person’s DNA that ancestor would be expected to have contributed, on average.',
         'The inbreeding coefficient is the chance that the two copies of a gene the home person carries are the same copy, inherited down both sides from one ancestor. It is worked out from every recorded line.',
         'In the chart, blue is different people and red is places filled by someone already counted in that generation.'],
-      can: ['Sort the ancestor table by lines or by expected share.', 'Press “Show the lines” to see every line of descent from that ancestor drawn in How Are We Related.', 'Click a name to open that person; where the file carries profile links (a WikiTree export does), use the link beside the name to open their profile.', 'Click a couple’s relationship to see how the two were related.'],
+      can: ['Sort the ancestor table by lines or by expected share.', 'Choose “End of each line” to list only the last fully named ancestor on each line (someone whose parents are unknown or not fully named), or “Every ancestor” to list them all.', 'Press “Show the lines” to see every line of descent from that ancestor drawn in How Are We Related.', 'Click a name to open that person; where the file carries profile links (a WikiTree export does), use the link beside the name to open their profile.', 'Click a couple’s relationship to see how the two were related.'],
       care: 'Everything here follows the recorded parents. A wrong parent link changes the counts, and missing ancestors hide collapse that really happened, so the true figures are at least as large as these.'
     },
     icon: '<path d="M32 56 V44 M32 44 L20 32 M32 44 L44 32 M20 32 L12 20 M20 32 L32 18 M44 32 L32 18 M44 32 L52 20"/><circle cx="32" cy="18" r="5" fill="#A35139" stroke="#A35139"/><g fill="#1B2632" stroke="none"><circle cx="32" cy="56" r="3"/><circle cx="20" cy="32" r="2.4"/><circle cx="44" cy="32" r="2.4"/><circle cx="12" cy="20" r="2"/><circle cx="52" cy="20" r="2"/></g>',
@@ -76,10 +76,19 @@
 
       // the ancestors who return most often
       let sortBy = 'lines';
+      /* "End of each line": only the last fully named ancestor of each line, someone with a first name and a surname
+         whose father and mother are not both fully named (unknown, or recorded without a full name). Without it the list
+         fills with the children and grandchildren of the same few couples, who return almost as often as they do. */
+      let endsOnly = FO.prefs.get('collapse.ends', 'ends', ['ends', 'all']) === 'ends';
+      const PLACEHOLDER = /^(unknown|inconnue?|anonymous|nn|n\.?\s?n\.?|\?+|_+|-+)$/i;
+      const fullyNamed = q => !!(q && !q.hidden && q.surname && q.given && !PLACEHOLDER.test(q.given.trim()) && !PLACEHOLDER.test(q.surname.trim()));
+      const endOfLine = q => fullyNamed(q) && !(fullyNamed(q.father) && fullyNamed(q.mother));
       const tblBox = el('div');
       const drawTable = () => {
         tblBox.innerHTML = '';
-        const list = rows.filter(r => !r.p.hidden && (sortBy === 'share' || r.lines > 1)).sort((a, b) => (sortBy === 'lines' ? b.lines - a.lines || b.share - a.share : b.share - a.share || a.gMin - b.gMin)).slice(sortBy === 'share' ? 6 : 0, sortBy === 'share' ? 56 : 50);
+        const list = rows.filter(r => !r.p.hidden && (sortBy === 'share' ? r.gMin > 3 : r.lines > 1) && (!endsOnly || endOfLine(r.p)))
+          .sort((a, b) => (sortBy === 'lines' ? b.lines - a.lines || b.share - a.share : b.share - a.share || a.gMin - b.gMin)).slice(0, 50);
+        if (!list.length) { tblBox.append(el('p', { class: 'muted', text: 'No ancestor fits these choices.' })); return; }
         const t = el('table', { class: 'tbl' });
         t.append(el('thead', {}, el('tr', {}, ...['Ancestor', 'Lines of descent', 'Generations back', 'Expected share of ' + first + '’s DNA', 'Worth about one', ''].map(h => el('th', { text: h })))));
         const tb = el('tbody');
@@ -98,8 +107,10 @@
       };
       const tableTile = el('div', { class: 'tile', style: { marginTop: '18px' } },
         el('div', { style: { display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'space-between' } },
-          el('div', {}, el('h3', { text: 'The ancestors who return most often' }), el('p', { class: 'sub', text: 'A line is one route from ' + first + ' up to that ancestor. “Expected share” counts a half for every generation on every line; “worth about one” says which single ancestor would contribute the same.' })),
-          ui.seg([{ v: 'lines', label: 'Most lines' }, { v: 'share', label: 'Largest share beyond the great-grandparents' }], sortBy, x => { sortBy = x; drawTable(); })),
+          el('div', {}, el('h3', { text: 'The ancestors who return most often' }), el('p', { class: 'sub', text: 'A line is one route from ' + first + ' up to that ancestor. “Expected share” counts a half for every generation on every line; “worth about one” says which single ancestor would contribute the same. “End of each line” keeps only the last fully named ancestor on each line, so the same couples’ children and grandchildren do not crowd the list.' })),
+          el('div', { style: { display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' } },
+            ui.seg([{ v: 'ends', label: 'End of each line' }, { v: 'all', label: 'Every ancestor' }], endsOnly ? 'ends' : 'all', x => { endsOnly = x === 'ends'; FO.prefs.set('collapse.ends', x); drawTable(); }),
+            ui.seg([{ v: 'lines', label: 'Most lines' }, { v: 'share', label: 'Largest share beyond the great-grandparents' }], sortBy, x => { sortBy = x; drawTable(); }))),
         tblBox);
       drawTable();
       sheet.append(tableTile);
