@@ -49,7 +49,7 @@ fs.mkdirSync(path.join(OUT, 'gaz'), { recursive: true });
    England, the St. Lawrence, western Europe) points count BOOST times, so those areas keep much more.
      WORLD_DETAIL   0.03 → world.json about 880 KB (255 KB as sent by the server)
      ZOOMED_DETAIL  0.001 → world-detail.json about 3.2 MB (1 MB as sent); 0.003 about 2.2 MB; 0 keeps everything */
-const WORLD_DETAIL = 0.03, ZOOMED_DETAIL = 0.001, BOOST = 100;
+const WORLD_DETAIL = 0.01, ZOOMED_DETAIL = 0.0001, BOOST = 100;
 const FINE = [[-80, 40, -52, 53.5], [-6, 41, 10, 52]];
 {
   const w10 = JSON.parse(fs.readFileSync(path.resolve('node_modules/world-atlas/countries-10m.json')));
