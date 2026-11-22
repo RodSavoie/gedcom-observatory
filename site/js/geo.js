@@ -15,7 +15,7 @@
   'use strict';
   const FO = window.FO;
   const BASE = 'data/map/';
-  const MAP_VERSION = 3;   // raise when world.json or regions.json is rebuilt, so browsers fetch the new files
+  const MAP_VERSION = 4;   // raise when world.json or regions.json is rebuilt, so browsers fetch the new files
   const strip = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   const key = s => strip(s).replace(/\(.*?\)/g, ' ').replace(/[-‐‑–’'`.]/g, ' ').replace(/\bste\b/g, 'sainte').replace(/\bst\b/g, 'saint').replace(/\s+/g, ' ').trim();
   // "Colony of Nova Scotia", "Province de Québec", "Nova Scotia Colony" → the name itself
@@ -322,6 +322,11 @@
     return out;
   }
   const regionsName = cc => { for (const o of idx.country.values()) if (o.cc === cc) return o.name; return ''; };
+
+  /* The finer base map, fetched once, the first time someone zooms in; resolves to the map, or null if it is missing */
+  let detail = null, detailMap = null;
+  FO.geoDetail = () => detail || (detail = getJSON(BASE + 'world-detail.json?v=' + MAP_VERSION).then(w => (detailMap = w)).catch(() => null));   // if it fails, the light map stays
+  FO.geoDetailReady = () => detailMap;
 
   /* Load what a list of places needs; resolves to {world, locate} */
   FO.geoLoad = function (places) {

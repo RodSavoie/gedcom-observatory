@@ -20,6 +20,7 @@
 
    Output:
      world.json     the base map (TopoJSON): countries, lakes, rivers, and province and state borders for Canada and the US.
+     world-detail.json  the same, with much finer coastlines and borders, loaded by the site only when someone zooms in.
                     Rivers carry their Natural Earth rank (r: 0 the greatest, 12 the smallest); smaller rivers come only
                     from the detailed areas below.
                     Simplified hard over most of the world, kept fine around Atlantic Canada, New England, the
@@ -41,49 +42,61 @@ const r3 = x => Math.round(x * 1000) / 1000;
 const median = a => { const s = a.slice().sort((x, y) => x - y); return s.length ? s[s.length >> 1] : 0; };
 fs.mkdirSync(path.join(OUT, 'gaz'), { recursive: true });
 
-/* ---------- the base map ---------- */
+/* ---------- the base map ----------
+   Two files: world.json, light, for the whole map, and world-detail.json, finer, which the site loads only once someone
+   zooms in. How much detail each keeps is set here: a point of a coastline or border survives if its weight is above
+   the number given, so smaller numbers keep more detail (and make a bigger file). Inside FINE (Atlantic Canada, New
+   England, the St. Lawrence, western Europe) points count BOOST times, so those areas keep much more.
+     WORLD_DETAIL   0.03 → world.json about 880 KB (255 KB as sent by the server)
+     ZOOMED_DETAIL  0.001 → world-detail.json about 3.2 MB (1 MB as sent); 0.003 about 2.2 MB; 0 keeps everything */
+const WORLD_DETAIL = 0.03, ZOOMED_DETAIL = 0.001, BOOST = 100;
+const FINE = [[-80, 40, -52, 53.5], [-6, 41, 10, 52]];
 {
   const w10 = JSON.parse(fs.readFileSync(path.resolve('node_modules/world-atlas/countries-10m.json')));
   const countries = tc.feature(w10, w10.objects.countries);
   countries.features.forEach(f => { f.properties = { name: f.properties.name }; delete f.id; });
   const a1 = JSON.parse(fs.readFileSync(NE_ADMIN1));
   const provinces = { type: 'FeatureCollection', features: a1.features.filter(f => ['CAN', 'USA'].includes(f.properties.adm0_a3)).map(f => ({ type: 'Feature', properties: {}, geometry: f.geometry })) };
-  const KEEP = 0.03, BOOST = 100;   // a point survives if its weight is above KEEP; inside FINE its weight counts BOOST times
-  const FINE = [[-80, 40, -52, 53.5], [-6, 41, 10, 52]];
   const lk = JSON.parse(fs.readFileSync(NE_LAKES));
   const lakes = { type: 'FeatureCollection', features: lk.features.filter(f => f.geometry).map(f => ({ type: 'Feature', properties: {}, geometry: f.geometry })) };
   // rivers: the main set worldwide (without the centre lines drawn through lakes), the smaller supplementary rivers only
   // where the map keeps fine detail
-  const FINE_RIVERS = [[-80, 40, -52, 53.5], [-6, 41, 10, 52]];
-  const inFine = g => { const c = JSON.stringify(g.coordinates).match(/-?\d+(\.\d+)?/g).map(Number); for (let i = 0; i < c.length; i += 2) if (FINE_RIVERS.some(b => c[i] >= b[0] && c[i] <= b[2] && c[i + 1] >= b[1] && c[i + 1] <= b[3])) return true; return false; };
+  const inFine = g => { const c = JSON.stringify(g.coordinates).match(/-?\d+(\.\d+)?/g).map(Number); for (let i = 0; i < c.length; i += 2) if (FINE.some(b => c[i] >= b[0] && c[i] <= b[2] && c[i + 1] >= b[1] && c[i + 1] <= b[3])) return true; return false; };
   const riverFile = f => fs.existsSync(f) ? JSON.parse(fs.readFileSync(f)).features : [];
   const rivers = { type: 'FeatureCollection', features: [
     ...riverFile('ne_10m_rivers_lake_centerlines.geojson').filter(f => f.geometry && !/lake/i.test(f.properties.featurecla || '')),
     ...riverFile('ne_10m_rivers_north_america.geojson').filter(f => f.geometry && inFine(f.geometry)),
     ...riverFile('ne_10m_rivers_europe.geojson').filter(f => f.geometry && inFine(f.geometry))]
     .map(f => ({ type: 'Feature', properties: { r: Math.round(f.properties.scalerank != null ? f.properties.scalerank : 12) }, geometry: f.geometry })) };
-  let topo = tsim.presimplify(ts.topology({ countries, provinces, lakes, rivers }));
-  for (const arc of topo.arcs) for (const pt of arc) if (isFinite(pt[2]) && FINE.some(b => pt[0] >= b[0] && pt[0] <= b[2] && pt[1] >= b[1] && pt[1] <= b[3])) pt[2] *= BOOST;
-  topo = tsim.simplify(topo, KEEP);
-  topo = tsim.filter(topo, tsim.filterWeight(topo, KEEP));
-  // Long straight stretches (the 49th parallel, lines across the Great Lakes) are left with few points; a map draws a
-  // line between two far-apart points as the shortest route over the globe, which bows north. Add a point every half
-  // degree so these borders follow their parallel as they should.
-  const STEP = 0.5;
-  topo.arcs = topo.arcs.map(arc => {
-    const out = [];
-    for (let i = 0; i < arc.length; i++) {
-      const p = arc[i];
-      if (i) {
-        const q = arc[i - 1], dx = p[0] - q[0], dy = p[1] - q[1], n = Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / STEP);
-        if (Math.abs(dx) < 180) for (let k = 1; k < n; k++) out.push([q[0] + dx * k / n, q[1] + dy * k / n]);
-      }
-      out.push([p[0], p[1]]);
+
+  function build(keep, file, grid) {
+    let topo = tsim.presimplify(ts.topology({ countries, provinces, lakes, rivers }));
+    for (const arc of topo.arcs) for (const pt of arc) if (isFinite(pt[2]) && FINE.some(b => pt[0] >= b[0] && pt[0] <= b[2] && pt[1] >= b[1] && pt[1] <= b[3])) pt[2] *= BOOST;
+    if (keep > 0) {
+      topo = tsim.simplify(topo, keep);
+      topo = tsim.filter(topo, tsim.filterWeight(topo, keep));
     }
-    return out;
-  });
-  topo = tc.quantize(topo, 1e5);
-  fs.writeFileSync(path.join(OUT, 'world.json'), JSON.stringify(topo));
+    // Long straight stretches (the 49th parallel, lines across the Great Lakes) are left with few points; a map draws a
+    // line between two far-apart points as the shortest route over the globe, which bows north. Add a point every half
+    // degree so these borders follow their parallel as they should.
+    const STEP = 0.5;
+    topo.arcs = topo.arcs.map(arc => {
+      const out = [];
+      for (let i = 0; i < arc.length; i++) {
+        const p = arc[i];
+        if (i) {
+          const q = arc[i - 1], dx = p[0] - q[0], dy = p[1] - q[1], n = Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / STEP);
+          if (Math.abs(dx) < 180) for (let k = 1; k < n; k++) out.push([q[0] + dx * k / n, q[1] + dy * k / n]);
+        }
+        out.push([p[0], p[1]]);
+      }
+      return out;
+    });
+    topo = tc.quantize(topo, grid);   // positions rounded to a grid this many steps across the world
+    fs.writeFileSync(path.join(OUT, file), JSON.stringify(topo));
+  }
+  build(WORLD_DETAIL, 'world.json', 1e5);
+  build(ZOOMED_DETAIL, 'world-detail.json', 1e6);
 }
 
 /* ---------- places ---------- */

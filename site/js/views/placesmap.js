@@ -10,6 +10,7 @@
   const FRAME = COAST, FRAME_OPACITY = 0.9;   // the faint border around the map
   const WATER = '#FFFFFF', WATER_OPACITY = 0.22;
   const RIVER = COAST, RIVER_OPACITY = 0.5;   // rivers: the greatest always shown, smaller ones as you zoom in
+  const DETAIL_FROM = 2;   // zoom from which the finer coastlines and borders are fetched and drawn (data/map/world-detail.json)
   const RIVER_TIERS = [   // [largest rank in the tier (0 = greatest river), line width, zoom from which it shows]
     [6, 1.0, 0], [9, 0.8, 2], [12, 0.6, 4]];   // a light wash over the sea and lakes, so the map stands apart from the page
   const BIRTH = C.teal, DEATH = C.red;
@@ -70,26 +71,42 @@
       root.append(svg('rect', { x: 0, y: 0, width: W, height: H, rx: 4, fill: WATER, 'fill-opacity': WATER_OPACITY, 'pointer-events': 'none' }));
       const zoomG = svg('g');
       root.append(zoomG);
-      const countries = topojson.feature(world, world.objects.countries);
       const ns = { 'vector-effect': 'non-scaling-stroke' };
-      // land with the lakes cut out of it, so lakes show the same background as the sea
-      const lakes = world.objects.lakes ? topojson.feature(world, world.objects.lakes) : null;
-      zoomG.append(svg('path', { d: path(countries) + (lakes ? path(lakes) : ''), fill: LAND, 'fill-rule': 'evenodd', stroke: 'none' }));
-      if (lakes) zoomG.append(svg('path', Object.assign({ d: path(lakes), fill: 'none', stroke: COAST, 'stroke-width': 0.6 }, ns)));
-      const riverTiers = [];
-      if (world.objects.rivers) {
-        const all = topojson.feature(world, world.objects.rivers).features;
-        let lo = -1;
-        for (const [hi, width, from] of RIVER_TIERS) {
-          const fs = all.filter(f => f.properties.r > lo && f.properties.r <= hi); lo = hi;
-          if (!fs.length) continue;
-          const el = svg('path', Object.assign({ d: path({ type: 'FeatureCollection', features: fs }), fill: 'none', stroke: RIVER, 'stroke-opacity': RIVER_OPACITY, 'stroke-width': width, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, ns));
-          zoomG.append(el); riverTiers.push([el, from]);
+      const baseG = svg('g');
+      zoomG.append(baseG);
+      let riverTiers = [];
+      // the land, lakes, rivers and borders; drawn again with the finer map once someone zooms in
+      function drawBase(w) {
+        baseG.innerHTML = ''; riverTiers = [];
+        const countries = topojson.feature(w, w.objects.countries);
+        // land with the lakes cut out of it, so lakes show the same background as the sea
+        const lakes = w.objects.lakes ? topojson.feature(w, w.objects.lakes) : null;
+        baseG.append(svg('path', { d: path(countries) + (lakes ? path(lakes) : ''), fill: LAND, 'fill-rule': 'evenodd', stroke: 'none' }));
+        if (lakes) baseG.append(svg('path', Object.assign({ d: path(lakes), fill: 'none', stroke: COAST, 'stroke-width': 0.6 }, ns)));
+        if (w.objects.rivers) {
+          const all = topojson.feature(w, w.objects.rivers).features;
+          let lo = -1;
+          for (const [hi, width, from] of RIVER_TIERS) {
+            const fs = all.filter(f => f.properties.r > lo && f.properties.r <= hi); lo = hi;
+            if (!fs.length) continue;
+            const el = svg('path', Object.assign({ d: path({ type: 'FeatureCollection', features: fs }), fill: 'none', stroke: RIVER, 'stroke-opacity': RIVER_OPACITY, 'stroke-width': width, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, ns));
+            baseG.append(el); riverTiers.push([el, from]);
+          }
         }
+        baseG.append(svg('path', Object.assign({ d: path(topojson.mesh(w, w.objects.provinces, (a, b) => a !== b)), fill: 'none', stroke: BORDER, 'stroke-width': 0.7, 'stroke-dasharray': '3 2' }, ns)));
+        baseG.append(svg('path', Object.assign({ d: path(topojson.mesh(w, w.objects.countries, (a, b) => a !== b)), fill: 'none', stroke: BORDER, 'stroke-width': 1 }, ns)));
+        baseG.append(svg('path', Object.assign({ d: path(topojson.mesh(w, w.objects.countries, (a, b) => a === b)), fill: 'none', stroke: COAST, 'stroke-width': 0.8 }, ns)));
+        const k = d3.zoomTransform(root).k;
+        riverTiers.forEach(([el, from]) => el.setAttribute('display', k >= from ? 'inline' : 'none'));
       }
-      zoomG.append(svg('path', Object.assign({ d: path(topojson.mesh(world, world.objects.provinces, (a, b) => a !== b)), fill: 'none', stroke: BORDER, 'stroke-width': 0.7, 'stroke-dasharray': '3 2' }, ns)));
-      zoomG.append(svg('path', Object.assign({ d: path(topojson.mesh(world, world.objects.countries, (a, b) => a !== b)), fill: 'none', stroke: BORDER, 'stroke-width': 1 }, ns)));
-      zoomG.append(svg('path', Object.assign({ d: path(topojson.mesh(world, world.objects.countries, (a, b) => a === b)), fill: 'none', stroke: COAST, 'stroke-width': 0.8 }, ns)));
+      // the finer map: used straight away if it is already here, otherwise fetched the first time someone zooms in
+      let fine = FO.geoDetailReady && FO.geoDetailReady();
+      drawBase(fine || world);
+      const wantDetail = () => {
+        if (fine || !FO.geoDetail) return;
+        fine = true;
+        FO.geoDetail().then(w => { if (w && !(o.cancelled && o.cancelled(token)) && baseG.isConnected) { fine = w; drawBase(w); } });
+      };
 
       const col = o.what === 'birth' ? BIRTH : DEATH;
       const r0 = d3.scaleSqrt().domain([0, d3.max(list, s => s.n) || 1]).range([0, MAX_R]);
@@ -142,6 +159,7 @@
         zoomG.setAttribute('transform', t.toString());
         dots.forEach(([c, s]) => c.setAttribute('r', Math.max(2.5, r0(s.n)) / Math.sqrt(t.k)));
         riverTiers.forEach(([el, from]) => el.setAttribute('display', t.k >= from ? 'inline' : 'none'));
+        if (t.k >= DETAIL_FROM) wantDetail();
         labels(t); ui.untip();
       });
       d3.select(root).call(zoom).on('dblclick.zoom', null);
