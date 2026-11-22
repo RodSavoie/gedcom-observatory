@@ -100,8 +100,33 @@
       out.push(...list);
       progress(seen.size);
       if ((!o.more && list.length < PAGE) || !fresh) break;
+      out.paged = true;   // more than one page: stand-in numbers may not agree from page to page (see repairParents)
     }
     return { list: out, rootId };
+  }
+
+  /* WikiTree numbers its private stand-ins page by page, not across the whole answer: in a large answer, -2 can be one
+     person on the first page and someone else on the last (seen 2026-11-22: a mother's brothers and sisters, on the last
+     page, pointed at the stand-ins that the first page used for the starting person's own parents, so they were filed
+     as that person's brothers and sisters). So anyone with a WikiTree number whose father or mother came back as a
+     stand-in is asked about once more, by number, in small groups; WikiTree then gives the parents' real numbers. */
+  async function repairParents(people, progress, paged) {
+    const ids = [...people.values()].filter(p => typeof p.Id === 'number' && paged.has(p.Id) && (typeof p.Father === 'string' || typeof p.Mother === 'string')).map(p => p.Id);
+    if (!ids.length) return;
+    if (progress && progress.stage) progress.stage('Checking the parents of private profiles…');
+    for (let i = 0; i < ids.length; i += 100) {
+      let o;
+      try { o = unwrap(await call({ action: 'getPeople', keys: ids.slice(i, i + 100).join(','), ancestors: 0, descendants: 0, fields: 'Id,Father,Mother', limit: PAGE, start: 0 })); }
+      catch (e) { if (e.message === busy()) throw e; continue; }   // a refused group keeps what the first answer said
+      for (const q of Object.values(o.people || {})) {
+        const p = people.get(+q.Id);
+        if (!p) continue;
+        for (const k of ['Father', 'Mother']) {
+          const v = +q[k];
+          if (typeof p[k] === 'string' && v > 0 && people.has(v)) p[k] = v;   // a real number for someone already in the tree
+        }
+      }
+    }
   }
 
   /* Husbands and wives that came along inside each person's spouse list, added as people */
@@ -121,8 +146,9 @@
      descendants with their husbands and wives, so families are whole. */
   async function fetchTree(key, anc, desc, sib, progress) {
     const people = new Map(), seen = new Set();
+    const paged = new Set(), note = ans => { if (ans.list.paged) ans.list.forEach(p => paged.add(p.Id)); return ans; };   // see repairParents
     if (sib) progress.stage('Asking WikiTree for ' + key + ', with brothers and sisters…');
-    const a = await ask(key, anc, 0, progress, seen, sib);
+    const a = note(await ask(key, anc, 0, progress, seen, sib));
     const rootId = a.rootId;
     let list = a.list;
     // The siblings query can represent a public ancestor as a private stand-in even when that
@@ -131,7 +157,7 @@
     // Give this query its own seen set so overlap with the siblings does not stop pagination.
     if (sib && anc > 0) {
       progress.stage('Checking the direct ancestor line.');
-      const b = await ask(key, anc, 0, () => {}, new Set(), false);
+      const b = note(await ask(key, anc, 0, () => {}, new Set(), false));
       list = merge(b.list, list);
     }
     // In large answers WikiTree can leave out a private stand-in that others still point to (seen with
@@ -139,11 +165,12 @@
     // near the starting profile. Align its stand-ins with those in the larger answer.
     if (dangling(list).length && anc > 0) {
       progress.stage('Filling in private profiles…');
-      const c = await ask(key, Math.min(anc, 6), 0, () => {}, new Set(), false);   // its own count, so its pages are not cut short
+      const c = note(await ask(key, Math.min(anc, 6), 0, () => {}, new Set(), false));   // its own count, so its pages are not cut short
       list = merge(c.list, list);
     }
     for (const p of list) if (!people.has(p.Id)) people.set(p.Id, p);
     if (rootId == null || !people.has(rootId)) throw new Error('WikiTree did not send a profile for ' + key + '. Check the ID, for example Savoie-2387.');
+    await repairParents(people, progress, paged);
 
     // the husbands and wives of the brothers and sisters (and later marriages of ancestors) come inside each spouse list
     if (sib) addSpouses(people, [...people.keys()]);

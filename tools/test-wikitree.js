@@ -126,3 +126,25 @@ test('descendants stay linked to the original root after ancestor reconciliation
   assert.equal(data.home.father.id, '@I2@');
   assert.equal(person(data, 10).father.id, data.home.id);
 });
+
+test('stand-in numbers that change between pages do not move an aunt into the home person\'s family', async () => {
+  // Seen on 2026-11-22 with Savoie-2387: the siblings answer ran over several pages, and on the last page a mother's
+  // sisters pointed at -1 and -2, the numbers the first page used for the home person's own parents.
+  const grandparents = [4, 5, 6, 7].map(id => publicPerson(id, 'Ancestor' + id));
+  const firstPage = [
+    { Id: rootId, Name: 'Example-1', FirstName: 'Home', IsLiving: 1, Father: -1, Mother: -2 },
+    { Id: -1, Father: 4, Mother: 5 }, { Id: -2, Father: 6, Mother: 7 }, ...grandparents];
+  const lastPage = [{ Id: 20, Name: 'Example-20', FirstName: '', Father: -1, Mother: -2 }];   // really a child of 6 and 7
+  const { data, requests } = await importTree(q => {
+    if (String(q.keys).split(',').includes('20')) return response([{ Id: 20, Father: 6, Mother: 7 }]);
+    if (!q.siblings) return response([{ Id: rootId, Name: 'Example-1', FirstName: 'Home', IsLiving: 1, Father: -1, Mother: -2 },
+      { Id: -1, Father: 4, Mother: 5 }, { Id: -2, Father: 6, Mother: 7 }, ...grandparents]);
+    return +q.start === 0 ? { ...response(firstPage), status: 'Maximum number of profiles (1025) reached.' } : response(lastPage);
+  });
+  const aunt = person(data, 20);
+  assert.ok(aunt, 'the aunt is kept');
+  assert.equal(aunt.father && aunt.father.id, '@I6@', 'the aunt\'s father is her real father, not the home person\'s');
+  assert.equal(aunt.mother && aunt.mother.id, '@I7@');
+  assert.ok(!data.home.father.children.includes(aunt), 'she is not filed as the home person\'s sister');
+  assert.ok(requests.some(q => String(q.keys).split(',').includes('20') && +q.ancestors === 0), 'her parents were asked about again, by number');
+});

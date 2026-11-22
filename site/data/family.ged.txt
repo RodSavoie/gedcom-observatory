@@ -56545,17 +56545,17 @@
 1 NAME Edmond /Breau/
 1 SEX M
 1 WWW https://www.WikiTree.com/wiki/Breau-1398
-1 FAMC @F1@
+1 FAMC @F716@
 0 @I47527464@ INDI
 1 NAME Marielle /Breau/
 1 SEX F
 1 WWW https://www.WikiTree.com/wiki/Breau-1399
-1 FAMC @F1@
+1 FAMC @F716@
 0 @I47527477@ INDI
 1 NAME Annette /Breau/
 1 SEX F
 1 WWW https://www.WikiTree.com/wiki/Breau-1400
-1 FAMC @F1@
+1 FAMC @F716@
 0 @I47527555@ INDI
 1 NAME Suzanne Marie Magdeleine /Daigle/
 1 SEX F
@@ -56701,17 +56701,17 @@
 1 NAME Alphonse /Breau/
 1 SEX M
 1 WWW https://www.WikiTree.com/wiki/Breau-1420
-1 FAMC @F1@
+1 FAMC @F716@
 0 @I47530214@ INDI
 1 NAME Marie-Anna /Breau/
 1 SEX F
 1 WWW https://www.WikiTree.com/wiki/Breau-1421
-1 FAMC @F1@
+1 FAMC @F716@
 0 @I47530234@ INDI
 1 NAME Gratia /Breau/
 1 SEX F
 1 WWW https://www.WikiTree.com/wiki/Breau-1423
-1 FAMC @F1@
+1 FAMC @F716@
 0 @I47699642@ INDI
 1 NAME Gillette /Johnson/
 1 SEX F
@@ -82610,12 +82610,6 @@
 1 CHIL @I43137123@
 1 CHIL @Is11@
 1 CHIL @Is14@
-1 CHIL @I47527445@
-1 CHIL @I47527464@
-1 CHIL @I47527477@
-1 CHIL @I47530186@
-1 CHIL @I47530214@
-1 CHIL @I47530234@
 0 @F2@ FAM
 1 HUSB @I1682214@
 1 WIFE @I31447478@
@@ -90501,6 +90495,12 @@
 1 WIFE @I28232708@
 1 CHIL @I41962165@
 1 CHIL @I33515750@
+1 CHIL @I47527445@
+1 CHIL @I47527464@
+1 CHIL @I47527477@
+1 CHIL @I47530186@
+1 CHIL @I47530214@
+1 CHIL @I47530234@
 1 MARR
 2 DATE 19 AUG 1931
 2 PLAC Saint-Charles, Kent, New Brunswick, Canada
