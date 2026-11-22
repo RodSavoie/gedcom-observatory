@@ -13,7 +13,12 @@
       const data = FO.scoped(v.data);
       const ppl = data.people.filter(p => !p.hidden && p.b && p.b.place && FO.region(p.b.place));
       if (ppl.length < 3) { ui.empty(v.stage, 'No birthplaces recorded', 'This view needs places of birth, and the file has too few.'); return; }
-      let mode = FO.prefs.get('places.view', 'grid', ['grid', 'ribbons', 'map']), level = FO.prefs.get('places.rows', 'place', ['place', 'region']);
+      /* a link can set any of these for this visit, e.g. #/places?view=map&what=births&period=1700&regions=hide
+         (view: map, grid or ribbons; what: births or deaths; period: a century such as 1700, or all; regions: show or
+         hide; rows: places or regions, for the grid); otherwise the visitor's last choices are used */
+      const link = (name, map) => { const x = FO.hashParam(name); return x != null && map[x.toLowerCase()] !== undefined ? map[x.toLowerCase()] : null; };
+      let mode = link('view', { map: 'map', grid: 'grid', ribbons: 'ribbons' }) || FO.prefs.get('places.view', 'grid', ['grid', 'ribbons', 'map']);
+      let level = link('rows', { places: 'place', place: 'place', regions: 'region', region: 'region' }) || FO.prefs.get('places.rows', 'place', ['place', 'region']);
       const root = svg('svg', {});
       v.stage.append(root);
       const hint = el('div', { class: 'hint' }); v.stage.append(hint);
@@ -123,7 +128,9 @@
         hint.textContent = ui.fmt(pairs) + ' parent-and-child pairs with both birthplaces recorded; ' + ui.fmt(moved) + ' children (' + Math.round(moved / pairs * 100) + '%) were born in a different region from that parent. Grey ribbons stayed; coloured ribbons moved, coloured by where the child was born. A child with two recorded parents counts twice.';
       }
       // the map: births or deaths, a century or all, with or without places known only by region
-      let what = FO.prefs.get('places.map.what', 'birth', ['birth', 'death']), period = 'all', showRegions = FO.prefs.get('places.map.regions', 'show', ['show', 'hide']) === 'show';
+      let what = link('what', { births: 'birth', birth: 'birth', deaths: 'death', death: 'death' }) || FO.prefs.get('places.map.what', 'birth', ['birth', 'death']);
+      let period = (/^\d{3,4}s?$/.test(FO.hashParam('period') || '') ? String(parseInt(FO.hashParam('period'), 10)) : 'all');
+      let showRegions = (link('regions', { show: 'show', hide: 'hide' }) || FO.prefs.get('places.map.regions', 'show', ['show', 'hide'])) === 'show';
       let mapRun = null;
       const mapZoom = {};   // the map's zoom, kept from one drawing to the next
       function map() {
@@ -134,11 +141,12 @@
       }
       const years = new Set();
       data.people.forEach(p => { if (p.hidden) return; const y = p.b && p.b.place ? (p.by != null ? p.by : p.est) : null, z = p.d && p.d.place ? p.dy : null; if (y != null) years.add(Math.floor(y / 100) * 100); if (z != null) years.add(Math.floor(z / 100) * 100); });
-      const periodSel = ui.select('Period', [{ v: 'all', label: 'All years' }].concat([...years].sort().map(c => ({ v: c, label: c + 's' }))), period, x => { period = x; draw(); });
+      if (period !== 'all' && !years.has(+period)) period = 'all';
+      const periodSel = ui.select('Period', [{ v: 'all', label: 'All years' }].concat([...years].sort().map(c => ({ v: c, label: c + 's' }))), period, x => { period = x; FO.setHashParam('period', x === 'all' ? null : x); draw(); });
       const mapCtl = el('span', { class: 'ctl-group', style: { display: 'contents' } },
-        ui.seg([{ v: 'birth', label: 'Births' }, { v: 'death', label: 'Deaths' }], what, x => { what = x; FO.prefs.set('places.map.what', x); draw(); }),
+        ui.seg([{ v: 'birth', label: 'Births' }, { v: 'death', label: 'Deaths' }], what, x => { what = x; FO.prefs.set('places.map.what', x); FO.setHashParam('what', x + 's'); draw(); }),
         periodSel,
-        el('label', { class: 'ctl' }, el('span', { text: 'Regions only' }), ui.seg([{ v: 'show', label: 'Show' }, { v: 'hide', label: 'Hide' }], showRegions ? 'show' : 'hide', x => { showRegions = x === 'show'; FO.prefs.set('places.map.regions', x); draw(); })),
+        el('label', { class: 'ctl' }, el('span', { text: 'Regions only' }), ui.seg([{ v: 'show', label: 'Show' }, { v: 'hide', label: 'Hide' }], showRegions ? 'show' : 'hide', x => { showRegions = x === 'show'; FO.prefs.set('places.map.regions', x); FO.setHashParam('regions', x); draw(); })),
         ui.button('Reset zoom', () => mapRun && mapRun.resetZoom && mapRun.resetZoom()));
       let legendBox = null;
       function draw() {
@@ -148,10 +156,10 @@
         if (mode !== 'map') mapRun = null;
         (mode === 'grid' ? grid : mode === 'map' ? map : ribbons)();
       }
-      const lv = el('span', { class: 'ctl' }, el('span', { text: 'Rows' }), ui.seg([{ v: 'region', label: 'Regions' }, { v: 'place', label: 'Places' }], level, l => { level = l; FO.prefs.set('places.rows', l); draw(); }));
+      const lv = el('span', { class: 'ctl' }, el('span', { text: 'Rows' }), ui.seg([{ v: 'region', label: 'Regions' }, { v: 'place', label: 'Places' }], level, l => { level = l; FO.prefs.set('places.rows', l); FO.setHashParam('rows', l + 's'); draw(); }));
       if (mode !== 'grid') lv.style.display = 'none';
       v.controls.append(ui.scopeSeg());
-      v.controls.append(ui.seg([{ v: 'ribbons', label: 'Ribbons' }, { v: 'grid', label: 'Grid' }, { v: 'map', label: 'Map' }], mode, m => { mode = m; FO.prefs.set('places.view', m); lv.style.display = m === 'grid' ? '' : 'none'; draw(); }), lv, mapCtl);
+      v.controls.append(ui.seg([{ v: 'ribbons', label: 'Ribbons' }, { v: 'grid', label: 'Grid' }, { v: 'map', label: 'Map' }], mode, m => { mode = m; FO.prefs.set('places.view', m); FO.setHashParam('view', m); lv.style.display = m === 'grid' ? '' : 'none'; draw(); }), lv, mapCtl);
       const ro = new ResizeObserver(draw); ro.observe(v.stage);
       return () => ro.disconnect();
     }

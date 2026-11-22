@@ -21,7 +21,10 @@
       const count = d3.rollup(data.people.filter(p => p.surname && !p.hidden), x => x.length, sn);
       const all = [...count.entries()].sort((a, b) => b[1] - a[1]);
       if (all.length < 2) { ui.empty(v.stage, 'Not enough surnames', 'This file has fewer than two surnames, so there is nothing to tangle.'); return; }
-      let N = Math.min(36, all.length), sim = null;
+      // how many surnames: 36 to start, up to MAX_SURNAMES; a link can ask for a number (#/tangle?surnames=100)
+      const MAX_SURNAMES = 100;
+      const asked = parseInt(FO.hashParam('surnames'), 10);
+      let N = Math.min(asked > 0 ? Math.max(8, Math.min(MAX_SURNAMES, asked)) : 36, all.length), sim = null;
       const root = svg('svg', {}), g = svg('g');
       root.append(g); v.stage.append(root);
       const zoom = d3.zoom().scaleExtent([0.4, 6]).on('zoom', e => g.setAttribute('transform', e.transform));
@@ -137,7 +140,7 @@
       v.controls.append(ui.scopeSeg());
       v.controls.append(el('label', { class: 'ctl' }, chooser), ui.button('Most-married pairs', () => FO.showList('Most-married pairs of surnames', 'Click a pair to list its couples', topPairs.map(l => el('li', {}, el('button', { type: 'button', class: 'plink', text: l.source.id + ' × ' + l.target.id, onclick: () => listCouples(l.source.id + ' and ' + l.target.id, couplesOf(l.source.id, l.target.id)) }), el('small', { text: l.n + (l.n === 1 ? ' marriage' : ' marriages') }))))));
       v.controls.append(ui.button('Reset layout', () => { unpin(); d3.select(root).transition().duration(500).call(zoom.transform, d3.zoomIdentity); }));
-      v.controls.append(ui.range('Surnames shown', Math.min(8, all.length), Math.min(80, all.length), N, n => { N = n; build(); }));
+      v.controls.append(ui.range('Surnames shown', Math.min(8, all.length), Math.min(MAX_SURNAMES, all.length), N, n => { N = n; FO.setHashParam('surnames', n); build(); }));
       build();
       return () => { if (sim) { sim.stop(); sim.nodes().forEach(n => n.back && n.back.stop()); } };
     }

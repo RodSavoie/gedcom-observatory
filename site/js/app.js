@@ -259,7 +259,7 @@
     return Object.assign({}, data, { scoped: true, people: data.people.filter(p => sc.has(p)), families: data.families.filter(f => f.husb && f.wife && sc.has(f.husb) && sc.has(f.wife)) });
   };
   ui.scopeSeg = function (onChange) {
-    return el('span', { class: 'ctl' }, el('span', { text: 'Show' }), ui.seg([{ v: 'all', label: 'Everyone' }, { v: 'anc', label: 'Direct ancestors only' }], FO.state.scope === 'anc' ? 'anc' : 'all', x => { FO.state.scope = x; FO.prefs.set('scope', x); (onChange || FO.render)(); }));
+    return el('span', { class: 'ctl' }, el('span', { text: 'Show' }), ui.seg([{ v: 'all', label: 'Everyone' }, { v: 'anc', label: 'Direct ancestors only' }], FO.state.scope === 'anc' ? 'anc' : 'all', x => { FO.state.scope = x; FO.prefs.set('scope', x); FO.setHashParam('show', x === 'anc' ? 'ancestors' : 'everyone'); (onChange || FO.render)(); }));
   };
 
   /* Ancestors of the home person with the most recorded descendants (one of each couple). */
@@ -318,6 +318,17 @@
     if (location.hash === h) { if (force) render(); } else location.hash = h;
   };
   function route() { return (location.hash || '').replace(/^#\/?/, '').split('?')[0]; }
+  /* settings carried in the address after the view's name, such as #/tangle?surnames=100, so a view can be linked to
+     exactly as it looks; FO.setHashParam keeps the address in step without redrawing the page */
+  const hashQuery = () => new URLSearchParams((location.hash.split('?')[1]) || '');
+  FO.hashParam = name => hashQuery().get(name);
+  FO.setHashParam = function (name, value) {
+    const q = hashQuery();
+    if (value == null || value === '') q.delete(name); else q.set(name, value);
+    const qs = q.toString(), u = new URL(location.href);
+    u.hash = '#/' + route() + (qs ? '?' + qs : '');
+    if (u.href !== location.href) history.replaceState(null, '', u.href);
+  };
 
   function closeMenus() {
     document.querySelectorAll('.menu').forEach(m => m.classList.remove('open'));
@@ -364,6 +375,9 @@
     const drawer = el('aside', { class: 'drawer', id: 'drawer', 'aria-label': 'Person details' });
     page.append(tabs, head, el('div', { class: 'stage-wrap' }, stage, drawer));
     const on = tabs.querySelector('.on'); if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest', inline: 'center' });
+    // a link can choose Everyone or Direct ancestors only for this visit: #/places?show=everyone (or show=ancestors)
+    const show = FO.hashParam('show');
+    if (show === 'everyone') s.scope = 'all'; else if (show === 'ancestors') s.scope = 'anc';
     try { cleanup = v.render({ stage, controls, data: s.data, home: s.home, state: s }) || null; }
     catch (e) { console.error(e); ui.empty(stage, 'This view could not be drawn', String(e.message || e)); }
   }
