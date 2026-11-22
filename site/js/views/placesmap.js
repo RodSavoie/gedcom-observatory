@@ -8,7 +8,10 @@
   // how the map looks: change these to taste
   const LAND = '#F7F4EE', COAST = '#B9B09F', BORDER = '#CFC7B8';
   const FRAME = COAST, FRAME_OPACITY = 0.9;   // the faint border around the map
-  const WATER = '#FFFFFF', WATER_OPACITY = 0.22;   // a light wash over the sea and lakes, so the map stands apart from the page
+  const WATER = '#FFFFFF', WATER_OPACITY = 0.22;
+  const RIVER = COAST, RIVER_OPACITY = 0.8;   // rivers: the greatest always shown, smaller ones as you zoom in
+  const RIVER_TIERS = [   // [largest rank in the tier (0 = greatest river), line width, zoom from which it shows]
+    [6, 1.0, 0], [9, 0.8, 2], [12, 0.6, 4]];   // a light wash over the sea and lakes, so the map stands apart from the page
   const BIRTH = C.teal, DEATH = C.red;
   const BUBBLE_OPACITY = 0.5;      // fill of a bubble (0 to 1)
   const MAX_R = 30;                // the biggest bubble's radius, in pixels, before zooming
@@ -73,6 +76,17 @@
       const lakes = world.objects.lakes ? topojson.feature(world, world.objects.lakes) : null;
       zoomG.append(svg('path', { d: path(countries) + (lakes ? path(lakes) : ''), fill: LAND, 'fill-rule': 'evenodd', stroke: 'none' }));
       if (lakes) zoomG.append(svg('path', Object.assign({ d: path(lakes), fill: 'none', stroke: COAST, 'stroke-width': 0.6 }, ns)));
+      const riverTiers = [];
+      if (world.objects.rivers) {
+        const all = topojson.feature(world, world.objects.rivers).features;
+        let lo = -1;
+        for (const [hi, width, from] of RIVER_TIERS) {
+          const fs = all.filter(f => f.properties.r > lo && f.properties.r <= hi); lo = hi;
+          if (!fs.length) continue;
+          const el = svg('path', Object.assign({ d: path({ type: 'FeatureCollection', features: fs }), fill: 'none', stroke: RIVER, 'stroke-opacity': RIVER_OPACITY, 'stroke-width': width, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, ns));
+          zoomG.append(el); riverTiers.push([el, from]);
+        }
+      }
       zoomG.append(svg('path', Object.assign({ d: path(topojson.mesh(world, world.objects.provinces, (a, b) => a !== b)), fill: 'none', stroke: BORDER, 'stroke-width': 0.7, 'stroke-dasharray': '3 2' }, ns)));
       zoomG.append(svg('path', Object.assign({ d: path(topojson.mesh(world, world.objects.countries, (a, b) => a !== b)), fill: 'none', stroke: BORDER, 'stroke-width': 1 }, ns)));
       zoomG.append(svg('path', Object.assign({ d: path(topojson.mesh(world, world.objects.countries, (a, b) => a === b)), fill: 'none', stroke: COAST, 'stroke-width': 0.8 }, ns)));
@@ -127,6 +141,7 @@
         if (o.keep) o.keep.t = t;
         zoomG.setAttribute('transform', t.toString());
         dots.forEach(([c, s]) => c.setAttribute('r', Math.max(2.5, r0(s.n)) / Math.sqrt(t.k)));
+        riverTiers.forEach(([el, from]) => el.setAttribute('display', t.k >= from ? 'inline' : 'none'));
         labels(t); ui.untip();
       });
       d3.select(root).call(zoom).on('dblclick.zoom', null);

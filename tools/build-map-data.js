@@ -3,7 +3,8 @@
    Sources (all free to reuse):
      world-atlas            Natural Earth countries, 1:10m (public domain), ISC packaging
      Natural Earth          ne_10m_admin_1_states_provinces.geojson (public domain), for Canadian and US borders,
-                            and ne_10m_lakes.geojson (public domain), for lakes
+                            ne_10m_lakes.geojson (public domain), for lakes, and ne_10m_rivers_lake_centerlines,
+                            ne_10m_rivers_north_america and ne_10m_rivers_europe (public domain), for rivers
      cities-500-structured  GeoNames cities500: every place of the world with 500 people or more (CC BY 4.0)
      cities.json            GeoNames names of regions and counties (CC BY 4.0)
      map-sources/placenames-canada.csv   10,676 Canadian places, including small villages (Open Government Licence – Canada)
@@ -12,12 +13,15 @@
 
    Run once, from this folder:
      npm i world-atlas topojson-client topojson-server topojson-simplify cities-500-structured cities.json @etalab/decoupage-administratif i18n-iso-countries
-     (download ne_10m_admin_1_states_provinces.geojson and ne_10m_lakes.geojson from github.com/nvkelso/natural-earth-vector,
-      folder geojson)
+     (download ne_10m_admin_1_states_provinces.geojson, ne_10m_lakes.geojson, ne_10m_rivers_lake_centerlines.geojson,
+      ne_10m_rivers_north_america.geojson and ne_10m_rivers_europe.geojson from github.com/nvkelso/natural-earth-vector,
+      folder geojson, into this folder)
      node build-map-data.js ne_10m_admin_1_states_provinces.geojson ../site/data/map ne_10m_lakes.geojson
 
    Output:
-     world.json     the base map (TopoJSON): countries, lakes, and province and state borders for Canada and the US.
+     world.json     the base map (TopoJSON): countries, lakes, rivers, and province and state borders for Canada and the US.
+                    Rivers carry their Natural Earth rank (r: 0 the greatest, 12 the smallest); smaller rivers come only
+                    from the detailed areas below.
                     Simplified hard over most of the world, kept fine around Atlantic Canada, New England, the
                     St. Lawrence and western Europe, where Acadian and French-Canadian families lived.
      regions.json   countries (English and French names) and their first-level regions, each with a centre point;
@@ -48,7 +52,17 @@ fs.mkdirSync(path.join(OUT, 'gaz'), { recursive: true });
   const FINE = [[-80, 40, -52, 53.5], [-6, 41, 10, 52]];
   const lk = JSON.parse(fs.readFileSync(NE_LAKES));
   const lakes = { type: 'FeatureCollection', features: lk.features.filter(f => f.geometry).map(f => ({ type: 'Feature', properties: {}, geometry: f.geometry })) };
-  let topo = tsim.presimplify(ts.topology({ countries, provinces, lakes }));
+  // rivers: the main set worldwide (without the centre lines drawn through lakes), the smaller supplementary rivers only
+  // where the map keeps fine detail
+  const FINE_RIVERS = [[-80, 40, -52, 53.5], [-6, 41, 10, 52]];
+  const inFine = g => { const c = JSON.stringify(g.coordinates).match(/-?\d+(\.\d+)?/g).map(Number); for (let i = 0; i < c.length; i += 2) if (FINE_RIVERS.some(b => c[i] >= b[0] && c[i] <= b[2] && c[i + 1] >= b[1] && c[i + 1] <= b[3])) return true; return false; };
+  const riverFile = f => fs.existsSync(f) ? JSON.parse(fs.readFileSync(f)).features : [];
+  const rivers = { type: 'FeatureCollection', features: [
+    ...riverFile('ne_10m_rivers_lake_centerlines.geojson').filter(f => f.geometry && !/lake/i.test(f.properties.featurecla || '')),
+    ...riverFile('ne_10m_rivers_north_america.geojson').filter(f => f.geometry && inFine(f.geometry)),
+    ...riverFile('ne_10m_rivers_europe.geojson').filter(f => f.geometry && inFine(f.geometry))]
+    .map(f => ({ type: 'Feature', properties: { r: Math.round(f.properties.scalerank != null ? f.properties.scalerank : 12) }, geometry: f.geometry })) };
+  let topo = tsim.presimplify(ts.topology({ countries, provinces, lakes, rivers }));
   for (const arc of topo.arcs) for (const pt of arc) if (isFinite(pt[2]) && FINE.some(b => pt[0] >= b[0] && pt[0] <= b[2] && pt[1] >= b[1] && pt[1] <= b[3])) pt[2] *= BOOST;
   topo = tsim.simplify(topo, KEEP);
   topo = tsim.filter(topo, tsim.filterWeight(topo, KEEP));

@@ -15,7 +15,7 @@
   'use strict';
   const FO = window.FO;
   const BASE = 'data/map/';
-  const MAP_VERSION = 2;   // raise when world.json or regions.json is rebuilt, so browsers fetch the new files
+  const MAP_VERSION = 3;   // raise when world.json or regions.json is rebuilt, so browsers fetch the new files
   const strip = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   const key = s => strip(s).replace(/\(.*?\)/g, ' ').replace(/[-‐‑–’'`.]/g, ' ').replace(/\bste\b/g, 'sainte').replace(/\bst\b/g, 'saint').replace(/\s+/g, ' ').trim();
   // "Colony of Nova Scotia", "Province de Québec", "Nova Scotia Colony" → the name itself
