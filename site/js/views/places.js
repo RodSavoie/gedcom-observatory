@@ -125,8 +125,9 @@
       // the map: births or deaths, a century or all, with or without places known only by region
       let what = FO.prefs.get('places.map.what', 'birth', ['birth', 'death']), period = 'all', showRegions = FO.prefs.get('places.map.regions', 'show', ['show', 'hide']) === 'show';
       let mapRun = null;
+      const mapZoom = {};   // the map's zoom, kept from one drawing to the next
       function map() {
-        const run = { stage: v.stage, root, hint, data, what, period, regions: showRegions, onLegend: items => { if (legendBox) legendBox.remove(); legendBox = FO.legend(v.stage, 'On the map', items); } };
+        const run = { stage: v.stage, root, hint, data, what, period, regions: showRegions, keep: mapZoom, onLegend: items => { if (legendBox) legendBox.remove(); legendBox = FO.legend(v.stage, 'On the map', items); } };
         run.cancelled = () => mapRun !== run;
         mapRun = run;
         FO.placesMap(run);

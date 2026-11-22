@@ -520,11 +520,15 @@ body.in-view .logo { width: 42px; height: 42px; }
 .to-top svg { width: 18px; height: 18px; }
 @media print { .to-top { display: none; } }
 
-/* Ancestors Through Time: the person card slides in over the chart instead of narrowing it, and the legend steps aside */
+/* Ancestors Through Time and Where They Lived: the person card slides in over the chart instead of narrowing it, and
+   slides away again the same way; the legend and the note underneath step aside while it is open. The card floats
+   whether open or closed, so the chart never changes size (and never redraws) as it comes and goes. */
 @media (min-width: 801px) {
-  body[data-view="time"] .stage-wrap { position: relative; }
-  body[data-view="time"] .drawer.open { position: absolute; right: var(--pad); top: 0; bottom: 18px; z-index: 20; margin: 0; box-shadow: 0 4px 18px rgba(27,38,50,.18); }
-  body[data-view="time"] .stage .legend { transition: right .2s ease; }
-  body[data-view="time"] .stage-wrap:has(.drawer.open) .stage .legend { right: 344px; }
-  body[data-view="time"] .stage-wrap:has(.drawer.open) .stage .hint { padding-right: 344px; }
+  body[data-view="time"] .stage-wrap, body[data-view="places"] .stage-wrap { position: relative; }
+  body[data-view="time"] .drawer, body[data-view="places"] .drawer { position: absolute; right: var(--pad); top: 0; bottom: 18px; z-index: 20; margin: 0; box-shadow: none; transition: width .2s ease, box-shadow .2s ease; }
+  body[data-view="time"] .drawer.open, body[data-view="places"] .drawer.open { box-shadow: 0 4px 18px rgba(27,38,50,.18); }
+  body[data-view="time"] .stage .legend, body[data-view="places"] .stage .legend { transition: right .2s ease; }
+  body[data-view="time"] .stage .hint, body[data-view="places"] .stage .hint { transition: padding-right .2s ease; }
+  body[data-view="time"] .stage-wrap:has(.drawer.open) .stage .legend, body[data-view="places"] .stage-wrap:has(.drawer.open) .stage .legend { right: 344px; }
+  body[data-view="time"] .stage-wrap:has(.drawer.open) .stage .hint, body[data-view="places"] .stage-wrap:has(.drawer.open) .stage .hint { padding-right: 344px; }
 }

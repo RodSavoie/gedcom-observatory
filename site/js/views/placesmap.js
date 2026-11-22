@@ -26,13 +26,19 @@
     if (!ppl.length) { msg(o.what === 'birth' ? 'No birthplaces recorded for this period.' : 'No places of death recorded for this period.'); hint.textContent = ''; return; }
     msg('Finding the places on the map…');
     const token = o.token = {};
-    FO.geoLoad([...new Set(all.map(placeOf))]).then(({ world, locate }) => {
+    const everyPlace = new Set();
+    o.data.people.forEach(p => { if (p.hidden) return; if (p.b && p.b.place) everyPlace.add(p.b.place); if (p.d && p.d.place) everyPlace.add(p.d.place); });
+    FO.geoLoad([...everyPlace]).then(({ world, locate }) => {
       if (o.cancelled && o.cancelled(token)) return;
       root.innerHTML = '';
       draw(world, locate);
     }).catch(err => { root.innerHTML = ''; msg('The map could not be loaded (' + err.message + ').'); });
 
     function draw(world, locate) {
+      // the map is framed on all the family's places, births and deaths of every period, so it stays put when the
+      // filters change and the zoom can be kept
+      const frame = [];
+      for (const pl of everyPlace) { const l = locate(pl); if (l && l.level === 'place') frame.push([l.lon, l.lat]); }
       // one bubble per spot on the map
       const spots = new Map();
       let atRegion = 0, missing = 0, approx = 0;
@@ -50,8 +56,7 @@
       list.forEach(s => { s.top = [...s.spell].sort((a, b) => b[1] - a[1])[0][0]; s.n = s.people.length; if (s.level === 'place') s.label = s.top.split(',')[0].replace(/\(.*?\)/g, '').trim() || s.label; });
 
       // fit the map to the places (towns first; regions only if nothing else)
-      const fitTo = list.filter(s => s.level === 'place');
-      const pts = (fitTo.length ? fitTo : list).map(s => [s.lon, s.lat]);
+      const pts = frame.length ? frame : list.map(s => [s.lon, s.lat]);
       const proj = d3.geoMercator();
       const pad = 34;
       if (pts.length) proj.fitExtent([[pad, pad], [W - pad, H - pad - 34]], { type: 'MultiPoint', coordinates: pts });
@@ -117,13 +122,17 @@
 
       const zoom = d3.zoom().scaleExtent([0.5, 80]).on('zoom', e => {
         const t = e.transform;
+        if (o.keep) o.keep.t = t;
         zoomG.setAttribute('transform', t.toString());
         dots.forEach(([c, s]) => c.setAttribute('r', Math.max(2.5, r0(s.n)) / Math.sqrt(t.k)));
         labels(t); ui.untip();
       });
       d3.select(root).call(zoom).on('dblclick.zoom', null);
       o.resetZoom = () => d3.select(root).transition().duration(500).call(zoom.transform, d3.zoomIdentity);
-      labels(d3.zoomIdentity);
+      // the same zoom as before this redraw (a new century, deaths instead of births, a window resized only slightly)
+      const k = o.keep;
+      if (k && k.t && k.W === W && k.H === H && k.frame === pts.length) d3.select(root).call(zoom.transform, k.t);
+      else { if (k) Object.assign(k, { W, H, frame: pts.length, t: d3.zoomIdentity }); d3.select(root).call(zoom.transform, d3.zoomIdentity); }
 
       // sources, as GeoNames' licence asks
       const credit = svg('text', { x: 12, y: 18, style: 'font-size:10.5px;fill:#7C8088;paint-order:stroke;stroke:#F7F4EE;stroke-width:3px;stroke-linejoin:round' });
