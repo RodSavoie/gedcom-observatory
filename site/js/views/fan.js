@@ -221,11 +221,11 @@
 
       const hint = el('div', { class: 'hint' });
       if (!hero) v.stage.append(hint);
-      let veil = null, lit = null, litP = null;
+      let veil = null, lit = null, litP = null, litN = 0;   // litN: how many places the lit person fills
       const LIGHT_LINE = true;   // while pointing at someone, keep their line of descent to the home person in full colour too
       const LINE_OUTLINE = 0.35;   // a faint outline on that line, so it shows even where its colour is pale (0 for none)
       function light(p) {
-        if (p === litP) return lit ? lit.childNodes.length : 0;
+        if (p === litP) return lit ? litN : 0;   // not the lit cells: those include the line down to the home person
         litP = p;
         if (!lit) return 0;
         lit.innerHTML = '';
@@ -244,6 +244,7 @@
           lit.prepend(...lineNodes);   // under the person's outlined cells
         }
         veil.classList.toggle('on', n > 0);
+        litN = n;
         return n;
       }
       const over = e => {
