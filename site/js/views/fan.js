@@ -2,6 +2,7 @@
 (function () {
   'use strict';
   const FO = window.FO, ui = FO.ui, el = ui.el, svg = ui.svg, C = FO.C;
+  const LIVING_FILL = 'rgba(255,255,255,0.5)';   // a living person's place on the fan: half-transparent white
 
   FO.pedigreeSlots = function (home, G, cap) {
     const out = [];
@@ -87,26 +88,26 @@
         let fill, legend;
         if (mode === 'place') {
           const cat = FO.topCategories([...new Set(anc)], p => FO.region(p.b && p.b.place));
-          fill = p => p.hidden ? '#fff' : cat.color(p);
+          fill = p => p.hidden ? LIVING_FILL : cat.color(p);
           legend = ['Born in', cat.legend];
         } else if (mode === 'surname') {
           const sn = FO.surnameCanon(anc);
           const cat = FO.topCategories([...new Set(anc)], p => (p.hidden ? null : sn(p)));
-          fill = p => p.hidden ? '#fff' : cat.color(p);
+          fill = p => p.hidden ? LIVING_FILL : cat.color(p);
           legend = ['Surname', cat.legend];
         } else if (mode === 'repeat') {
-          fill = p => p.hidden ? '#fff' : REP[repBin(count.get(p))];
+          fill = p => p.hidden ? LIVING_FILL : REP[repBin(count.get(p))];
           legend = ['Places this person fills', REP.map((c, i) => ({ label: REP_LABELS[i], color: c }))];
         } else if (mode === 'century') {
           const ys = anc.filter(p => p.est != null).map(p => p.est);
           const sc = d3.scaleLinear().domain([d3.min(ys), d3.max(ys)]).range(['#2C3B4D', '#E6EAEE']).interpolate(d3.interpolateRgb);
-          fill = p => p.est != null ? sc(p.est) : '#fff';
+          fill = p => p.hidden ? LIVING_FILL : p.est != null ? sc(p.est) : '#fff';
           legend = ['Born', [{ label: 'around ' + d3.min(ys), color: '#2C3B4D' }, { label: 'around ' + Math.round((d3.min(ys) + d3.max(ys)) / 2), color: sc((d3.min(ys) + d3.max(ys)) / 2) }, { label: 'around ' + d3.max(ys), color: '#E6EAEE' }]];
         } else { fill = () => '#fff'; legend = null; }
         // opaque, softened fills: translucent wedges leave seams where they meet
         const soften = mode === 'place' || mode === 'surname' ? 0.42 : 0;
         const tint = new Map();
-        const paint = p => { const c = fill(p); if (!soften) return c; if (!tint.has(c)) tint.set(c, d3.interpolateRgb(c, '#ffffff')(soften)); return tint.get(c); };
+        const paint = p => { const c = fill(p); if (!soften || c === LIVING_FILL) return c; if (!tint.has(c)) tint.set(c, d3.interpolateRgb(c, '#ffffff')(soften)); return tint.get(c); };
         const fanArc = (ra, rb) => d3.arc()({ innerRadius: ra, outerRadius: rb, startAngle: a0, endAngle: a0 + span });
         // empty rings behind
         g.append(svg('path', { d: fanArc(r0[1], r1[G]), transform: `translate(${cx},${cy})`, fill: 'rgba(27,38,50,.045)' }));
