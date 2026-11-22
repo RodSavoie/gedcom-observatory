@@ -222,15 +222,27 @@
       const hint = el('div', { class: 'hint' });
       if (!hero) v.stage.append(hint);
       let veil = null, lit = null, litP = null;
+      const LIGHT_LINE = true;   // while pointing at someone, keep their line of descent to the home person in full colour too
+      const LINE_OUTLINE = 0.35;   // a faint outline on that line, so it shows even where its colour is pale (0 for none)
       function light(p) {
         if (p === litP) return lit ? lit.childNodes.length : 0;
         litP = p;
         if (!lit) return 0;
         lit.innerHTML = '';
         let n = 0;
-        if (p) g.querySelectorAll('path[data-i]').forEach(node => {
-          if (slots[+node.getAttribute('data-i')].p === p) { n++; const c = node.cloneNode(false); c.removeAttribute('data-i'); c.setAttribute('stroke', '#1B2632'); c.setAttribute('stroke-opacity', .8); c.setAttribute('stroke-width', 1.6); lit.append(c); }
-        });
+        if (p) {
+          // the person, wherever they appear, and (if LIGHT_LINE) the line of descent from each of those places down to
+          // the home person: the cells further in whose slice of the fan contains theirs
+          const mine = slots.filter(t => t.p === p), line = new Set();
+          if (LIGHT_LINE) for (const t of mine) for (const u of slots) if (u.g > 0 && u.g < t.g && u.lo <= t.lo + 1e-12 && t.lo < u.lo + u.w - 1e-12) line.add(u);
+          const lineNodes = [];
+          g.querySelectorAll('path[data-i]').forEach(node => {
+            const t = slots[+node.getAttribute('data-i')];
+            if (t.p === p) { n++; const c = node.cloneNode(false); c.removeAttribute('data-i'); c.setAttribute('stroke', '#1B2632'); c.setAttribute('stroke-opacity', .8); c.setAttribute('stroke-width', 1.6); lit.append(c); }
+            else if (line.has(t)) { const c = node.cloneNode(false); c.removeAttribute('data-i'); c.setAttribute('stroke', '#1B2632'); c.setAttribute('stroke-opacity', LINE_OUTLINE); c.setAttribute('stroke-width', 1); lineNodes.push(c); }
+          });
+          lit.prepend(...lineNodes);   // under the person's outlined cells
+        }
         veil.classList.toggle('on', n > 0);
         return n;
       }
