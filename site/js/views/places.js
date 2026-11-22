@@ -144,6 +144,7 @@
       function draw() {
         root.innerHTML = ''; ui.untip(); if (legendBox) { legendBox.remove(); legendBox = null; }
         mapCtl.style.display = mode === 'map' ? 'contents' : 'none';
+        v.stage.classList.toggle('map-mode', mode === 'map');
         if (mode !== 'map') mapRun = null;
         (mode === 'grid' ? grid : mode === 'map' ? map : ribbons)();
       }

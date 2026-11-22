@@ -532,3 +532,6 @@ body.in-view .logo { width: 42px; height: 42px; }
   body[data-view="time"] .stage-wrap:has(.drawer.open) .stage .legend, body[data-view="places"] .stage-wrap:has(.drawer.open) .stage .legend { right: 344px; }
   body[data-view="time"] .stage-wrap:has(.drawer.open) .stage .hint, body[data-view="places"] .stage-wrap:has(.drawer.open) .stage .hint { padding-right: 344px; }
 }
+
+/* Where They Lived, Map: the note under the map sits straight on the water, with a soft light halo to stay readable */
+.stage.map-mode .hint, html[data-design] .stage.map-mode .hint { background: none; text-shadow: 0 0 3px rgba(255,255,255,.9), 0 0 6px rgba(255,255,255,.7); }

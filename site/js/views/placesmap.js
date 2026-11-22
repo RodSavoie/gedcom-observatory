@@ -7,7 +7,8 @@
 
   // how the map looks: change these to taste
   const LAND = '#F7F4EE', COAST = '#B9B09F', BORDER = '#CFC7B8';
-  const FRAME = C.line, FRAME_OPACITY = 0.7;   // the faint border around the map
+  const FRAME = COAST, FRAME_OPACITY = 0.9;   // the faint border around the map
+  const WATER = '#FFFFFF', WATER_OPACITY = 0.22;   // a light wash over the sea and lakes, so the map stands apart from the page
   const BIRTH = C.teal, DEATH = C.red;
   const BUBBLE_OPACITY = 0.5;      // fill of a bubble (0 to 1)
   const MAX_R = 30;                // the biggest bubble's radius, in pixels, before zooming
@@ -63,6 +64,7 @@
       if (pts.length < 2 || proj.scale() > 6000) proj.scale(Math.min(proj.scale(), 6000)).center(pts[0] || [0, 0]).translate([W / 2, H / 2]);
       const path = d3.geoPath(proj);
 
+      root.append(svg('rect', { x: 0, y: 0, width: W, height: H, rx: 4, fill: WATER, 'fill-opacity': WATER_OPACITY, 'pointer-events': 'none' }));
       const zoomG = svg('g');
       root.append(zoomG);
       const countries = topojson.feature(world, world.objects.countries);
