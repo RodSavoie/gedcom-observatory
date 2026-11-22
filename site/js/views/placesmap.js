@@ -9,7 +9,7 @@
   const LAND = '#F7F4EE', COAST = '#B9B09F', BORDER = '#CFC7B8';
   const FRAME = COAST, FRAME_OPACITY = 0.9;   // the faint border around the map
   const WATER = '#FFFFFF', WATER_OPACITY = 0.22;
-  const RIVER = COAST, RIVER_OPACITY = 0.8;   // rivers: the greatest always shown, smaller ones as you zoom in
+  const RIVER = COAST, RIVER_OPACITY = 0.5;   // rivers: the greatest always shown, smaller ones as you zoom in
   const RIVER_TIERS = [   // [largest rank in the tier (0 = greatest river), line width, zoom from which it shows]
     [6, 1.0, 0], [9, 0.8, 2], [12, 0.6, 4]];   // a light wash over the sea and lakes, so the map stands apart from the page
   const BIRTH = C.teal, DEATH = C.red;
