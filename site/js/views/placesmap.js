@@ -158,7 +158,8 @@
         }
       }
 
-      const zoom = d3.zoom().scaleExtent([0.5, 80]).on('zoom', e => {
+      // the map cannot be dragged past the edges of the world: Antarctica stays above the bottom edge, Chukotka inside the left one
+      const zoom = d3.zoom().scaleExtent([0.5, 80]).extent([[0, 0], [W, H]]).translateExtent(path.bounds({ type: 'Sphere' })).on('zoom', e => {
         const t = e.transform;
         if (o.keep) o.keep.t = t;
         zoomG.setAttribute('transform', t.toString());
