@@ -191,6 +191,8 @@ html[data-design="harbour"] {
   --rail-accent: #E0A84F;     /* the bar beside the page you are on */
 }
 html[data-design="harbour"] body { background-color: #EDEAE4; background-image: none; }
+/* the design switcher sits straight on the page, like everything else */
+html[data-design="harbour"] .design-bar { background-color: transparent; border-bottom-color: transparent; }
 html[data-design="harbour"] .tabs a.on { border-bottom-color: var(--rail-accent); }
 html[data-design="harbour"] .pill.dark { background: var(--rail-bg); color: var(--rail-text); border-color: var(--rail-bg); }
 html[data-design="harbour"] .pill.dark:hover { background: #B4553C; border-color: #B4553C; }
@@ -198,7 +200,6 @@ html[data-design="harbour"] .pill.dark:hover { background: #B4553C; border-color
 @media (min-width: 901px) {
   html[data-design="harbour"] body { padding-left: var(--rail); }
   html[data-design="harbour"] .tabs { display: none; }          /* the views are listed in the menu instead */
-  html[data-design="harbour"] .design-bar { background-color: rgba(0,0,0,.06); }
 
   html[data-design="harbour"] .top, html[data-design="harbour"] body.in-view .top {
     position: fixed; left: 0; top: 0; bottom: 0; width: var(--rail); z-index: 45;

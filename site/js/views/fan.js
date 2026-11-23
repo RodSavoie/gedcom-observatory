@@ -63,7 +63,7 @@
         const area = hero ? root.getBoundingClientRect() : null;
         const W = hero ? area.width : v.stage.clientWidth, H = hero ? area.height : v.stage.clientHeight;
         const tuck = hero && W >= 760;   // home page on a wide screen: the legend tucks into the fan's top-right corner
-        const side = hero ? (tuck ? 0 : W >= 640 ? 236 : 0) : !matchMedia('(max-width: 1100px)').matches ? 300 : 0;   // room for the side card whenever it shows (style.css hides it at 1100 px and below)
+        const side = hero ? (tuck ? 0 : W >= 640 ? 236 : 0) : W > 1100 ? 300 : 0;
         if (!W || !H) return;
         if (shadowArc) { shadowArc.remove(); shadowArc = null; }
         if (heroLegend) { heroLegend.remove(); heroLegend = null; }
