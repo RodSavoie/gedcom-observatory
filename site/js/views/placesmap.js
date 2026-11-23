@@ -16,6 +16,7 @@
   const BIRTH = C.teal, DEATH = C.red;
   const BUBBLE_OPACITY = 0.5;      // fill of a bubble (0 to 1)
   const MAX_R = 30;                // the biggest bubble's radius, in pixels, before zooming
+  const SEA_RING = 1.6;            // width of the dotted ring around a death or birth at sea
   const LABELS = 14;               // how many of the biggest places get a name on the map
 
   /* opts: {stage, root (svg), hint, data (scoped), what: 'birth'|'death', period: 'all'|century, regions: bool, onLegend} */
@@ -46,15 +47,16 @@
       for (const pl of everyPlace) { const l = locate(pl); if (l && l.level === 'place') frame.push([l.lon, l.lat]); }
       // one bubble per spot on the map
       const spots = new Map();
-      let atRegion = 0, missing = 0, approx = 0;
+      let atRegion = 0, missing = 0, approx = 0, atSea = 0;
       for (const p of ppl) {
-        const pl = placeOf(p), loc = locate(pl);
+        const pl = placeOf(p), loc = locate(pl, year(p));   // the year chooses the crossing for someone who died at sea
         if (!loc) { missing++; continue; }
+        if (loc.level === 'sea') atSea++;
         if (loc.level === 'region') { atRegion++; if (!o.regions) continue; }
         if (loc.approx) approx++;
         const k = loc.lat.toFixed(3) + ',' + loc.lon.toFixed(3) + ',' + loc.level;
         let s = spots.get(k);
-        if (!s) spots.set(k, s = { lat: loc.lat, lon: loc.lon, level: loc.level, approx: loc.approx, label: loc.name, people: [], spell: new Map() });
+        if (!s) spots.set(k, s = { lat: loc.lat, lon: loc.lon, level: loc.level, approx: loc.approx, label: loc.name, note: loc.note, people: [], spell: new Map() });
         s.people.push(p); s.spell.set(pl, (s.spell.get(pl) || 0) + 1);
       }
       const list = [...spots.values()].sort((a, b) => b.people.length - a.people.length);
@@ -115,20 +117,23 @@
       const dots = list.map(s => {
         const [x, y] = proj([s.lon, s.lat]);
         s.x = x; s.y = y;
-        const region = s.level === 'region';
-        const c = svg('circle', Object.assign({ cx: x, cy: y, r: Math.max(2.5, r0(s.n)), fill: col, 'fill-opacity': region ? 0.08 : BUBBLE_OPACITY, stroke: region ? col : '#FFFFFF', 'stroke-width': region ? 1.3 : 0.9, 'stroke-opacity': region ? 0.75 : 0.9, style: 'cursor:pointer' }, ns));
+        const region = s.level === 'region', sea = s.level === 'sea';
+        const c = svg('circle', Object.assign({ cx: x, cy: y, r: Math.max(2.5, r0(s.n)), fill: col, 'fill-opacity': region ? 0.08 : BUBBLE_OPACITY, stroke: region || sea ? col : '#FFFFFF', 'stroke-width': region ? 1.3 : sea ? SEA_RING : 0.9, 'stroke-opacity': region ? 0.75 : 0.9, style: 'cursor:pointer' }, ns));
         if (region) c.setAttribute('stroke-dasharray', '4 3');
+        if (sea) c.setAttribute('stroke-dasharray', '1.5 2.5');
         const what = o.what === 'birth' ? (s.n === 1 ? ' birth' : ' births') : (s.n === 1 ? ' death' : ' deaths');
         const yrs = d3.extent(s.people.map(year).filter(y => y != null));
         const others = s.spell.size - 1;
         const lines = [ui.fmt(s.n) + what + (yrs[0] != null ? ', ' + (yrs[0] === yrs[1] ? yrs[0] : yrs[0] + '–' + yrs[1]) : '')];
-        if (others) lines.push('and ' + others + ' other spelling' + (others > 1 ? 's' : '') + ' of this place');
+        if (sea) lines.push('Recorded as “' + ui.esc(s.top) + '”' + (others ? ' and ' + others + ' other wording' + (others > 1 ? 's' : '') : ''));
+        else if (others) lines.push('and ' + others + ' other spelling' + (others > 1 ? 's' : '') + ' of this place');
         if (region) lines.push('Known only as “' + ui.esc(s.label) + '”: shown at the centre of the region');
+        if (sea) lines.push(ui.esc(s.note));
         if (s.approx) lines.push('Village placed at the centre of its département');
-        const tip = '<b>' + ui.esc(s.top) + '</b><span>' + lines.join('<br>') + '</span>';
+        const tip = '<b>' + ui.esc(sea ? s.label : s.top) + '</b><span>' + lines.join('<br>') + '</span>';
         c.addEventListener('mousemove', e => { c.setAttribute('fill-opacity', region ? 0.2 : 0.85); ui.tip(tip, e.clientX, e.clientY); });
         c.addEventListener('mouseleave', () => { c.setAttribute('fill-opacity', region ? 0.08 : BUBBLE_OPACITY); ui.untip(); });
-        c.addEventListener('click', () => FO.showList(s.top, ui.fmt(s.n) + what + (region ? ', known only by region' : ''), s.people.slice().sort((a, b) => (year(a) || 0) - (year(b) || 0))));
+        c.addEventListener('click', () => FO.showList(sea ? s.label : s.top, ui.fmt(s.n) + what + (region ? ', known only by region' : ''), s.people.slice().sort((a, b) => (year(a) || 0) - (year(b) || 0))));
         bubbles.append(c);
         return [c, s];
       });
@@ -136,7 +141,7 @@
       // names of the biggest places, kept upright and the same size while zooming
       const labelG = svg('g', { 'pointer-events': 'none' });
       root.append(labelG);
-      const named = list.filter(s => s.level === 'place').slice(0, LABELS * 3);
+      const named = list.filter(s => s.level === 'place' || s.level === 'sea').slice(0, LABELS * 3);
       function labels(t) {
         labelG.innerHTML = '';
         const boxes = []; let shown = 0;
@@ -175,13 +180,15 @@
       root.append(credit);
       root.append(svg('rect', { x: 0.5, y: 0.5, width: W - 1, height: H - 1, rx: 4, fill: 'none', stroke: FRAME, 'stroke-opacity': FRAME_OPACITY, 'pointer-events': 'none' }));
 
-      const placed = ppl.length - missing - atRegion;
+      const placed = ppl.length - missing - atRegion - atSea;
       const noun = o.what === 'birth' ? 'births' : 'deaths';
       hint.textContent = ui.fmt(ppl.length) + ' ' + noun + ' with a place recorded: ' + ui.fmt(placed) + ' found at a town or village' +
         (approx ? ' (' + ui.fmt(approx) + ' French villages at the centre of their département)' : '') + ', ' + ui.fmt(atRegion) + ' known only by region' +
-        (o.regions ? ' (dashed rings at the region’s centre)' : ' (not shown)') + (missing ? ', ' + ui.fmt(missing) + ' not found (at sea, or a name the map does not know)' : '') +
+        (o.regions ? ' (dashed rings at the region’s centre)' : ' (not shown)') + (atSea ? ', ' + ui.fmt(atSea) + ' at sea (dotted rings, on the crossing they were most likely on)' : '') + (missing ? ', ' + ui.fmt(missing) + ' not found (a name the map does not know)' : '') +
         '. Bubbles grow with the number of people. Scroll to zoom, drag to move, click a bubble to list the people.';
-      if (o.onLegend) o.onLegend([{ label: o.what === 'birth' ? 'Births at a place' : 'Deaths at a place', color: col }].concat(atRegion && o.regions ? [{ label: 'Known only by region', color: col, line: true }] : []));
+      if (o.onLegend) o.onLegend([{ label: o.what === 'birth' ? 'Births at a place' : 'Deaths at a place', color: col }]
+        .concat(atSea ? [{ label: o.what === 'birth' ? 'Born at sea' : 'Died at sea', color: col, sea: true }] : [])
+        .concat(atRegion && o.regions ? [{ label: 'Known only by region', color: col, line: true }] : []));
     }
   };
 })();

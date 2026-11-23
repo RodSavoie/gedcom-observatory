@@ -30,7 +30,8 @@
 
   /* Places and regions the gazetteers don't know, or know under a modern name: [lat, lon, country, region code, kind, reach]
      kind: 'p' a settlement, 'r' a region (people placed there are "known only by region"), 'x' ignore this part.
-     reach: for a region, how far (km) from its centre a town named with it may lie (default 400). */
+     reach: for a region, how far (km) from its centre a town named with it may lie (default 400).
+     A region given a state or province code keeps its towns inside that state, unless it is in WIDER below. */
   const HISTORIC = {};
   const add = (names, v) => names.forEach(n => { HISTORIC[key(n)] = v; });
   // Acadia and New France
@@ -45,7 +46,7 @@
   add(['Beaubassin'], [45.855, -64.29, 'CA', '07', 'p']);
   add(['Grand-Pré', 'Grand Pré', 'Grand-Pre'], [45.104, -64.307, 'CA', '07', 'p']);
   add(['Les Mines', 'Mines', 'Minas', 'Bassin des Mines'], [45.1, -64.35, 'CA', '07', 'p']);
-  add(['Pisiguit', 'Pisiquid', 'Pisiquit', 'Pisiguid', 'Piziquid', 'Pigiguit'], [44.99, -64.13, 'CA', '07', 'p']);
+  add(['Pisiguit', 'Pisiquid', 'Pisiquit', 'Pisiguid', 'Piziquid', 'Pigiguit', 'Pisquit'], [44.99, -64.13, 'CA', '07', 'p']);
   add(['Cobequid', 'Cobequit', 'Cobeguit'], [45.37, -63.3, 'CA', '07', 'p']);
   add(['Rivière-aux-Canards', 'Riviere aux Canards'], [45.15, -64.42, 'CA', '07', 'p']);
   add(['Rivière-aux-Gaspereaux', 'Gaspereau'], [45.07, -64.3, 'CA', '07', 'p']);
@@ -63,7 +64,10 @@
   add(['Jemseg'], [45.83, -66.12, 'CA', '04', 'p']);
   add(['Pentagouet', 'Pentagoët'], [44.39, -68.8, 'US', 'ME', 'p']);
   add(['Restigouche', 'Ristigouche'], [48.0, -66.7, 'CA', '04', 'r']);
-  add(['Baie Sainte-Marie', 'Baie-Ste-Marie', 'Baie-Sainte-Marie', "St. Mary's Bay"], [44.33, -66.12, 'CA', '07', 'p']);
+  add(['Baie Sainte-Marie', 'Baie-Ste-Marie', 'Baie-Sainte-Marie', "St. Mary's Bay", 'Saint Marys Bay', 'St Marys Bay', 'Baie-SteMarie'], [44.33, -66.12, 'CA', '07', 'p']);
+  add(["Pointe-de-l'Église", "Pointe de l'Église", "Pte-de-l'Église", "Pte de l'Église"], [44.336, -66.118, 'CA', '07', 'p']);
+  add(['Clare', 'Claire'], [44.3, -66.05, 'CA', '07', 'r', 60]);   // the Acadian shore of St. Mary's Bay
+  add(['Menoudie', 'Minoudie', 'Minudie'], [45.774, -64.352, 'CA', '07', 'p']);
   add(['Cap-des-Maringouins', 'Cap des Maringouins', 'Cape Maringouin'], [45.83, -64.47, 'CA', '04', 'p']);
   add(['Chezzetcook', 'Chézetcook'], [44.71, -63.25, 'CA', '07', 'p']);
   add(['Ekoupahag', 'Ekoupag', 'Aukpaque'], [45.95, -66.8, 'CA', '04', 'p']);
@@ -103,6 +107,7 @@
   fr(['Quercy'], 44.5, 1.5); fr(['Rouergue'], 44.3, 2.6); fr(['Beauce'], 48.3, 1.6); fr(['Brie'], 48.6, 3.0); fr(['Vexin'], 49.2, 1.8);
   fr(['Aquitaine'], 44.8, 0.0); fr(['Île-de-France', 'Ile de France'], 48.85, 2.35);
   add(['Saint-Servan'], [48.632, -2.01, 'FR', '', 'p']);
+  add(['Belle-Île-en-Mer', 'Belle-Isle-en-Mer', 'Belle Île', 'Belle-Île', 'Belle-Isle'], [47.33, -3.18, 'FR', '', 'r', 25]);   // the island; its villages (Le Palais, Sauzon, Bangor, Locmaria) are found on their own
   add(['Larochelle'], [46.16, -1.151, 'FR', '', 'p']);
   // British Isles and the United States
   add(['England', 'Angleterre', 'Kingdom of England'], [52.5, -1.5, 'GB', 'ENG', 'r']);
@@ -117,9 +122,52 @@
   add(['Fausse Pointe', 'Fausse-Pointe'], [30.05, -91.74, 'US', 'LA', 'p']);
   add(['Colony of Nova Scotia', 'Nova Scotia Colony', 'Province of Nova Scotia', 'Colonie de la Nouvelle-Écosse', 'Colonie de Nouvelle-Écosse'], [45.6, -64.5, 'CA', '', 'r', 450]);
   add(['Massachusetts Bay'], [42.3, -71.6, 'US', 'MA', 'r']);
+  add(['New England', 'Nouvelle-Angleterre'], [43.6, -71.5, 'US', '', 'r', 500]);
+  add(['French Louisiana', 'Louisiane française', 'Louisiane francaise', 'La Louisiane'], [30.5, -91.5, 'US', 'LA', 'r']);
+  add(['Orleans Territory', 'Territory of Orleans', "Territoire d'Orléans", "Territoire d'Orleans"], [30.5, -91.5, 'US', 'LA', 'r']);   // Louisiana, 1804-1812
   // parts that say nothing about where
   add(['At Sea', 'En mer', 'Lost at sea', 'Unknown', 'Inconnu', 'New Spain', 'Nouvelle-Espagne', 'Nueva España', 'Spanish Empire'], [0, 0, '', '', 'x']);
-  const atSea = k => /^(at sea|en mer|lost at sea|aboard|a bord)\b/.test(k);
+  // old colonies larger than the state they are tied to: French Louisiana took in Mobile, Massachusetts Bay took in Maine
+  const WIDER = new Set(['Louisiane', 'Spanish Louisiana', 'Louisiane espagnole', 'French Louisiana', 'Louisiane française', 'Louisiane francaise', 'La Louisiane', 'Massachusetts Bay'].map(key));
+  /* Deaths and births at sea. They are shown on the water, on the crossing they most likely happened on: first by what the
+     place says (a ship, an island, a destination), then by the year. Each spot: [lat, lon, short name, note for the pop-up].
+     Coordinates are points at sea, picked by hand; move one by changing its numbers. */
+  // a part of the place that starts with these ("En mer", but not Belle-Île-en-Mer) …
+  const SEA_START = /^(at sea|en mer|lost at sea|aboard|a bord|ocean atlantique|atlantic ocean|oceano atlantico|sinking of|shipwreck|naufrage|en route to|enroute to|in route to)( |$)/;
+  // … or these anywhere in it
+  const SEA_ANY = /(^| )(at sea|shipwrecked|during (the )?(deportation|expulsion|transport|crossing))( |$)/;
+  const SEA = {
+    violet:    [49.45, -7.9, 'Wreck of the Violet', 'About where the Violet sank, 12 December 1758, in the approaches to the English Channel'],
+    duke:      [49.75, -6.3, 'Wreck of the Duke William', 'About where the Duke William sank, 13 December 1758; her crew rowed to Penzance'],
+    ruby:      [38.5, -28.62, 'Wreck of the Ruby', 'Off Pico, in the Azores, where the Ruby struck the rocks, 16 December 1758'],
+    newfoundland: [47.2, -52.2, 'Off Newfoundland', 'Off the coast of Newfoundland'],
+    madeleine: [47.6, -61.5, 'Off the Magdalen Islands', 'Off the Magdalen Islands'],
+    margaree:  [46.45, -61.3, 'Off Margaree', 'Off Margaree, Cape Breton'],
+    inagua:    [21.0, -73.85, 'Off Inagua', 'Off the Inagua Islands'],
+    stmalo:    [48.7, -2.1, 'Off Saint-Malo', 'Off Saint-Malo and Saint-Servan'],
+    england:   [49.7, -5.0, 'Off England', 'In the English Channel, off England'],
+    france:    [47.0, -31.0, 'Crossing to France', 'Shown midway on the crossing from Île Saint-Jean and Île Royale to France (1758–1759 deportation)'],
+    colonies:  [40.4, -68.6, 'Crossing to the colonies', 'Shown midway on the crossing from Nova Scotia to the Anglo-American colonies (1755–1756 deportation)'],
+    louisiana: [31.0, -47.0, 'Crossing to Louisiana', 'Shown midway on the crossing from France to Louisiana (1785)'],
+    atlantic:  [42.0, -42.0, 'At sea', 'At sea, no route recorded: shown in the middle of the Atlantic'],
+  };
+  function seaRoute(k, year) {
+    if (/\bviolet\b/.test(k)) return 'violet';
+    if (/duke william/.test(k)) return 'duke';
+    if (/\bruby\b|\bpico\b|azores|acores/.test(k)) return 'ruby';
+    if (/newfoundland|terre neuve|neptune/.test(k)) return 'newfoundland';
+    if (/madeleine|magdalen/.test(k)) return 'madeleine';
+    if (/margaree/.test(k)) return 'margaree';
+    if (/inagua/.test(k)) return 'inagua';
+    if (/near saint (servan|malo)|off saint (servan|malo)/.test(k)) return 'stmalo';
+    if (/near england|off england|english channel|la manche/.test(k)) return 'england';
+    if (/louisian|new orleans|nouvelle orleans/.test(k) || (year >= 1784 && year <= 1786)) return 'louisiana';
+    if (/france|malo|queen of spain|exile/.test(k) || (year >= 1758 && year <= 1759)) return 'france';
+    if (/massachusetts|maryland|virginia|carolina|georgia|connecticut|pennsylvania|new york|boston/.test(k) || (year >= 1755 && year <= 1757)) return 'colonies';
+    if (year >= 1758 && year <= 1763 && /deportation|expulsion|exile|transport/.test(k)) return 'france';
+    return 'atlantic';
+  }
+  const atSea = (place, whole) => SEA_ANY.test(whole) || partsOf(place).some(p => SEA_START.test(key(p)));
   const COUNTRY_EXTRA = { usa: 'US', 'u s a': 'US', us: 'US', 'united states': 'US', 'etats unis': 'US', 'etats unis d amerique': 'US', america: 'US',
     uk: 'GB', 'great britain': 'GB', 'grande bretagne': 'GB', 'royaume uni': 'GB', holland: 'NL', 'pays bas': 'NL', 'canada': 'CA' };
 
@@ -127,6 +175,17 @@
      [name, country, region code, lat, lon]. Plaisance, Newfoundland is today's Placentia (there is a Plaisance in Quebec). */
   const LOCAL = new Map([
     ['Plaisance', 'CA', '05', 47.244, -53.963]].map(([n, cc, a1, lat, lon]) => [key(n) + '|' + cc + '|' + a1, { lat, lon, name: n, pop: 0 }]));
+
+  /* Counties missing from the map's list of regions (GeoNames lists few for Nova Scotia and New Brunswick):
+     [name, country, province code, lat, lon] at roughly the middle of each county. */
+  const COUNTIES = [
+    ['Annapolis County', 'CA', '07', 44.75, -65.2], ['Antigonish County', 'CA', '07', 45.55, -61.95], ['Colchester County', 'CA', '07', 45.4, -63.2],
+    ['Cumberland County', 'CA', '07', 45.6, -64.05], ['Digby County', 'CA', '07', 44.35, -65.9], ['Guysborough County', 'CA', '07', 45.3, -61.6],
+    ['Halifax County', 'CA', '07', 44.85, -63.2], ['Hants County', 'CA', '07', 45.0, -63.7], ['Lunenburg County', 'CA', '07', 44.45, -64.6],
+    ['Pictou County', 'CA', '07', 45.5, -62.6], ['Queens County', 'CA', '07', 44.15, -64.95], ['Richmond County', 'CA', '07', 45.6, -60.8],
+    ['Shelburne County', 'CA', '07', 43.75, -65.35], ['Victoria County', 'CA', '07', 46.5, -60.6], ['Yarmouth County', 'CA', '07', 43.95, -65.95],
+    ['Kent County', 'CA', '04', 46.5, -65.0], ['Albert County', 'CA', '04', 45.75, -64.85], ['Sunbury County', 'CA', '04', 45.85, -66.5],
+    ['Queens County', 'CA', '04', 45.95, -65.9], ['Victoria County', 'CA', '04', 47.05, -67.4]];
 
   const pinKey = place => String(place).split(',').map(p => key(p)).filter(Boolean).join(',');
   const PINNED = new Map(Object.entries(PINS).map(([k, v]) => [pinKey(k), v]));
@@ -147,6 +206,10 @@
         const o = { lat, lon, cc, a1: c1, a2: c2, kind: 'd', name };
         for (const k of new Set([key(name), bare(key(name))])) (dep.get(k) || dep.set(k, []).get(k)).push(o);
         dep.set(cc + '.' + c1 + '.' + c2, o);
+      }
+      for (const [name, cc, c1, lat, lon] of COUNTIES) {
+        const o = { lat, lon, cc, a1: c1, a2: '', kind: 'd', name };
+        for (const k of new Set([key(name), bare(key(name))])) if (!(dep.get(k) || []).some(x => x.cc === cc && x.a1 === c1)) (dep.get(k) || dep.set(k, []).get(k)).push(o);
       }
       idx = { country, a1, dep, a1byCode };
       return world;
@@ -172,6 +235,7 @@
     const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLon / 2) ** 2;
     return 12742 * Math.asin(Math.sqrt(h));
   };
+  const near = (ctx, r) => ctx.any ? Math.min(...ctx.any.map(o => km(o, r))) : km(ctx, r);
   const partsOf = place => {
     const out = [];
     for (const raw of String(place).replace(/(\p{L}{3,})\. (?=\p{Lu})/gu, '$1, ').split(',')) {
@@ -183,14 +247,26 @@
   };
 
   /* A part that names a country or a region (never a town). cc: the country already known, if any. */
+  // a state, province or county of this name in this country
+  const localTo = (kk, cc) => !!cc && ((idx.a1.get(kk) || []).some(o => o.cc === cc) || (idx.dep.get(kk) || []).some(o => o.cc === cc));
   function regionOf(part, cc, a1) {
     const k = key(part); if (!k) return null;
     for (const kk of [k, bare(k)]) {
       const h = HISTORIC[kk];
-      if (h) return h[4] === 'x' ? { skip: true } : h[4] === 'r' ? { lat: h[0], lon: h[1], cc: h[2], a1: h[3], kind: 'h', name: part, reach: h[5] || 400 } : null;
+      // an old region of another country gives way to a place of that name in this one ("Lubec, Maine, United States" is not the French Maine)
+      if (h && !(h[4] !== 'x' && cc && h[2] && h[2] !== cc && localTo(kk, cc)))
+        return h[4] === 'x' ? { skip: true } : h[4] === 'r' ? { lat: h[0], lon: h[1], cc: h[2], a1: h[3], kind: 'h', name: part, reach: h[5] || 400, wider: WIDER.has(kk) } : null;
       const c = idx.country.get(kk); if (c && (!cc || c.cc === cc)) return c;
       const d = idx.dep.get(kk);
-      if (d && cc) { const same = d.filter(o => o.cc === cc && (!a1 || o.a1 === a1)); if (same.length) return same[0]; }
+      // a state or province beats a county of the same name ("Texas" is the state, not Texas County, Missouri),
+      // unless the state is already known and the county lies in it ("Washington, Pennsylvania")
+      const state = cc && !a1 && (idx.a1.get(kk) || []).find(o => o.cc === cc);
+      if (d && cc && !state) {
+        const same = d.filter(o => o.cc === cc && (!a1 || o.a1 === a1));
+        // several counties of that name in different states, and no state named: keep them all, and let the town say which
+        if (same.length && new Set(same.map(o => o.a1)).size > 1) return { lat: same[0].lat, lon: same[0].lon, cc, kind: 'd', name: part, any: same };
+        if (same.length) return same[0];
+      }
       if (c) { const a = idx.a1.get(kk); if (!a || !a.some(o => o.cc === cc)) return c; }   // "St. Martin, Louisiana": the parish, not Saint-Martin
       const a = idx.a1.get(kk);
       if (a) return (cc && a.find(o => o.cc === cc)) || (!cc && a.length === 1 ? a[0] : null) || (cc ? null : a[0]);
@@ -248,27 +324,32 @@
     if (a1) {
       const same = rows.filter(r => r.a1 === a1);
       if (same.length) { rows = same; inside = true; }
-      else if (ctx && (ctx.kind === 'a' || ctx.kind === 'd')) return null;   // "St. Martin Parish, Louisiana" is not in Mississippi
+      else if (ctx && (ctx.kind === 'a' || ctx.kind === 'd' || (ctx.kind === 'h' && ctx.a1 && !ctx.wider && ctx.cc === cc))) return null;   // "St. Martin Parish, Louisiana" is not in Mississippi
     }
     let best = null;
     if (ctx && ctx.kind !== 'c') {
       let bd = Infinity;
-      for (const r of rows) { const d = km(ctx, r) - Math.log10(1 + r.pop) * 5 + (r.longer ? 25 : 0) + (r.approx ? 10 : 0); if (d < bd) { bd = d; best = r; } }
+      for (const r of rows) { const d = near(ctx, r) - Math.log10(1 + r.pop) * 5 + (r.longer ? 25 : 0) + (r.approx ? 10 : 0); if (d < bd) { bd = d; best = r; } }
       // further than this from the region named: probably another place (inside a named province, anywhere goes)
       const limit = ctx.kind === 'd' ? 120 : inside ? Infinity : ctx.reach || 400;
-      if (best && km(ctx, best) > limit) { const at = k.lastIndexOf(' de '); return at > 0 ? findPlace(k.slice(at + 4), cc, ctx, a1) : null; }
+      if (best && near(ctx, best) > limit) { const at = k.lastIndexOf(' de '); return at > 0 ? findPlace(k.slice(at + 4), cc, ctx, a1) : null; }
     } else { rows = rows.filter(r => !r.longer); best = rows.length ? rows.reduce((a, b) => (b.pop > a.pop ? b : a)) : null; }
     return best;
   }
   const gazReady = new Map();
 
-  /* Where one place is: {lat, lon, level: 'place' | 'region', name, approx} or null */
-  function locate(place) {
+  /* Where one place is: {lat, lon, level: 'place' | 'region' | 'sea', name, approx, note} or null.
+     year (optional): the year of the birth or death, used to choose the crossing for someone who died at sea. */
+  function locate(place, year) {
+    const whole = key(String(place).replace(/[(),;:]/g, ' '));   // brackets and commas count as spaces here: "St-Jean of Newfoundland (at sea)"
+    if (atSea(place, whole)) {
+      const r = seaRoute(whole, year), v = SEA[r];
+      return { lat: v[0], lon: v[1], level: 'sea', name: v[2], note: v[3], approx: false };
+    }
     if (cache.has(place)) return cache.get(place);
     const pin = PINNED.get(pinKey(place));
     if (pin) { const o = { lat: pin[0], lon: pin[1], level: 'place', name: partsOf(place)[0] || place, approx: false }; cache.set(place, o); return o; }
     const parts = partsOf(place);
-    if (parts.some(p => atSea(key(p)))) { cache.set(place, null); return null; }
     let cc = '', ctx = null, ctxI = parts.length;
     const vast = () => ctx && ctx.kind === 'h' && !ctx.a1 && (ctx.reach || 0) >= 1000;
     for (let i = parts.length - 1; i >= 1; i--) {
@@ -285,9 +366,15 @@
     let out = null;
     for (let i = 0; i < ctxI && !out; i++) {
       // a part that names a country or a historic region is that region, not a hamlet that shares its name
-      const asRegion = regionOf(parts[i], cc);
+      const asRegion = regionOf(parts[i], cc, ctx && ctx.a1);
       const townToo = asRegion && asRegion.kind === 'h' && !asRegion.a1 && ctx && ctx.a1;   // L'Acadie, Quebec, is also a town
       if (asRegion && !asRegion.skip && (asRegion.kind === 'c' || asRegion.kind === 'h') && !townToo) continue;
+      if (asRegion && asRegion.kind === 'd' && !asRegion.any && key(parts[i]) !== bare(key(parts[i]))) {
+        // "St. James Parish" is the town of St. James, which lies in it; "Clinton County, New York" is the county (the town of Clinton is elsewhere)
+        const t = findPlace(parts[i], asRegion.cc, asRegion, asRegion.a1);
+        if (t) out = { lat: t.lat, lon: t.lon, level: 'place', name: parts[i], approx: !!t.approx };
+        continue;
+      }
       // a province or state named with nothing more precise after it: a town of that name only if it lies inside
       // ("Québec, Canada" is the city; "Louisiana, New Spain" is the province, not Louisiana, Missouri)
       if (asRegion && !asRegion.skip && asRegion.kind === 'a' && (!ctx || ctx.kind === 'c') && (parts.length < 2 || key(parts[i]) !== bare(key(parts[i])))) continue;
@@ -303,7 +390,7 @@
     if (!out && parts.length) {
       // the most specific region named: "Acadie, Nouvelle-France" is Acadie; "Canada, Nouvelle-France" is New France
       const x = regionOf(parts[0], cc, ctx && ctx.a1), r0 = x && !x.skip ? x : null;
-      const r = (r0 && r0.kind !== 'c' ? r0 : null) || ctx || r0;
+      const r = [r0 && r0.kind !== 'c' ? r0 : null, ctx, r0].find(o => o && !o.any) || ((ctx && ctx.any) || (r0 && r0.any) ? cc && idx.country.get(key(regionsName(cc))) : null);
       if (r) out = { lat: r.lat, lon: r.lon, level: 'region', name: r === r0 ? parts[0] : r.name || parts[ctxI] };
     }
     if (!out && parts.length === 1 && !/,/.test(place)) {

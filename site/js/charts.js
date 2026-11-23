@@ -173,7 +173,7 @@
   FO.legend = function (stage, title, items) {
     const box = el('div', { class: 'legend' });
     if (title) box.append(el('b', { text: title }));
-    items.forEach(it => box.append(el('div', {}, el('i', { class: it.line ? 'ln' : '', style: { '--c': it.color } }), it.label + (it.count != null ? ' (' + ui.fmt(it.count) + ')' : ''))));
+    items.forEach(it => box.append(el('div', {}, el('i', { class: it.line ? 'ln' : it.sea ? 'sea' : '', style: { '--c': it.color } }), it.label + (it.count != null ? ' (' + ui.fmt(it.count) + ')' : ''))));
     stage.append(box);
     return box;
   };
