@@ -44,7 +44,17 @@
       pal: { bg: '#F4EFE9', snow: '#FAF7F3', snow2: '#F7F3EE', soft: '#E7DED4', soft2: '#E3D9CE', soft3: '#DACFC3', line: '#CDC2B5', other: '#B5AA9D', white: '#FFFEFD',
         ink: '#24344A', ink2: '#46566B', ink3: '#85898F', deep: '#25354B', navy: '#26364C', mid: '#94A5B6', pale: '#E4E8EC', pale2: '#E9ECEF', tiptext: '#D8DEE6',
         red: '#B56B52', redsoft: '#F3DDD2', peach: '#F2E2D6', blush: '#E8D4C4', flax: '#D9AE84', peach2: '#EED6C5', orange: '#CC8C6C', redtext: '#6B3524', redtext2: '#673322',
-        teal: '#5B7D78', c3: '#C99A5B', c4: '#5A5E8F', c5: '#B9738A', c6: '#7D8F6B', c7: '#8A7196', bubble: '#F1ECE7' } }
+        teal: '#5B7D78', c3: '#C99A5B', c4: '#5A5E8F', c5: '#B9738A', c6: '#7D8F6B', c7: '#8A7196', bubble: '#F1ECE7' } },
+    { id: 'gilt', name: 'Gilt', note: 'Charcoal, greys and gold, on white paper',
+      pal: { bg: '#ECEBE8', snow: '#F7F7F5', snow2: '#F4F4F2', soft: '#E3E2DF', soft2: '#DFDEDA', soft3: '#D5D4D0', line: '#C5C4BF', other: '#B9B7B1', white: '#FDFDFC',
+        ink: '#1E1E1E', ink2: '#424242', ink3: '#7E7C78', deep: '#2B2B2B', navy: '#262626', mid: '#9B9994', pale: '#E5E4E1', pale2: '#EAE9E7', tiptext: '#DCDBD8',
+        red: '#A67C2E', redsoft: '#F1E6C9', peach: '#F3EBD7', blush: '#E6D3A4', flax: '#C9A445', peach2: '#EEDFB9', orange: '#C29441', redtext: '#5A4314', redtext2: '#564010',
+        teal: '#3D3D3D', c3: '#C9A446', c4: '#7B7B7B', c5: '#946F2F', c6: '#DCC88D', c7: '#5D554B', bubble: '#EEEDEB' } },
+    { id: 'harbour', name: 'Harbour', note: 'A dark navy menu down the left, on soft linen',
+      pal: { bg: '#EDEAE4', snow: '#F6F4F0', snow2: '#F3F1EC', soft: '#E2DED6', soft2: '#DEDAD1', soft3: '#D5D0C6', line: '#C7C1B6', other: '#ADA79C', white: '#FEFDFB',
+        ink: '#1D2939', ink2: '#3E4C5E', ink3: '#7B8089', deep: '#26364A', navy: '#1F2E42', mid: '#8EA1B6', pale: '#DEE4EA', pale2: '#E4E9ED', tiptext: '#D5DCE4',
+        red: '#B4553C', redsoft: '#F4DCD2', peach: '#F3E4D8', blush: '#E4C2AE', flax: '#E0A84F', peach2: '#EED4C2', orange: '#CF8460', redtext: '#663020', redtext2: '#622E1E',
+        teal: '#3D7397', c3: '#D19A3E', c4: '#5C5A96', c5: '#B9688A', c6: '#5B8A63', c7: '#8268A6', bubble: '#EEF0F2' } }
   ];
 
   /* ---------- colour translation ---------- */

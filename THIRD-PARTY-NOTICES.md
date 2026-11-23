@@ -7,6 +7,7 @@ travel with the files.
 |---|---|---|---|
 | D3 (data-driven documents), by Mike Bostock | `site/js/vendor/d3.min.js` | ISC | `site/js/vendor/LICENSE-d3.txt` |
 | Roboto font, by The Roboto Project Authors | `site/fonts/roboto-*.woff2` | SIL Open Font Licence 1.1 | `site/fonts/OFL.txt` |
+| Oswald font (Gilt design), by The Oswald Project Authors | `site/fonts/oswald-*.woff2` | SIL Open Font Licence 1.1 | `site/fonts/OFL-Oswald.txt` |
 | topojson-client, by Mike Bostock | `site/js/vendor/topojson-client.min.js` | ISC | `site/js/vendor/LICENSE-topojson-client.txt` |
 
 ## Map data (Where They Lived, Map)
