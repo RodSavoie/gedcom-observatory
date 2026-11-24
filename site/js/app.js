@@ -481,8 +481,8 @@
     page.append(el('article', { class: 'about', html:
       '<div class="caps">About</div><h1>A place to look at a family</h1>' +
       '<p>Family Observatory draws one family tree ' + nViews + ' different ways, so you can see what no single chart shows: where the family lived, how often cousins married, and which ancestors turn up again and again.</p>' +
-      '<p>' + (s.family === FAMILIES[0].id ? 'It opens on ' : 'You are looking at ') + ui.esc(inSentence(s.title)) + ': ' + ui.fmt(f.people) + ' people' + (gens ? ' across ' + gens + ' generations' : '') + '. ' +
-        'Two larger families can be opened too (see <a href="#/about?families">Families on this site</a>), and anyone can load their own family file and explore it the same way. There is nothing to install, no account, and nothing is uploaded.</p>' +
+      '<p>' + (s.family === defaultFamily().id ? 'It opens on ' : 'You are looking at ') + ui.esc(inSentence(s.title)) + ': ' + ui.fmt(f.people) + ' people' + (gens ? ' across ' + gens + ' generations' : '') + '. ' +
+        'Two other families can be opened too (see <a href="#/about?families">Families on this site</a>), and anyone can load their own family file and explore it the same way. There is nothing to install, no account, and nothing is uploaded.</p>' +
       '<h2 id="views">The ' + nViews + ' views</h2>' +
       '<p>Each view answers one question about the family, and each has a <b>How to read this</b> guide beside its title.</p>' +
       '<table class="about-views"><thead><tr><th>Question</th><th>View</th><th>What it shows</th></tr></thead><tbody>' + viewRows + '</tbody></table>' +
@@ -505,9 +505,9 @@
       '<li><b>No account, no tracking.</b> There is nothing to sign in to and the site keeps nothing about you or your file.</li>' +
       '<li><b>No AI looks at your file.</b> Everything you see is drawn by ordinary code running in your browser.</li>' +
       '<li><b>The map asks no one.</b> Places are found in lists of place names that come with this site; no place name is sent to a map service.</li>' +
-      '<li><b>Living people are hidden.</b> Anyone with no death or burial recorded with a date or a place, who was born in the last ' + FO.LIVING_YEARS + ' years or whose age cannot be worked out, is shown only as “Living person”, without dates or places. In the built-in family those details were removed from the file itself before it was published; only the home person’s name and birth year remain.</li></ul>' +
-      '<h2 id="families">Families on this site</h2><p>Besides the Savoie · Breau family the site opens on, two larger families made from the <a href="https://www.wikitree.com/wiki/Project:Acadians" target="_blank" rel="noopener">WikiTree Acadians Project</a> can be opened from <b>The family</b> menu, or straight from a link:</p><ul>' +
-        FAMILIES.map((fm, k) => '<li><b><a href="?family=' + fm.id + '#/">' + ui.esc(fm.label) + '</a></b>' + (k ? '' : ', the family the site opens on') + (fm.note ? ': ' + ui.esc(fm.note) : '') + '. Link: <code style="white-space:nowrap">?family=' + fm.id + '</code></li>').join('') +
+      '<li><b>Living people are hidden.</b> Anyone with no death or burial recorded with a date or a place, who was born in the last ' + FO.LIVING_YEARS + ' years or whose age cannot be worked out, is shown only as “Living person”, without dates or places. In the families on this site those details were removed from the files themselves before they were published; in the Savoie · Breau family only the home person’s name and birth year remain.</li></ul>' +
+      '<h2 id="families">Families on this site</h2><p>Three families can be opened from <b>The family</b> menu, or straight from a link. The two larger ones are made from the <a href="https://www.wikitree.com/wiki/Project:Acadians" target="_blank" rel="noopener">WikiTree Acadians Project</a>:</p><ul>' +
+        FAMILIES.map(fm => '<li><b><a href="?family=' + fm.id + '#/">' + ui.esc(fm.label) + '</a></b>' + (fm === defaultFamily() ? ', the family the site opens on' : '') + (fm.note ? ': ' + ui.esc(fm.note) : '') + '. Link: <code style="white-space:nowrap">?family=' + fm.id + '</code></li>').join('') +
         '</ul><p>These files are updated from time to time; the newest version is always the one shown.</p>' +
       '<h2>Loading your own family</h2><p>Export a GEDCOM (.ged) file from your genealogy program or website (WikiTree, Ancestry, FamilySearch-compatible software, Gramps, RootsMagic and so on), then use <b>Load your file</b> at the top of the page, or drag the file onto the window. From <b>The family</b> menu you can then save a cleaned copy: the same family without notes, sources or living people. The first person in the file becomes the home person; you can re-centre on anyone from their details panel.</p>' +
       '<h2>Drawing a family from WikiTree</h2><p>Use <b>From WikiTree</b> at the top of the page and type a WikiTree ID, such as Savoie-2387, to draw that person&rsquo;s ancestors, with the brothers and sisters along every line and, if you like, descendants, straight from <a href="https://www.wikitree.com/" target="_blank" rel="noopener">WikiTree</a>. Only what WikiTree shows to everyone is fetched; biographies and photos are not. Nothing is stored: the family is kept only while the page is open, and people who may be living stay hidden. A link such as <code>?wt=Savoie-2387&amp;anc=10</code> opens a family directly (add <code>&amp;desc=2</code> for descendants, or <code>&amp;sib=0</code> to leave out brothers and sisters).</p>' +
@@ -515,7 +515,7 @@
       '<h2>Credit</h2>' +
       '<p>The idea and the set of views follow <a href="https://observatory.vibegenealogy.ai/" target="_blank" rel="noopener">Kinfolk Observatory</a>, a Vibe Genealogy project by Steve Little, described in <a href="https://vibegenealogy.ai/p/fun-prompt-friday-fable-make-something-incredible-kinfolk-observatory" target="_blank" rel="noopener">his write-up of 13 November 2026</a>. This version was built separately, with its own code and a lighter look.</p>' +
       '<p>The untangled pedigree in Ancestors Through Time owes a debt to B.&nbsp;F. Lyon’s <a href="https://learnforeverlearn.com/ancestors/" target="_blank" rel="noopener">Exploring Family Trees</a>.</p>' +
-      '<p>The built-in family is drawn from profiles on <a href="https://www.wikitree.com/" target="_blank" rel="noopener">WikiTree</a>, the shared tree built by many volunteers, including the <a href="https://www.wikitree.com/wiki/Project:Acadians" target="_blank" rel="noopener">Acadians Project</a>. Each person’s panel links to their WikiTree profile.</p>' +
+      '<p>The families on this site are drawn from profiles on <a href="https://www.wikitree.com/" target="_blank" rel="noopener">WikiTree</a>, the shared tree built by many volunteers, including the <a href="https://www.wikitree.com/wiki/Project:Acadians" target="_blank" rel="noopener">Acadians Project</a>. Each person’s panel links to their WikiTree profile.</p>' +
       '<p>The map is drawn from <a href="https://www.naturalearthdata.com/" target="_blank" rel="noopener">Natural Earth</a> (public domain). Place names and positions come from <a href="https://www.geonames.org/" target="_blank" rel="noopener">GeoNames</a> (Creative Commons Attribution 4.0), Natural Resources Canada’s geolocated place names (Open Government Licence – Canada) and the French communes list from INSEE and Etalab (Licence Ouverte); Acadian settlements and old French provinces were placed by hand.</p>' +
       '<p>The kinship and inbreeding figures use coefficients that go back to Sewall Wright (1922) and Gustave Malécot (1948). Drawing each life as a line along a scale of years has a long history; an early example is Joseph Priestley’s <i>Chart of Biography</i> (1765).</p>' +
       '<h2>Built with</h2><ul>' +
@@ -536,7 +536,7 @@
 
     const fm = document.getElementById('menu-family');
     fm.innerHTML = '';
-    fm.append(el('div', { class: 'caps', text: s.builtin ? (s.family === FAMILIES[0].id ? 'Built-in family' : 'A family on this site') : s.source === 'wikitree' ? 'From WikiTree' + (s.wikitree ? ': ' + s.wikitree.key : '') : 'Your file' }), el('h3', { text: s.title }),
+    fm.append(el('div', { class: 'caps', text: s.builtin ? (s.family === defaultFamily().id ? 'Built-in family' : 'A family on this site') : s.source === 'wikitree' ? 'From WikiTree' + (s.wikitree ? ': ' + s.wikitree.key : '') : 'Your file' }), el('h3', { text: s.title }),
       el('p', { class: 'muted', style: { margin: '2px 0 0' }, text: ui.fmt(s.data.people.length) + ' people, ' + ui.fmt(s.data.families.length) + ' families' + (s.data.livingCount ? ', ' + s.data.livingCount + ' possibly living' + (s.data.hideLiving ? ' (hidden)' : '') : '') }));
     const pick = ui.picker('Home person', s.home, p => FO.setHome(p));
     fm.append(el('div', { class: 'row' }, pick));
@@ -613,19 +613,21 @@
   FO.titleParts = titleParts;
 
   /* ---------- the families published with the site ----------
-     Each is a cleaned GEDCOM in site/data. The first is the one the site opens on. A link such as ?family=acadians
-     opens another one directly. Replace a file in site/data to update it: visitors always get the newest copy.
+     Each is a cleaned GEDCOM in site/data. DEFAULT_FAMILY (an id below) is the one the site opens on; the list's order
+     is the order of the menus and of the About page. A link such as ?family=savoie opens another one directly. Replace a file in site/data to update it: visitors always get the newest copy.
      title: shown as the family's name; leave it out to use the title written in the file (_TITLE). */
+  const DEFAULT_FAMILY = 'acadians-plus';
   const FAMILIES = [
     { id: 'savoie', file: 'data/family.ged.txt', label: 'My Savoie · Breau family' },
     { id: 'acadians', file: 'data/Acadians.GED.txt', label: 'The Acadians', note: 'about 23,000 people from the WikiTree Acadians Project' },
     { id: 'acadians-plus', file: 'data/AcadiansPlus.GED.txt', label: 'The Acadians and their spouses', title: 'The Acadians and their spouses', note: 'the Acadians with the spouses who married into them, about 27,000 people' }];
   FO.FAMILIES = FAMILIES;
   const familyOf = id => FAMILIES.find(f => f.id === id);
+  const defaultFamily = () => familyOf(DEFAULT_FAMILY) || FAMILIES[0];
   // keep ?family= in the address in step with the family shown, so the link can be shared or bookmarked
   function setFamilyParam(id) {
     const u = new URL(location.href);
-    if (id && id !== FAMILIES[0].id) u.searchParams.set('family', id); else u.searchParams.delete('family');
+    if (id && id !== defaultFamily().id) u.searchParams.set('family', id); else u.searchParams.delete('family');
     if (id) u.searchParams.delete('wt');
     if (u.href !== location.href) history.replaceState(null, '', u.href);
   }
@@ -636,7 +638,7 @@
     const data = FO.parseGedcom(text, { hideLiving: builtin ? true : s.hideLiving });
     if (!data.people.length) { ui.toast('No people were found in that file. Is it a GEDCOM (.ged) file?'); return false; }
     s.data = data; s.text = builtin ? null : text; s.builtin = builtin; s.source = builtin ? 'builtin' : (source || 'file'); if (s.source !== 'wikitree') s.wikitree = null; s.home = data.home; s.subject = null; s.pair = null; s.founder = null;
-    s.family = builtin ? (family || FAMILIES[0]).id : null;
+    s.family = builtin ? (family || defaultFamily()).id : null;
     s.title = (family && family.title) || data.head.title || title;   // a title written in the file wins; otherwise the file's name
     if (!builtin) setFamilyParam(null);
     kinCache = null;
@@ -644,7 +646,7 @@
     return true;
   }
   function loadBuiltin(atBoot, id) {
-    const fam = familyOf(id) || FAMILIES[0];
+    const fam = familyOf(id) || defaultFamily();
     if (atBoot !== true) { closeMenus(); ui.toast('Loading ' + fam.label + '…'); }
     // "no-cache": the browser checks with the server first, so an updated file is always the one shown
     fetch(fam.file, { cache: 'no-cache' }).then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
@@ -655,12 +657,12 @@
       })
       .catch(() => {
         if (atBoot === true && FO.state.source && FO.state.source !== 'builtin') return;
-        if (fam !== FAMILIES[0]) { ui.toast(fam.label + ' could not be fetched.'); if (!FO.state.data) loadBuiltin(atBoot); return; }
+        if (fam !== defaultFamily()) { ui.toast(fam.label + ' could not be fetched.'); if (!FO.state.data) loadBuiltin(atBoot); return; }
         const page = document.getElementById('page');
         page.innerHTML = '';
         page.append(el('div', { class: 'loading' }, el('div', { style: { textAlign: 'center', maxWidth: '30em' } },
           el('h2', { text: 'Load a family file to begin' }),
-          el('p', { text: 'The built-in family could not be fetched (this happens when the page is opened straight from a folder rather than from a web server). You can still load any GEDCOM file from your computer.' }),
+          el('p', { text: 'The family could not be fetched (this happens when the page is opened straight from a folder rather than from a web server). You can still load any GEDCOM file from your computer.' }),
           el('button', { class: 'pill', text: 'Load your family file', onclick: () => document.getElementById('file').click() }))));
       });
   }

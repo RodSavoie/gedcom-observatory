@@ -2,7 +2,7 @@
    Adds a small switcher above the header and recolours the whole site for each design:
    the stylesheet is re-read with its colours swapped, and every colour the views draw
    (canvas, SVG, d3 scales) is swapped at the moment it is drawn, so no view needs editing.
-   Ochre, the first in the list, is the default for new visitors (and for anyone whose saved choice no longer exists);
+   DEFAULT_DESIGN (an id below) is the design for new visitors (and for anyone whose saved choice no longer exists);
    a visitor's choice is kept in a cookie (and in local storage as a fallback) for a year. */
 (function () {
   'use strict';
@@ -19,6 +19,7 @@
     bubble: '#EEEEEE'   // the inside of The Tangle's bubbles (BUBBLE_FILL in tangle.js)
   };
 
+  const DEFAULT_DESIGN = 'harbour';
   const DESIGNS = [
     { id: 'ochre', name: 'Ochre', note: 'Ivory, olive, mustard and burnt orange, on cardboard',
       pal: { bg: '#E5E1D6', snow: '#F8F5EC', snow2: '#F6F2E8', soft: '#E4DFD1', soft2: '#E0DACB', soft3: '#D7D0BF', line: '#CAC2AE', other: '#B2AA94', white: '#FFFDF8',
@@ -56,6 +57,8 @@
         red: '#B4553C', redsoft: '#F4DCD2', peach: '#F3E4D8', blush: '#E4C2AE', flax: '#E0A84F', peach2: '#EED4C2', orange: '#CF8460', redtext: '#663020', redtext2: '#622E1E',
         teal: '#3D7397', c3: '#D19A3E', c4: '#5C5A96', c5: '#B9688A', c6: '#5B8A63', c7: '#8268A6', bubble: '#EEF0F2' } }
   ];
+
+  const defaultDesign = () => DESIGNS.find(d => d.id === DEFAULT_DESIGN) || DESIGNS[0];
 
   /* ---------- colour translation ---------- */
   const hex6 = s => s.replace('#', '').toUpperCase();
@@ -135,7 +138,7 @@
     try { id = new URLSearchParams(location.search).get('design'); } catch (e) {}
     if (id && DESIGNS.some(d => d.id === id)) saveChoice(id);
     else id = readChoice();
-    return DESIGNS.find(d => d.id === id) || DESIGNS[0];
+    return DESIGNS.find(d => d.id === id) || defaultDesign();
   }
   let current = pick();
   const root = document.documentElement;
@@ -222,5 +225,5 @@
     buildBar();
     apply(current);
   });
-  window.FO_DESIGNS = { list: DESIGNS, apply: id => apply(DESIGNS.find(d => d.id === id) || DESIGNS[0]), swap };
+  window.FO_DESIGNS = { list: DESIGNS, apply: id => apply(DESIGNS.find(d => d.id === id) || defaultDesign()), swap };
 })();
