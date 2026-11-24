@@ -26,21 +26,23 @@
      or accents), then where it is: [latitude, longitude]. Add a line to correct any place. */
   const PINS = {
     'Tracadie, Colony of Nova Scotia': [47.514, -64.915],   // Tracadie, New Brunswick (Rod, 2026-11-21)
+    'Fort Royal de Martinique, France': [14.604, -61.074],   // today's Fort-de-France
   };
 
-  /* Places and regions the gazetteers don't know, or know under a modern name: [lat, lon, country, region code, kind, reach]
+  /* Places and regions the gazetteers don't know, or know under a modern name: [lat, lon, country, region code, kind, reach, own]
      kind: 'p' a settlement, 'r' a region (people placed there are "known only by region"), 'x' ignore this part.
      reach: for a region, how far (km) from its centre a town named with it may lie (default 400).
+     own: true for a settlement whose name is common elsewhere, found only when the place is in its own country.
      A region given a state or province code keeps its towns inside that state, unless it is in WIDER below. */
   const HISTORIC = {};
   const add = (names, v) => names.forEach(n => { HISTORIC[key(n)] = v; });
   // Acadia and New France
   add(['Acadie', 'Acadia', "L'Acadie"], [45.3, -64.6, 'CA', '', 'r']);
   add(['Nouvelle-France', 'New France', 'Canada Nouvelle-France'], [47.0, -71.0, 'CA', '', 'r', 1500]);
-  add(['British North America', 'Amérique du Nord britannique', 'British Colonial America', 'Amérique coloniale britannique', 'Amérique du Nord', 'North America'], [46.0, -66.0, 'CA', '', 'r', 2500]);
+  add(['British North America', 'Amérique du Nord britannique', 'British Colonial America', 'British America', 'Amérique coloniale britannique', 'Amérique du Nord', 'North America'], [46.0, -66.0, 'CA', '', 'r', 2500]);
   add(['Bas-Canada', 'Lower Canada', 'Canada East', 'Canada-Est', 'Province de Québec', 'Quebec Province'], [46.8, -71.5, 'CA', '10', 'r']);
   add(['Haut-Canada', 'Upper Canada', 'Canada West', 'Canada-Ouest'], [44.0, -79.0, 'CA', '08', 'r']);
-  add(['Île Saint-Jean', 'Isle Saint-Jean', "St. John's Island", 'Isle St. John', 'Saint John Island', 'St. John Island'], [46.35, -63.25, 'CA', '09', 'r']);
+  add(['Île Saint-Jean', 'Isle Saint-Jean', "St. John's Island", 'Isle St. John', 'Saint John Island', 'St. John Island', 'Island of St. John'], [46.35, -63.25, 'CA', '09', 'r']);
   add(['Île Royale', 'Isle Royale', 'Cape Breton', 'Cap-Breton', 'Cape Breton Island'], [46.1, -60.75, 'CA', '07', 'r']);
   add(['Port-Royal', 'Port Royal', 'Annapolis Royale'], [44.745, -65.511, 'CA', '07', 'p']);   // today's Annapolis Royal, so the two names share one bubble
   add(['Beaubassin'], [45.855, -64.29, 'CA', '07', 'p']);
@@ -93,6 +95,11 @@
   // elsewhere
   add(['Saint-Domingue', 'Santo Domingo colony'], [19.0, -72.4, 'HT', '', 'r']);
   add(['Comtat-Venaissin', 'Comtat Venaissin'], [44.05, 5.05, 'FR', '', 'r']);
+  // Martinique under its colonial names
+  add(['Fort-Royal', 'Fort Royal', 'Fort-Royal de Martinique', 'Fort Royal de Martinique'], [14.604, -61.074, 'MQ', '', 'p', 0, true]);   // today's Fort-de-France
+  add(['Le Mouillage', 'Mouillage'], [14.738, -61.177, 'MQ', '', 'p', 0, true]);   // the harbour quarter of Saint-Pierre
+  add(['Le Carbet', 'Au Carbet', 'Carbet'], [14.708, -61.178, 'MQ', '', 'p', 0, true]);
+  add(['Champflore', 'Champ Flore', 'Champ-Flore'], [14.765, -61.15, 'MQ', '', 'p', 0, true]);   // in Le Morne-Rouge
   // old French provinces
   const fr = (names, lat, lon) => add(names, [lat, lon, 'FR', '', 'r']);
   fr(['Aunis'], 46.16, -1.0); fr(['Perche'], 48.42, 0.7); fr(['Poitou'], 46.55, 0.1); fr(['Saintonge'], 45.75, -0.65);
@@ -113,7 +120,21 @@
   add(['England', 'Angleterre', 'Kingdom of England'], [52.5, -1.5, 'GB', 'ENG', 'r']);
   add(['Scotland', 'Écosse'], [56.5, -4.0, 'GB', 'SCT', 'r']);
   add(['Wales', 'Pays de Galles'], [52.3, -3.7, 'GB', 'WLS', 'r']);
-  add(['Louisiane', 'Spanish Louisiana', 'Louisiane espagnole'], [30.5, -91.5, 'US', 'LA', 'r']);
+  // Louisiana under its French, Spanish and colonial names (all in WIDER below)
+  const LOUISIANA = ['Louisiane', 'Spanish Louisiana', 'Louisiane espagnole', 'Luisiana', 'La Luisiana', 'Luisiana española', 'Luisiana espanola',
+    'Louisiana Colony', 'Colony of Louisiana', 'Colonie de la Louisiane',
+    'Louisiana Territory', 'Territory of Louisiana'];   // strictly the upper Mississippi (1805-1812), but in these files it means Louisiana
+  add(LOUISIANA, [30.5, -91.5, 'US', 'LA', 'r']);
+  add(['Nouvelle-Orléans', 'La Nouvelle-Orléans', 'Nouvelle Orleans', 'Nueva Orleans', 'Nueva Orléans'], [29.954, -90.075, 'US', 'LA', 'p']);
+  add(['West Florida', 'Florida Occidental', 'Floride occidentale', 'British West Florida', 'Spanish West Florida'], [30.7, -89.5, 'US', '', 'r', 350]);   // Baton Rouge to Pensacola
+  add(['Spanish Florida', 'La Florida', 'Floride espagnole', 'Florida española'], [30.3, -86.5, 'US', '', 'r', 800]);
+  add(['Republic of Texas', 'République du Texas', 'República de Texas', 'Texas Republic', 'Tejas'], [31.0, -99.0, 'US', 'TX', 'r']);
+  // Georgia is the American colony and state here (Acadians were sent there in 1755), not the country of the Caucasus
+  add(['Georgia', 'Province of Georgia', 'Georgia Colony', 'Colony of Georgia'], [32.7, -83.4, 'US', 'GA', 'r']);
+  /* New Spain: in these families nearly always Spanish Louisiana or West Florida, so it is centred there; it is vast, so a
+     state or parish named with it still says where (a Mexican town written with only "New Spain" lands in Louisiana). */
+  add(['New Spain', 'Nouvelle-Espagne', 'Nueva España', 'Viceroyalty of New Spain', 'Vice-royauté de Nouvelle-Espagne', 'Virreinato de Nueva España',
+    'Spanish Territory'], [30.5, -91.5, 'US', '', 'r', 2500]);
   add(['Upper Louisiana', 'Haute-Louisiane'], [38.6, -90.2, 'US', '', 'r', 600]);
   add(['Attakapas', 'Attakapas Post', 'Poste des Attakapas', 'Les Attakapas'], [30.13, -91.83, 'US', 'LA', 'r', 80]);
   add(['Opelousas Post', 'Poste des Opelousas'], [30.533, -92.081, 'US', 'LA', 'p']);
@@ -123,12 +144,14 @@
   add(['Colony of Nova Scotia', 'Nova Scotia Colony', 'Province of Nova Scotia', 'Colonie de la Nouvelle-Écosse', 'Colonie de Nouvelle-Écosse'], [45.6, -64.5, 'CA', '', 'r', 450]);
   add(['Massachusetts Bay'], [42.3, -71.6, 'US', 'MA', 'r']);
   add(['New England', 'Nouvelle-Angleterre'], [43.6, -71.5, 'US', '', 'r', 500]);
-  add(['French Louisiana', 'Louisiane française', 'Louisiane francaise', 'La Louisiane'], [30.5, -91.5, 'US', 'LA', 'r']);
+  add(['French Louisiana', 'Louisiane française', 'Louisiane francaise', 'La Louisiane', 'La Louisiane française'], [30.5, -91.5, 'US', 'LA', 'r']);
   add(['Orleans Territory', 'Territory of Orleans', "Territoire d'Orléans", "Territoire d'Orleans"], [30.5, -91.5, 'US', 'LA', 'r']);   // Louisiana, 1804-1812
   // parts that say nothing about where
-  add(['At Sea', 'En mer', 'Lost at sea', 'Unknown', 'Inconnu', 'New Spain', 'Nouvelle-Espagne', 'Nueva España', 'Spanish Empire'], [0, 0, '', '', 'x']);
+  add(['At Sea', 'En mer', 'Lost at sea', 'Unknown', 'Inconnu', 'Spanish Empire'], [0, 0, '', '', 'x']);
   // old colonies larger than the state they are tied to: French Louisiana took in Mobile, Massachusetts Bay took in Maine
-  const WIDER = new Set(['Louisiane', 'Spanish Louisiana', 'Louisiane espagnole', 'French Louisiana', 'Louisiane française', 'Louisiane francaise', 'La Louisiane', 'Massachusetts Bay'].map(key));
+  const WIDER = new Set([...LOUISIANA, 'French Louisiana', 'Louisiane française', 'Louisiane francaise', 'La Louisiane', 'La Louisiane française', 'Massachusetts Bay'].map(key));
+  // countries that ruled colonies: "…, Louisiana Territory, France" is in Louisiana, not in France
+  const EMPIRES = new Set(['FR', 'ES', 'GB']);
   /* Deaths and births at sea. They are shown on the water, on the crossing they most likely happened on: first by what the
      place says (a ship, an island, a destination), then by the year. Each spot: [lat, lon, short name, note for the pop-up].
      Coordinates are points at sea, picked by hand; move one by changing its numbers. */
@@ -169,7 +192,10 @@
   }
   const atSea = (place, whole) => SEA_ANY.test(whole) || partsOf(place).some(p => SEA_START.test(key(p)));
   const COUNTRY_EXTRA = { usa: 'US', 'u s a': 'US', us: 'US', 'united states': 'US', 'etats unis': 'US', 'etats unis d amerique': 'US', america: 'US',
-    uk: 'GB', 'great britain': 'GB', 'grande bretagne': 'GB', 'royaume uni': 'GB', holland: 'NL', 'pays bas': 'NL', 'canada': 'CA' };
+    uk: 'GB', 'great britain': 'GB', 'grande bretagne': 'GB', 'royaume uni': 'GB', holland: 'NL', 'pays bas': 'NL', 'canada': 'CA',
+    // in Spanish, Dutch and German
+    'estados unidos': 'US', 'estados unidos de america': 'US', francia: 'FR', espana: 'ES', inglaterra: 'GB', 'reino unido': 'GB', 'gran bretana': 'GB',
+    escocia: 'GB', irlanda: 'IE', alemania: 'DE', nederland: 'NL', deutschland: 'DE', frankreich: 'FR' };
 
   /* Old names that today belong to another place elsewhere, used only when their province is named:
      [name, country, region code, lat, lon]. Plaisance, Newfoundland is today's Placentia (there is a Plaisance in Quebec). */
@@ -238,7 +264,8 @@
   const near = (ctx, r) => ctx.any ? Math.min(...ctx.any.map(o => km(o, r))) : km(ctx, r);
   const partsOf = place => {
     const out = [];
-    for (const raw of String(place).replace(/(\p{L}{3,})\. (?=\p{Lu})/gu, '$1, ').split(',')) {
+    // "Haut-Maînil (Pas-de-Calais) France": what follows a bracket is a part of its own
+    for (const raw of String(place).replace(/(\p{L}{3,})\. (?=\p{Lu})/gu, '$1, ').replace(/([^\s,(][^,(]*\([^)]*\))\s+(?=[^\s,(])/g, '$1, ').split(',')) {
       const main = raw.replace(/\(.*?\)/g, ' ').trim();
       if (main) out.push(main);
       (raw.match(/\((.*?)\)/g) || []).forEach(m => out.push(m.slice(1, -1)));   // "Montreuil (Seine-Saint-Denis)" also says where
@@ -301,7 +328,7 @@
 
   function findPlace(part, cc, ctx, a1) {
     const h = HISTORIC[key(part)];
-    if (h && h[4] === 'p') return { name: part, lat: h[0], lon: h[1] };
+    if (h && h[4] === 'p' && !(h[6] && h[2] !== cc)) return { name: part, lat: h[0], lon: h[1] };
     const k = key(part); if (!k) return null;
     if (a1 && LOCAL.has(k + '|' + cc + '|' + a1)) return LOCAL.get(k + '|' + cc + '|' + a1);
     const g = cc && gazReady.get(cc);
@@ -352,11 +379,16 @@
     const parts = partsOf(place);
     let cc = '', ctx = null, ctxI = parts.length;
     const vast = () => ctx && ctx.kind === 'h' && !ctx.a1 && (ctx.reach || 0) >= 1000;
+    // a colony named just before the country that ruled it ("Louisiana Territory, France", "Martinique, France"): the colony wins
+    // (only across the Atlantic: "Centre, France" is the French region, not the one in Burkina Faso; and only right next to
+    // the country: in "Luché, Saint-Martin, Maine angevin, France", Saint-Martin is a parish, not the island)
+    const colony = (r, i) => ctx && ctx.kind === 'c' && EMPIRES.has(ctx.cc) && ctxI === i + 1 && r && !r.skip && 'hac'.includes(r.kind) && r.cc && r.cc !== ctx.cc && r.lon < -30;
     for (let i = parts.length - 1; i >= 1; i--) {
       let r = regionOf(parts[i], cc, ctx && ctx.a1);
       if (!r && vast()) { r = regionOf(parts[i], ''); if (r && !r.skip && r.cc) cc = r.cc; }
+      if (!r && colony(regionOf(parts[i], ''), i)) { r = regionOf(parts[i], ''); cc = r.cc; ctx = null; }
       if (!r || r.skip) continue;
-      if (r.cc && cc && r.cc !== cc) { if (!vast()) continue; cc = r.cc; }
+      if (r.cc && cc && r.cc !== cc) { const col = colony(r, i); if (!vast() && !col) continue; cc = r.cc; if (col) ctx = null; }
       if (r.cc) cc = r.cc;
       if (r.kind === 'c' && ctx) { ctxI = i; continue; }   // "…, Acadie, Canada": keep Acadie
       if (r.kind === 'h' && !r.a1 && ctx && ctx.a1) continue;   // "…, Acadia, New Brunswick": keep New Brunswick
@@ -377,8 +409,8 @@
       }
       // a province or state named with nothing more precise after it: a town of that name only if it lies inside
       // ("Québec, Canada" is the city; "Louisiana, New Spain" is the province, not Louisiana, Missouri)
-      if (asRegion && !asRegion.skip && asRegion.kind === 'a' && (!ctx || ctx.kind === 'c') && (parts.length < 2 || key(parts[i]) !== bare(key(parts[i])))) continue;
-      if (asRegion && !asRegion.skip && asRegion.kind === 'a' && (!ctx || ctx.kind === 'c')) {
+      if (asRegion && !asRegion.skip && asRegion.kind === 'a' && (!ctx || ctx.kind === 'c' || vast()) && (parts.length < 2 || key(parts[i]) !== bare(key(parts[i])))) continue;
+      if (asRegion && !asRegion.skip && asRegion.kind === 'a' && (!ctx || ctx.kind === 'c' || vast())) {
         const t = findPlace(parts[i], asRegion.cc, asRegion, asRegion.a1);
         if (t) out = { lat: t.lat, lon: t.lon, level: 'place', name: parts[i], approx: !!t.approx };
         continue;
@@ -389,8 +421,13 @@
     }
     if (!out && parts.length) {
       // the most specific region named: "Acadie, Nouvelle-France" is Acadie; "Canada, Nouvelle-France" is New France
-      const x = regionOf(parts[0], cc, ctx && ctx.a1), r0 = x && !x.skip ? x : null;
-      const r = [r0 && r0.kind !== 'c' ? r0 : null, ctx, r0].find(o => o && !o.any) || ((ctx && ctx.any) || (r0 && r0.any) ? cc && idx.country.get(key(regionsName(cc))) : null);
+      let x = regionOf(parts[0], cc, ctx && ctx.a1);
+      if (!x && vast()) x = regionOf(parts[0], '');   // "Louisiana, New France"
+      // "Martinique, France": the colony (but "Saint-Martin, France" is more likely a parish than the island)
+      const xc = x || regionOf(parts[0], ''), col = (!x || x.kind === 'c') && !/^(saint|sainte) /.test(key(parts[0])) && colony(xc, 0);
+      if (col) x = xc;
+      const r0 = x && !x.skip ? x : null;
+      const r = [r0 && (r0.kind !== 'c' || col) ? r0 : null, ctx, r0].find(o => o && !o.any) || ((ctx && ctx.any) || (r0 && r0.any) ? cc && idx.country.get(key(regionsName(cc))) : null);
       if (r) out = { lat: r.lat, lon: r.lon, level: 'region', name: r === r0 ? parts[0] : r.name || parts[ctxI] };
     }
     if (!out && parts.length === 1 && !/,/.test(place)) {
