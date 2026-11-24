@@ -5,14 +5,18 @@ standard export from WikiTree, Ancestry, FamilySearch, Gramps and most genealogy
 explore ancestors, descendants, places, lifetimes, repeated ancestors and the gaps worth
 researching.
 
-See it live at **[cognitiveoverload.com](https://cognitiveoverload.com/)**, showing my
-Savoie / Breau family.
+See it live at **[cognitiveoverload.com](https://cognitiveoverload.com/)**. It opens on the
+Acadians and their spouses, about 27,000 people from the
+[WikiTree Acadians Project](https://www.wikitree.com/wiki/Project:Acadians); the Acadians alone
+and my own Savoie · Breau family can be opened from the menu.
 
 - **Plain static files.** HTML, CSS and JavaScript, with no build step and no framework.
 - **Private by design.** A file you load is read inside your own browser. Nothing is uploaded.
   Living people are hidden by default.
 - **Works with any GEDCOM.** WikiTree files get profile links on every person; files from
   elsewhere work too, just without the links.
+- **Several families built in.** The site can publish any number of cleaned family files and
+  open on whichever one you choose.
 - **Or straight from WikiTree.** Type a WikiTree ID under **From WikiTree** and the family is
   fetched live from the [WikiTree API](https://github.com/wikitree/wikitree-api), no export needed.
 
@@ -26,8 +30,25 @@ Savoie / Breau family.
 | What does the whole tree look like? | By the Numbers |
 | What needs work? | What's Missing, Things Worth Checking |
 
-Every view has a "How to read this" guide. Five colour designs (Ochre, Mineral, Sage, Slate,
-Aurora) can be switched at the top of the page, and each visitor's choices are remembered.
+Every view has a "How to read this" guide. Where They Lived can be drawn as ribbons, a grid or a
+map; the map finds places from lists that come with the site (old Acadian and French names
+included) and puts births and deaths at sea on the water, along the crossing they belong to.
+
+Seven designs can be switched at the top of the page: Ochre, Mineral, Sage, Slate, Aurora, Gilt
+(charcoal and gold, with a torn-paper edge) and Harbour (a navy menu down the left side, on
+linen). Harbour is the default. Each visitor's choices are remembered.
+
+## Links
+
+A link can open the site on a given family, design or view, and the parameters can be combined:
+
+| Parameter | Does |
+|---|---|
+| `?family=savoie`, `acadians`, `acadians-plus` | opens one of the families on the site |
+| `?design=ochre`, `mineral`, `sage`, `slate`, `aurora`, `gilt`, `harbour` | switches the design (and remembers it) |
+| `?wt=Savoie-2387&anc=10&desc=1&sib=0` | draws a family from WikiTree (see below) |
+| `#/places?view=map&what=deaths&period=1750` | opens a view with its settings. Where They Lived, The Tangle (`surnames=`) and the Everyone / Direct ancestors switch (`show=`) write their settings back to the address as you change them, so it can be copied and shared |
+| `#/about?families` | opens the About page at one of its sections |
 
 ## Try it on your computer
 
@@ -47,10 +68,13 @@ then open <http://localhost:8000>. (The Contact me form needs PHP; with PHP inst
 Upload the **contents** of the `site` folder to any ordinary web host, at the root or in a
 sub-folder such as `/family/`. All paths are relative, so either works.
 
-The built-in family file is `site/data/family.ged.txt`. It ends in `.txt` because some web
-hosts refuse to serve `.ged` files; it is an ordinary GEDCOM.
+The families on the site are in `site/data/`: `AcadiansPlus.GED.txt`, `Acadians.GED.txt` and
+`family.ged.txt` (Savoie · Breau). They end in `.txt` because some web hosts refuse to serve
+`.ged` files; each is an ordinary GEDCOM. They are listed in `FAMILIES` in `site/js/app.js`,
+and `DEFAULT_FAMILY` just above it names the one the site opens on. Visitors always get the
+newest copy of a file, so replacing one in `site/data/` is enough to update it.
 
-### Use your own family as the built-in one
+### Put your own family on the site
 
 Never publish a raw export: genealogy exports often contain living relatives, e-mail
 addresses and private notes. Make a cleaned copy first, either way:
@@ -66,6 +90,20 @@ addresses and private notes. Make a cleaned copy first, either way:
 The cleaned copy keeps names, sex, birth, death and marriage dates and places, profile links
 and relationships. It drops biographies, notes, sources, images and e-mail addresses, and
 turns anyone who may be living into an unnamed "Living person" with no dates or places.
+
+Then add a line for it to `FAMILIES` in `site/js/app.js` (an `id` for links, the `file`, a
+`label` for the menus and a `short` name for Harbour's side menu), and set `DEFAULT_FAMILY` to
+its `id` if the site should open on it. The first person in the file is the home person.
+
+### The map
+
+The map in Where They Lived asks no map service: places are looked up in files under
+`site/data/map/`, built once by `tools/build-map-data.js` from Natural Earth, GeoNames, Natural
+Resources Canada's place names and the French communes list (sources and licences in
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)). Acadian settlements, old French provinces,
+historic regions such as French Louisiana, and the routes for deaths and births at sea are added
+by hand in `site/js/geo.js`. If you rebuild the map files, raise `MAP_VERSION` at the top of
+`geo.js` so browsers fetch the new ones.
 
 ### Drawing families from WikiTree
 
@@ -104,6 +142,14 @@ e-mail link instead. The form has spam protection (a hidden robot trap, a minimu
 sending, a same-site check, a limit of 5 messages an hour per visitor, and header-injection
 filtering). Nothing is stored.
 
+### Publishing from GitHub (optional)
+
+`.github/workflows/deploy.yml` copies the `site` folder to the web host over SSH whenever a
+change inside `site/` reaches the `main` branch, and can be run by hand from the Actions tab. It
+only adds or updates files, never deletes any, and never sends a filled-in
+`fo-contact-config.php`. The server details and SSH key live in GitHub secrets; the comments at
+the top of the file list them.
+
 ## Making it yours
 
 | To change | Edit |
@@ -112,9 +158,12 @@ filtering). Nothing is stored.
 | About Me page | `site/js/aboutme.js` and `site/img/rod-savoie.jpg` |
 | Contact me page and social links | `site/js/contact.js` |
 | Layout and type | `site/css/style.css` |
-| Colour designs | `site/js/designs.js` (palettes) and `site/css/designs.css` (textures, shadows, corners) |
+| Families on the site, and the one it opens on | `FAMILIES` and `DEFAULT_FAMILY` in `site/js/app.js` |
+| Designs, and the default one | `site/js/designs.js` (palettes, `DEFAULT_DESIGN`) and `site/css/designs.css` (textures, shadows, corners, Harbour's side menu, the header's hover wash) |
 | Chart colours | `FO.C` and `FO.CAT` at the top of `site/js/app.js` |
+| Settings of a view (fan, Tangle, map, …) | the capitalised constants at the top of each file in `site/js/views/` |
 | Places that should count as one | the `alias(...)` lines in `site/js/gedcom.js` |
+| Places the map should know, and how names are matched | `site/js/geo.js` |
 | Historical events on timelines | `FO.HISTORY` in `site/js/charts.js` |
 
 ## How the code is organised
@@ -122,19 +171,29 @@ filtering). Nothing is stored.
 ```
 site/
   index.html            the single page
+  designs.html          forwards old links to index.html
   contact.php           sends the Contact me form
-  css/                  style.css (layout), designs.css (the five designs)
+  wikitree.php          relays questions to the WikiTree API
+  css/                  style.css (layout), designs.css (the seven designs)
   js/
-    app.js              start-up, menu, home page, remembered choices
+    app.js              start-up, menus, home and About pages, families, remembered choices
     gedcom.js           reads GEDCOM files, merges place spellings
     kin.js              relationships, lines of descent, pedigree collapse
     charts.js           shared drawing helpers, SVG export, history events
-    designs.js          colour designs and the switcher
-    views/              one file per view
-    vendor/d3.min.js    D3
-  data/family.ged.txt   the built-in family
-  fonts/, img/
-tools/scrub.js          makes a cleaned, publishable copy of a GEDCOM
+    designs.js          the designs and the switcher
+    geo.js              finds places for the map, including at sea
+    wikitree.js         draws a family from WikiTree
+    aboutme.js, contact.js, totop.js
+    views/              one file per view (placesmap.js is the map in Where They Lived)
+    vendor/             D3 and topojson-client
+  data/                 the families on the site; map/ holds the map and place-name files
+  fonts/                Roboto, and Oswald for the Gilt design
+  img/                  logo, portrait, and designs/ (textures, torn edge, brush strokes)
+tools/
+  scrub.js              makes a cleaned, publishable copy of a GEDCOM
+  build-map-data.js     builds site/data/map/ (sources in map-sources/)
+  test-wikitree.js      checks the WikiTree import: node tools/test-wikitree.js
+.github/workflows/deploy.yml   publishes site/ to the web host
 ```
 
 ## Credits
@@ -142,10 +201,17 @@ tools/scrub.js          makes a cleaned, publishable copy of a GEDCOM
 The idea and the list of views come from the
 [Kinfolk Observatory](https://observatory.vibegenealogy.ai/). Family Observatory is a separate
 implementation, written from scratch with its own code and design; none of the original's
-code, sample families or images is included. Pedigree Collapse is an addition of its own.
+code, sample families or images is included. Pedigree Collapse is an addition of its own. The
+untangled pedigree in Ancestors Through Time owes a debt to B. F. Lyon's
+[Exploring Family Trees](https://learnforeverlearn.com/ancestors/).
 
-Bundled: [D3](https://d3js.org/) (ISC licence) and the Roboto font (SIL Open Font Licence).
-See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+The families on the site are drawn from profiles on [WikiTree](https://www.wikitree.com/),
+built by many volunteers, including the
+[Acadians Project](https://www.wikitree.com/wiki/Project:Acadians).
+
+Bundled: [D3](https://d3js.org/) and topojson-client (ISC licence), the Roboto and Oswald fonts
+(SIL Open Font Licence), and map data from Natural Earth, GeoNames, Natural Resources Canada
+and INSEE. See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 ## Licence
 
