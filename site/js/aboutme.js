@@ -7,7 +7,7 @@
 <div class="caps">About me</div>
 <h1>Rod Savoie</h1>
 
-<img class="me-photo" src="img/rod-savoie.png" width="720" height="720" alt="Pencil sketch portrait of Rod Savoie">
+<img class="me-photo" src="img/rod-savoie.jpg" width="720" height="720" alt="Pencil sketch portrait of Rod Savoie">
 
 <p class="lede">Engineer by training, teacher by instinct, music manager by family commitment, and lately someone who spends a lot of time with people who died three hundred years ago.</p>
 
