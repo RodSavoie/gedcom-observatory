@@ -62,7 +62,10 @@
   add(['La Hève', 'La Heve', 'LaHave'], [44.29, -64.36, 'CA', '07', 'p']);
   add(['Mirligueche', 'Merliguèche'], [44.38, -64.31, 'CA', '07', 'p']);
   add(['Chédabouctou', 'Chedabouctou', 'Chedabucto'], [45.39, -61.5, 'CA', '07', 'p']);
-  add(['Rivière Saint-Jean', 'Rivière St-Jean', 'Saint John River'], [46.0, -66.6, 'CA', '04', 'r']);
+  add(['Rivière Saint-Jean', 'Rivière St-Jean', 'Saint John River', 'Fleuve Saint-Jean', 'Lower St John River Settlement', 'Lower Saint John River'], [46.0, -66.6, 'CA', '04', 'r']);
+  // Pointe-Sainte-Anne, the Acadian village on the Saint John River, is today's Fredericton (same spot, so they share one bubble)
+  add(['Pointe-Sainte-Anne', 'Pointe Sainte-Anne', 'Sainte-Anne-des-Pays-Bas', 'Sainte-Anne-du-Pays-Bas', 'Sainte-Anne-de-la-Rivière-Saint-Jean',
+    'Ste-Anne-de-la-Rivière-St-Jean'], [45.945, -66.666, 'CA', '04', 'p']);
   add(['Jemseg'], [45.83, -66.12, 'CA', '04', 'p']);
   add(['Pentagouet', 'Pentagoët'], [44.39, -68.8, 'US', 'ME', 'p']);
   add(['Restigouche', 'Ristigouche'], [48.0, -66.7, 'CA', '04', 'r']);
@@ -213,6 +216,12 @@
     ['Kent County', 'CA', '04', 46.5, -65.0], ['Albert County', 'CA', '04', 45.75, -64.85], ['Sunbury County', 'CA', '04', 45.85, -66.5],
     ['Queens County', 'CA', '04', 45.95, -65.9], ['Victoria County', 'CA', '04', 47.05, -67.4]];
 
+  /* Names that mean one place only inside a given region of HISTORIC: [region, [names], lat, lon].
+     "Sainte-Anne, Rivière Saint-Jean" is Pointe-Sainte-Anne (Fredericton), not Sainte-Anne-de-Kent. */
+  const WITHIN = [
+    ['Rivière Saint-Jean', ['Sainte-Anne', 'Saint-Anne', 'Saint Ann'], 45.945, -66.666]];
+  const WITHIN_BY = new Map(WITHIN.map(([r, names, lat, lon]) => [HISTORIC[key(r)], new Map(names.map(n => [key(n), { name: n, lat, lon, pop: 0 }]))]));
+
   const pinKey = place => String(place).split(',').map(p => key(p)).filter(Boolean).join(',');
   const PINNED = new Map(Object.entries(PINS).map(([k, v]) => [pinKey(k), v]));
 
@@ -331,6 +340,8 @@
     if (h && h[4] === 'p' && !(h[6] && h[2] !== cc)) return { name: part, lat: h[0], lon: h[1] };
     const k = key(part); if (!k) return null;
     if (a1 && LOCAL.has(k + '|' + cc + '|' + a1)) return LOCAL.get(k + '|' + cc + '|' + a1);
+    const within = ctx && ctx.kind === 'h' && WITHIN_BY.get(HISTORIC[key(ctx.name)] || HISTORIC[bare(key(ctx.name))]);
+    if (within && within.has(k)) return within.get(k);
     const g = cc && gazReady.get(cc);
     if (!g) return null;
     const regional = ctx && ctx.kind !== 'c';
