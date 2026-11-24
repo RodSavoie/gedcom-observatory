@@ -21,6 +21,15 @@ body.in-view .design-bar { padding-top: 4px; padding-bottom: 3px; }
 /* the DESIGN row sits a shade darker than the rest of the band */
 .design-bar { background-color: var(--band-top); }
 
+/* the header's links (The views, The family, About me, Contact me; About, Privacy): a faint wash on hover.
+   --nav-hover is its strength (a share of the link’s own colour), --nav-hover-pad how far it reaches each side; either can be set per design. */
+:root { --nav-hover: .08; --nav-hover-pad: 10px; }
+.nav > :is(a, button) { position: relative; }
+.nav > :is(a, button)::before { content: ''; position: absolute; inset: 1px calc(-1 * var(--nav-hover-pad)); border-radius: var(--radius, 4px); background: currentColor; opacity: 0; transition: opacity .15s; pointer-events: none; }
+.nav > :is(a, button):hover::before { opacity: var(--nav-hover); }
+/* the families listed under The family: only the Harbour design's side menu shows them */
+.fam-links { display: none; }
+
 /* How Are We Related: the two large panels let the page show through a little, so the boxes on them stand out */
 .relres > div { background-color: color-mix(in srgb, var(--white) 85%, transparent); }
 /* Hourglass: a very faint, centred shadow under each box */
@@ -214,7 +223,7 @@ html[data-design="harbour"] .pill.dark:hover { background: #B4553C; border-color
   html[data-design="harbour"] #menu-views { order: 2; display: block; position: static; background: none; border: 0; box-shadow: none; border-radius: 0; padding: 0; margin: 0; }
   html[data-design="harbour"] #menu-views::before, html[data-design="harbour"] .nav.main::before { content: 'The views'; display: block; padding: 0 24px 6px; font-size: 10px; text-transform: uppercase; letter-spacing: .18em; color: var(--rail-dim); }
   html[data-design="harbour"] #menu-views .menu-grid { display: block; }
-  html[data-design="harbour"] #menu-views .menu-grid a { gap: 11px; padding: 4px 20px 4px 21px; border-radius: 0; border-left: 3px solid transparent; color: var(--rail-text); }
+  html[data-design="harbour"] #menu-views .menu-grid a { gap: 11px; padding: 3px 20px 3px 21px; border-radius: 0; border-left: 3px solid transparent; color: var(--rail-text); }
   html[data-design="harbour"] #menu-views .menu-grid a:hover { background: rgba(255,255,255,.06); }
   html[data-design="harbour"] #menu-views .menu-grid a.on { background: rgba(255,255,255,.09); border-left-color: var(--rail-accent); }
   html[data-design="harbour"] #menu-views .menu-grid svg { width: 22px; height: 22px; stroke: var(--rail-text); opacity: .8; }
@@ -230,6 +239,13 @@ html[data-design="harbour"] .pill.dark:hover { background: #B4553C; border-color
   html[data-design="harbour"] .nav.main :is(button, a) { text-align: left; color: var(--rail-text); padding: 6px 20px 6px 21px; border-bottom: 0; border-left: 3px solid transparent; font-size: 12px; letter-spacing: .13em; }
   html[data-design="harbour"] .nav.main :is(button, a):hover { background: rgba(255,255,255,.06); }
   html[data-design="harbour"] .nav.main :is(.on, button[aria-expanded="true"]) { border-left-color: var(--rail-accent); background: rgba(255,255,255,.09); }
+  html[data-design="harbour"] .nav > :is(a, button)::before { display: none; }   /* the side menu has its own hover */
+  /* the families, under The family */
+  html[data-design="harbour"] .fam-links { display: block; padding: 0 0 4px; }
+  html[data-design="harbour"] .nav.main .fam-links a { display: block; text-transform: none; letter-spacing: .01em; font-weight: 400; font-size: 13px; color: var(--rail-dim); padding: 2px 20px 2px 37px; border-left: 3px solid transparent; }
+  html[data-design="harbour"] .nav.main .fam-links a:hover { color: var(--rail-text); background: rgba(255,255,255,.06); }
+  html[data-design="harbour"] .nav.main .fam-links a.on { color: var(--rail-text); font-weight: 600; background: none; border-left-color: transparent; }
+  html[data-design="harbour"] .nav.main .fam-links a.on::after { content: ''; display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--rail-accent); margin-left: 8px; vertical-align: 2px; }
 
   html[data-design="harbour"] #finder { order: 4; padding: 12px 20px 0; }
   html[data-design="harbour"] #finder .picker input { width: 100%; background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.12); color: var(--rail-text); }
@@ -250,14 +266,15 @@ html[data-design="harbour"] .pill.dark:hover { background: #B4553C; border-color
 }
 /* short screens: a tighter menu (it scrolls if it still does not fit) */
 /* very short screens: the menu scrolls (the person finder's list then stays inside it) */
-@media (min-width: 901px) and (max-height: 760px) {
+@media (min-width: 901px) and (max-height: 800px) {
   html[data-design="harbour"] .top, html[data-design="harbour"] body.in-view .top { overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.18) transparent; }
   html[data-design="harbour"] #finder .picker ul { right: 0; min-width: 0; }
 }
-@media (min-width: 901px) and (max-height: 860px) {
+@media (min-width: 901px) and (max-height: 890px) {
   html[data-design="harbour"] .top, html[data-design="harbour"] body.in-view .top { padding-top: 14px; }
   html[data-design="harbour"] .logo, html[data-design="harbour"] body.in-view .logo { width: 34px; height: 34px; margin-bottom: 10px; }
-  html[data-design="harbour"] #menu-views .menu-grid a { padding-top: 2px; padding-bottom: 2px; }
+  html[data-design="harbour"] #menu-views .menu-grid a { padding-top: 1px; padding-bottom: 1px; }
   html[data-design="harbour"] #menu-views .menu-grid b { font-size: 13px; }
   html[data-design="harbour"] .nav.main :is(button, a) { padding-top: 4px; padding-bottom: 4px; }
+  html[data-design="harbour"] .nav.main .fam-links a { padding-top: 1px; padding-bottom: 1px; }
 }

@@ -343,7 +343,7 @@
     const r = route();
     const s = FO.state;
     document.body.classList.remove('in-view'); delete document.body.dataset.view;
-    document.querySelectorAll('.nav a').forEach(a => a.classList.toggle('on', a.getAttribute('href') === (location.hash || '#/')));
+    document.querySelectorAll('.nav > a').forEach(a => a.classList.toggle('on', a.getAttribute('href') === (location.hash || '#/')));
     if (!s.data) { page.append(el('div', { class: 'loading', text: 'Reading the family file…' })); return; }
     buildMenus();
     const fd = document.getElementById('finder');
@@ -534,6 +534,13 @@
     FO.views.forEach(v => { const a = el('a', { href: '#/' + v.id, class: route() === v.id ? 'on' : '' }, iconSvg(v), el('div', {}, el('b', { text: v.title }), el('span', { text: v.card }))); grid.append(a); });
     vm.append(grid);
 
+    // the families on this site, listed under The family in the Harbour design's side menu (hidden elsewhere)
+    let fl = document.getElementById('fam-links');
+    if (!fl) { fl = el('div', { id: 'fam-links', class: 'fam-links' }); document.getElementById('btn-family').after(fl); }
+    fl.innerHTML = '';
+    FAMILIES.forEach(f => fl.append(el('a', { href: '?family=' + f.id + '#/' + route(), class: s.family === f.id ? 'on' : '', title: f.label + (f.note ? ': ' + f.note : ''),
+      onclick: e => { e.preventDefault(); if (s.family !== f.id) loadBuiltin(false, f.id); } }, f.short || f.label)));
+
     const fm = document.getElementById('menu-family');
     fm.innerHTML = '';
     fm.append(el('div', { class: 'caps', text: s.builtin ? (s.family === defaultFamily().id ? 'Built-in family' : 'A family on this site') : s.source === 'wikitree' ? 'From WikiTree' + (s.wikitree ? ': ' + s.wikitree.key : '') : 'Your file' }), el('h3', { text: s.title }),
@@ -615,12 +622,13 @@
   /* ---------- the families published with the site ----------
      Each is a cleaned GEDCOM in site/data. DEFAULT_FAMILY (an id below) is the one the site opens on; the list's order
      is the order of the menus and of the About page. A link such as ?family=savoie opens another one directly. Replace a file in site/data to update it: visitors always get the newest copy.
-     title: shown as the family's name; leave it out to use the title written in the file (_TITLE). */
+     title: shown as the family's name; leave it out to use the title written in the file (_TITLE).
+     short: the name in the Harbour design's side menu, under The family. */
   const DEFAULT_FAMILY = 'acadians-plus';
   const FAMILIES = [
-    { id: 'savoie', file: 'data/family.ged.txt', label: 'My Savoie · Breau family' },
-    { id: 'acadians', file: 'data/Acadians.GED.txt', label: 'The Acadians', note: 'about 23,000 people from the WikiTree Acadians Project' },
-    { id: 'acadians-plus', file: 'data/AcadiansPlus.GED.txt', label: 'The Acadians and their spouses', title: 'The Acadians and their spouses', note: 'the Acadians with the spouses who married into them, about 27,000 people' }];
+    { id: 'savoie', file: 'data/family.ged.txt', label: 'My Savoie · Breau family', short: 'Savoie · Breau' },
+    { id: 'acadians', file: 'data/Acadians.GED.txt', label: 'The Acadians', short: 'Acadians', note: 'about 23,000 people from the WikiTree Acadians Project' },
+    { id: 'acadians-plus', file: 'data/AcadiansPlus.GED.txt', label: 'The Acadians and their spouses', short: 'Acadians + spouses', title: 'The Acadians and their spouses', note: 'the Acadians with the spouses who married into them, about 27,000 people' }];
   FO.FAMILIES = FAMILIES;
   const familyOf = id => FAMILIES.find(f => f.id === id);
   const defaultFamily = () => familyOf(DEFAULT_FAMILY) || FAMILIES[0];
