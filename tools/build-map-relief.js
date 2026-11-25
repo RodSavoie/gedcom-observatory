@@ -3,18 +3,18 @@
    Run from this folder, after build-map-relief.py:
      npm i d3-contour topojson-client topojson-server topojson-simplify
      node build-map-relief.js ../site/data/map
-   Output: relief.json, objects landShadow, landLight, seaShadow, seaLight, one shape per level below (about 1.2 MB,
-   350 KB as sent by the server). */
+   Output: relief.json, objects landShadow, landLight, seaShadow, seaLight, one shape per level below (about 2.2 MB,
+   670 KB as sent by the server). */
 'use strict';
 const fs = require('fs'), path = require('path');
 const { contours } = require('d3-contour'), ts = require('topojson-server'), tsim = require('topojson-simplify'), tc = require('topojson-client');
 const OUT = process.argv[2] || '../site/data/map';
 const W = 2161, H = 1081;   // the grid, west to east and north to south
 // the levels traced: how deep a shadow, or how bright a light, starts each one (the map draws each a little stronger)
-const LEVELS = { landShadow: ['relief-land.f32', -1, [0.02, 0.05, 0.1]], landLight: ['relief-land.f32', 1, [0.03, 0.08]],
-  seaShadow: ['relief-sea.f32', -1, [0.012, 0.03, 0.06]], seaLight: ['relief-sea.f32', 1, [0.015, 0.04]] };
+const LEVELS = { landShadow: ['relief-land.f32', -1, [0.012, 0.02, 0.032, 0.05, 0.07, 0.1]], landLight: ['relief-land.f32', 1, [0.02, 0.03, 0.05, 0.08]],
+  seaShadow: ['relief-sea.f32', -1, [0.008, 0.012, 0.02, 0.03, 0.042, 0.06]], seaLight: ['relief-sea.f32', 1, [0.01, 0.015, 0.025, 0.04]] };
 // how much the shapes are smoothed (square degrees), the smallest kept, and the grid the points are rounded to
-const SIMPLIFY = 0.01, SMALLEST = 0.05, GRID = 20000;
+const SIMPLIFY = 0.02, SMALLEST = 0.15, GRID = 20000;
 
 /* d3 draws a ring clockwise as the inside of a shape and anticlockwise as the outside: outer rings are set clockwise,
    holes anticlockwise, measured flat on longitude and latitude */
