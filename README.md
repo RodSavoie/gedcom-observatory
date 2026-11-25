@@ -111,7 +111,10 @@ historic regions such as French Louisiana, and the routes for deaths and births 
 by hand in `site/js/geo.js`. If you rebuild the map files, raise `MAP_VERSION` at the top of
 `geo.js` so browsers fetch the new ones.
 
-The map wraps around east and west (`WRAP` at the top of `site/js/views/placesmap.js`), and its
+While the map is dragged or zoomed, the land, the sea and the layers move as one picture and are
+drawn again, sharp, when the movement stops, so it stays quick with every layer on (`QUICK_MOVE`
+and `MARGIN` at the top of `site/js/views/placesmap.js`); the bubbles and names follow live.
+The map wraps around east and west (`WRAP` in the same place), and its
 **Layers** menu has four layers, each fetched only the first time it is needed:
 
 | Layer | Files in `site/data/map/` | Built by |

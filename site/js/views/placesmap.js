@@ -26,6 +26,11 @@
     ['La Rochelle', -1.151, 46.160, 0.12], ['Belle-Île-en-Mer', -3.18, 47.33, 0.2], ['Morlaix', -3.827, 48.578, 0.12],
     ['Châtellerault', 0.546, 46.818, 0.12], ['Saint-Servan', -2.012, 48.636, 0.03]];
   const WRAP = true;               // the map wraps around east and west (Russia carries on left of Alaska); false stops at the edges
+  /* While the map is dragged or zoomed, the land, the sea and the layers move as one picture, which is quick, and are
+     drawn again, sharp, when the movement stops, or sooner once the picture has moved this far. MARGIN is how much map
+     is drawn beyond each edge of the window, as a share of its size, so a drag shows map there straight away. */
+  const QUICK_MOVE = true;         // false: everything is drawn again at every step, as before (slower with layers)
+  const MARGIN = 0.35;
 
   /* Layers, switched on and off under "Layers" above the map. LAYERS_DEFAULT is what a new visitor sees (any of 'colours',
      'relief', 'grid', 'borders'); after that each visitor's own choice is kept. Their files are fetched only when first needed. */
@@ -116,7 +121,17 @@
       const path = d3.geoPath(proj);
 
       const layers = o.layers || new Set(), coloured = layers.has('colours');
-      root.append(svg('rect', { x: 0, y: 0, width: W, height: H, rx: 4, fill: coloured ? SEA : WATER, 'fill-opacity': coloured ? 1 : WATER_OPACITY, 'pointer-events': 'none' }));
+      /* Two pictures, one over the other: under, the sea, the land and the layers ("under", its own <svg>, so the browser
+         can move it as a whole), and over it (root) the bubbles and names, which answer the pointer. "under" reaches MARGIN
+         beyond the window on every side and uses the same coordinates as root. */
+      const mx = QUICK_MOVE ? Math.round(W * MARGIN) : 0, my = QUICK_MOVE ? Math.round(H * MARGIN) : 0;
+      stage.querySelectorAll('svg.map-under').forEach(e => e.remove());
+      const under = svg('svg', { class: 'map-under', viewBox: [-mx, -my, W + 2 * mx, H + 2 * my].join(' '), 'aria-hidden': 'true',
+        style: 'inset:auto;left:' + -mx + 'px;top:' + -my + 'px;width:' + (W + 2 * mx) + 'px;height:' + (H + 2 * my) + 'px;pointer-events:none;transform-origin:' + mx + 'px ' + my + 'px' + (QUICK_MOVE ? ';will-change:transform' : '') });
+      stage.insertBefore(under, root);
+      under.append(svg('rect', { x: -mx, y: -my, width: W + 2 * mx, height: H + 2 * my, fill: coloured ? SEA : WATER, 'fill-opacity': coloured ? 1 : WATER_OPACITY }));
+      const baseZoom = svg('g');
+      under.append(baseZoom);
       const zoomG = svg('g');
       root.append(zoomG);
       const ns = { 'vector-effect': 'non-scaling-stroke' };
@@ -126,11 +141,11 @@
       const x0 = proj([-180, 0])[0], worldW = proj([180, 0])[0] - x0;
       const COPIES = WRAP ? [-1, 0, 1] : [0];
       const defs = svg('defs');
-      root.append(defs);
+      under.append(defs);
       const baseId = 'fo-map-base-' + (++mapCount);
       const baseG = svg('g', { id: baseId, class: 'fo-map-base' });
       defs.append(baseG);
-      const baseCopies = COPIES.map(() => { const g = svg('g'); g.append(svg('use', { href: '#' + baseId })); zoomG.append(g); return g; });
+      const baseCopies = COPIES.map(() => { const g = svg('g'); g.append(svg('use', { href: '#' + baseId })); baseZoom.append(g); return g; });
       let riverTiers = [];
       const era = layers.has('borders') ? (o.era && o.era !== 'auto' ? o.era : OLD_ERA_FOR[o.period] || OLD_ERA_FOR.all) : null;
       const relief = layers.has('relief');
@@ -140,6 +155,9 @@
       const landId = baseId + '-land', clipId = baseId + '-clip';
       defs.append(svg('clipPath', { id: clipId }, svg('use', { href: '#' + landId, 'clip-rule': 'evenodd' })));
       let current = null, oldLabels = [];
+      // the layers' shapes do not change with the coastline, so they are worked out once and kept for later drawings
+      const shapes = new Map();
+      const once = (key, make) => { if (!shapes.has(key)) shapes.set(key, make()); return shapes.get(key); };
       // the land, lakes, rivers and borders, with the layers that are on; drawn again with the finer map once someone zooms in
       function drawBase(w) {
         current = w;
@@ -149,26 +167,31 @@
         const lakes = w.objects.lakes ? topojson.feature(w, w.objects.lakes) : null;
         const depth = coloured && loaded['layers.json'];
         if (depth) ['d200', 'd1000', 'd2000', 'd3000', 'd4000', 'd5000', 'd6000'].forEach(k => {
-          if (depth.objects[k]) baseG.append(svg('path', { d: path(topojson.feature(depth, depth.objects[k])), fill: DEPTH, 'fill-opacity': DEPTH_OPACITY, stroke: 'none' }));
+          if (depth.objects[k]) baseG.append(svg('path', { d: once('depth' + k, () => path(topojson.feature(depth, depth.objects[k]))), fill: DEPTH, 'fill-opacity': DEPTH_OPACITY, stroke: 'none' }));
         });
         // the relief: shadows and light, at sea under the land and on land clipped to the coast
         const rel = relief && loaded['relief.json'];
-        const shading = (key, colour, opacity) => rel.objects[key] ? topojson.feature(rel, rel.objects[key]).features.map(f => svg('path', { d: path(f), fill: colour, 'fill-opacity': opacity, stroke: 'none' })) : [];
+        const shading = (key, colour, opacity) => (rel.objects[key] ? once('relief' + key, () => topojson.feature(rel, rel.objects[key]).features.map(f => path(f))) : []).map(d => svg('path', { d, fill: colour, 'fill-opacity': opacity, stroke: 'none' }));
         if (rel) baseG.append(...shading('seaShadow', DEPTH, RELIEF_SEA_SHADOW), ...shading('seaLight', '#FFFFFF', RELIEF_SEA_LIGHT));
         baseG.append(svg('path', { id: landId, d: path(countries) + (lakes ? path(lakes) : ''), fill: coloured ? LAND_COLOURED : LAND, 'fill-rule': 'evenodd', stroke: 'none' }));
         if (rel) baseG.append(svg('g', { 'clip-path': 'url(#' + clipId + ')' }, ...shading('landShadow', SHADE, RELIEF_LAND_SHADOW), ...shading('landLight', '#FFFFFF', RELIEF_LAND_LIGHT)));
-        if (depth && depth.objects.ice) baseG.append(svg('path', Object.assign({ d: path(topojson.feature(depth, depth.objects.ice)), fill: ICE, stroke: DEPTH, 'stroke-opacity': ICE_EDGE, 'stroke-width': 0.6 }, ns)));
+        if (depth && depth.objects.ice) baseG.append(svg('path', Object.assign({ d: once('ice', () => path(topojson.feature(depth, depth.objects.ice))), fill: ICE, stroke: DEPTH, 'stroke-opacity': ICE_EDGE, 'stroke-width': 0.6 }, ns)));
         const hist = era && loaded['history.json'];
         const eraData = hist && hist.eras.find(e => e.id === era);
         if (eraData) {
-          const obj = hist.objects['e' + era], fs = topojson.feature(hist, obj).features;
-          const g = svg('g', { 'clip-path': 'url(#' + clipId + ')' });
-          fs.forEach(f => { const r = eraData.regions[f.properties.i]; if (r && OLD_COLOURS[r.p]) g.append(svg('path', { d: path(f), fill: OLD_COLOURS[r.p], 'fill-opacity': OLD_FILL, stroke: 'none' })); });
-          baseG.append(g);
-          // names, biggest first, so the small ones give way when the map is zoomed out
-          oldLabels = fs.map(f => ({ r: eraData.regions[f.properties.i], a: path.area(f) })).filter(x => x.r && x.r.at).sort((a, b) => b.a - a.a)
-            .map(({ r }) => { const [x, y] = proj(r.at); return { x, y, text: FO.lang === 'fr' ? r.fr : r.en, colour: OLD_COLOURS[r.p] || '#6B6F75' }; });
-          baseG.oldMesh = path(topojson.mesh(hist, obj, (a, b) => a !== b));
+          const obj = hist.objects['e' + era];
+          const old = once('old', () => {
+            const fs = topojson.feature(hist, obj).features;
+            return {
+              fills: fs.map(f => ({ r: eraData.regions[f.properties.i], d: path(f) })).filter(x => x.r && OLD_COLOURS[x.r.p]),
+              // names, biggest first, so the small ones give way when the map is zoomed out
+              labels: fs.map(f => ({ r: eraData.regions[f.properties.i], a: path.area(f) })).filter(x => x.r && x.r.at).sort((a, b) => b.a - a.a)
+                .map(({ r }) => { const [x, y] = proj(r.at); return { x, y, text: FO.lang === 'fr' ? r.fr : r.en, colour: OLD_COLOURS[r.p] || '#6B6F75' }; }),
+              mesh: path(topojson.mesh(hist, obj, (a, b) => a !== b)) };
+          });
+          baseG.append(svg('g', { 'clip-path': 'url(#' + clipId + ')' }, ...old.fills.map(x => svg('path', { d: x.d, fill: OLD_COLOURS[x.r.p], 'fill-opacity': OLD_FILL, stroke: 'none' }))));
+          oldLabels = old.labels;
+          baseG.oldMesh = old.mesh;
         } else baseG.oldMesh = null;
         if (lakes) baseG.append(svg('path', Object.assign({ d: path(lakes), fill: 'none', stroke: COAST, 'stroke-width': 0.6 }, ns)));
         if (w.objects.rivers) {
@@ -185,7 +208,7 @@
         baseG.append(svg('path', Object.assign({ d: path(topojson.mesh(w, w.objects.countries, (a, b) => a !== b)), fill: 'none', stroke: BORDER, 'stroke-width': 1 }, ns)));
         if (baseG.oldMesh) baseG.append(svg('path', Object.assign({ d: baseG.oldMesh, fill: 'none', stroke: OLD_LINE, 'stroke-opacity': 0.75, 'stroke-width': 1.3, 'stroke-dasharray': '5 3', 'stroke-linejoin': 'round' }, ns)));
         baseG.append(svg('path', Object.assign({ d: path(topojson.mesh(w, w.objects.countries, (a, b) => a === b)), fill: 'none', stroke: COAST, 'stroke-width': 0.8 }, ns)));
-        if (layers.has('grid')) baseG.append(svg('path', Object.assign({ d: path(d3.geoGraticule().extent([[-180, -80], [180.0001, 85]]).step([GRID_STEP, GRID_STEP]).precision(1)()), fill: 'none', stroke: GRID, 'stroke-opacity': GRID_OPACITY, 'stroke-width': 0.6 }, ns)));
+        if (layers.has('grid')) baseG.append(svg('path', Object.assign({ d: once('grid', () => path(d3.geoGraticule().extent([[-180, -80], [180.0001, 85]]).step([GRID_STEP, GRID_STEP]).precision(1)())), fill: 'none', stroke: GRID, 'stroke-opacity': GRID_OPACITY, 'stroke-width': 0.6 }, ns)));
         const k = d3.zoomTransform(root).k;
         riverTiers.forEach(([el, from]) => el.setAttribute('display', k >= from ? 'inline' : 'none'));
         if (labelG) labels(d3.zoomTransform(root));
@@ -197,7 +220,7 @@
       const wantDetail = () => {
         if (fine || !FO.geoDetail) return;
         fine = true;
-        FO.geoDetail().then(w => { if (w && !(o.cancelled && o.cancelled(token)) && baseG.isConnected) { fine = w; drawBase(w); } });
+        FO.geoDetail().then(w => { if (w && !(o.cancelled && o.cancelled(token)) && baseG.isConnected) { fine = w; drawBase(w); settle(); } });
       };
 
       const col = o.what === 'birth' ? BIRTH : DEATH;
@@ -229,10 +252,15 @@
       // which copy of the world is under the middle of the window; the copies sit on it and on either side of it
       let atCopy = null;
       const centreCopy = t => WRAP ? Math.floor(((W / 2 - t.x) / t.k - x0) / worldW) : 0;
-      function placeCopies(n) {
-        if (n === atCopy) return;
-        atCopy = n;
-        COPIES.forEach((d, i) => { const tr = 'translate(' + (n + d) * worldW + ',0)'; baseCopies[i].setAttribute('transform', tr); bubbleCopies[i].setAttribute('transform', tr); });
+      // a copy is drawn only if it is in view (with room to spare): the others are hidden, which saves drawing them
+      const inView = (t, off, spare) => t.applyX(x0 + off) < W + spare && t.applyX(x0 + worldW + off) > -spare;
+      const show = (el, on) => { const v = on ? 'inline' : 'none'; if (el.getAttribute('display') !== v) el.setAttribute('display', v); };
+      function placeCopies(n, t, copies, spare) {
+        COPIES.forEach((d, i) => {
+          const off = (n + d) * worldW, tr = 'translate(' + off + ',0)';
+          if (copies[i].getAttribute('transform') !== tr) copies[i].setAttribute('transform', tr);
+          show(copies[i], inView(t, off, spare));
+        });
       }
 
       // names of the biggest places, kept upright and the same size while zooming
@@ -298,17 +326,44 @@
       // the map cannot be dragged past the top and bottom of the world (Antarctica stays above the bottom edge); east and west it
       // wraps around, and it can be zoomed out until the whole world is a little under half the width of the window
       const sphere = path.bounds({ type: 'Sphere' });
-      const zoom = d3.zoom().scaleExtent([WRAP ? Math.min(0.5, W * 0.45 / worldW) : 0.5, 80]).extent([[0, 0], [W, H]])
-        .translateExtent(WRAP ? [[-Infinity, sphere[0][1]], [Infinity, sphere[1][1]]] : sphere).on('zoom', e => {
-        const t = e.transform;
-        placeCopies(centreCopy(t));
-        if (o.keep) o.keep.t = t;
+      /* the map under the bubbles: drawn ("settled") at the transform "drawn", and while moving only shifted and scaled
+         as a picture, until the movement stops or goes past what was drawn */
+      let drawn = null, now = d3.zoomIdentity, queued = 0, lastK = null;
+      function settle() {
+        const t = now;
+        drawn = t; under.style.transform = '';
+        baseZoom.setAttribute('transform', t.toString());
+        placeCopies(centreCopy(t), t, baseCopies, mx);
+        riverTiers.forEach(([el, from]) => show(el, t.k >= from));
+      }
+      function moveUnder(t) {
+        if (!QUICK_MOVE || !drawn) return settle();
+        const s = t.k / drawn.k, dx = t.x - drawn.x * s, dy = t.y - drawn.y * s;
+        // the window must stay inside what was drawn (the margin included), and not too blurred: otherwise drawn again now
+        const covered = dx <= s * mx && dx >= W - s * (W + mx) && dy <= s * my && dy >= H - s * (H + my);
+        if (!covered || s > 2 || centreCopy(t) !== centreCopy(drawn)) return settle();
+        under.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(' + s + ')';
+      }
+      // the bubbles and names follow at every step; the work is done once per frame of the screen
+      function step() {
+        queued = 0;
+        const t = now;
+        const n = centreCopy(t);
+        atCopy = n;
+        placeCopies(n, t, bubbleCopies, 60);
         zoomG.setAttribute('transform', t.toString());
-        dots.forEach(([c, s]) => c.setAttribute('r', Math.max(2.5, r0(s.n)) / Math.sqrt(t.k)));
-        riverTiers.forEach(([el, from]) => { const v = t.k >= from ? 'inline' : 'none'; if (el.getAttribute('display') !== v) el.setAttribute('display', v); });
+        if (t.k !== lastK) { lastK = t.k; dots.forEach(([c, s]) => c.setAttribute('r', Math.max(2.5, r0(s.n)) / Math.sqrt(t.k))); }
+        moveUnder(t);
         if (t.k >= DETAIL_FROM) wantDetail();
         labels(t); ui.untip();
-      });
+      }
+      const zoom = d3.zoom().scaleExtent([WRAP ? Math.min(0.5, W * 0.45 / worldW) : 0.5, 80]).extent([[0, 0], [W, H]])
+        .translateExtent(WRAP ? [[-Infinity, sphere[0][1]], [Infinity, sphere[1][1]]] : sphere).on('zoom', e => {
+        now = e.transform;
+        if (o.keep) o.keep.t = now;
+        if (!QUICK_MOVE || !drawn) { if (queued) cancelAnimationFrame(queued); step(); }
+        else if (!queued) queued = requestAnimationFrame(step);
+      }).on('end', () => { if (queued) { cancelAnimationFrame(queued); step(); } settle(); });
       d3.select(root).call(zoom).on('dblclick.zoom', null);
       o.resetZoom = () => d3.select(root).transition().duration(500).call(zoom.transform, d3.zoomIdentity);
       // the same zoom as before this redraw (a new century, deaths instead of births, a window resized only slightly)
