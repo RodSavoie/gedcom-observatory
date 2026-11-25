@@ -18,7 +18,8 @@
     redtext: '#6E2F1D', redtext2: '#5E2A1A',
     teal: '#2B80AA', c3: '#DB8328', c4: '#5450A8', c5: '#C9628E', c6: '#588C46', c7: '#8A62B8',
     bubble: '#EEEEEE',  // the inside of The Tangle's bubbles (BUBBLE_FILL in tangle.js)
-    sea: '#E3EBF1', depth: '#7F9CB4', land: '#E3DCCF', ice: '#F5F8FA'   // the map in Where They Lived, with its Colours layer on: sea, deep water, land, ice
+    sea: '#E3EBF1', depth: '#7F9CB4', land: '#E3DCCF', ice: '#F5F8FA',   // the map in Where They Lived, with its Colours layer on: sea, deep water, land, ice
+    shade: '#6A6052'    // and the shadows of its Relief layer on land (at sea they take the deep-water colour)
   };
 
   const DEFAULT_DESIGN = 'harbour';
@@ -27,37 +28,37 @@
       pal: { bg: '#E5E1D6', snow: '#F8F5EC', snow2: '#F6F2E8', soft: '#E4DFD1', soft2: '#E0DACB', soft3: '#D7D0BF', line: '#CAC2AE', other: '#B2AA94', white: '#FFFDF8',
         ink: '#2E3A2F', ink2: '#4B5749', ink3: '#848574', deep: '#3D4F3E', navy: '#34452F', mid: '#A3AE8E', pale: '#E6E8DA', pale2: '#EBECE1', tiptext: '#E0E3D6',
         red: '#BF5F2A', redsoft: '#F6DCC6', peach: '#F7E6CF', blush: '#EDC79B', flax: '#DFA53B', peach2: '#F2D6AF', orange: '#D98A3D', redtext: '#6E3214', redtext2: '#6A3012',
-        teal: '#5B7550', c3: '#D49A2E', c4: '#56648F', c5: '#B86F7A', c6: '#3F7A74', c7: '#86688C', bubble: '#EDEBE3', sea: '#E2E8EA', depth: '#7F98A6', land: '#D9D3C2', ice: '#F3F5F2' } },
+        teal: '#5B7550', c3: '#D49A2E', c4: '#56648F', c5: '#B86F7A', c6: '#3F7A74', c7: '#86688C', bubble: '#EDEBE3', sea: '#E2E8EA', depth: '#7F98A6', land: '#D9D3C2', ice: '#F3F5F2', shade: '#6E6450' } },
     { id: 'mineral', name: T('Mineral'), note: T('Warm mineral, deep ink and smoked oak, on travertine'),
       pal: { bg: '#E9E3D8', snow: '#F3EFE8', snow2: '#F0EBE3', soft: '#DDD5C8', soft2: '#D9D1C3', soft3: '#D0C7B8', line: '#C3B9A8', other: '#ADA391', white: '#FDFBF7',
         ink: '#293541', ink2: '#46525F', ink3: '#81796F', deep: '#2F3E4E', navy: '#2A3644', mid: '#8E9BA8', pale: '#E2E0DA', pale2: '#E8E5DF', tiptext: '#D9DCDF',
         red: '#8F4E32', redsoft: '#EED9C6', peach: '#F1E2D0', blush: '#E2C3A2', flax: '#D7A46A', peach2: '#EAD0B2', orange: '#C98A55', redtext: '#5C3422', redtext2: '#5A3020',
-        teal: '#4D6E8C', c3: '#C08A3E', c4: '#5E5A8E', c5: '#B2697C', c6: '#6E8550', c7: '#84648F', bubble: '#EFEBE5', sea: '#E3E9EE', depth: '#7D93A8', land: '#DCD4C6', ice: '#F4F6F7' } },
+        teal: '#4D6E8C', c3: '#C08A3E', c4: '#5E5A8E', c5: '#B2697C', c6: '#6E8550', c7: '#84648F', bubble: '#EFEBE5', sea: '#E3E9EE', depth: '#7D93A8', land: '#DCD4C6', ice: '#F4F6F7', shade: '#675E55' } },
     { id: 'sage', name: T('Sage'), note: T('Cream, sage, greige and terracotta'),
       pal: { bg: '#F2EFE8', snow: '#F8F6F1', snow2: '#F5F2EC', soft: '#E3DFD5', soft2: '#DFDACF', soft3: '#D6D0C4', line: '#C9C3B5', other: '#B2AC9E', white: '#FFFEFB',
         ink: '#33372F', ink2: '#50564C', ink3: '#83867D', deep: '#3E4B3C', navy: '#34443A', mid: '#9DAE98', pale: '#E1E6DC', pale2: '#E7EAE2', tiptext: '#DDE2D8',
         red: '#B0603F', redsoft: '#F3DCCF', peach: '#F4E3D6', blush: '#E8C3AA', flax: '#D9A06C', peach2: '#EFD3BE', orange: '#CF8458', redtext: '#6A3420', redtext2: '#66321F',
-        teal: '#5F7D5B', c3: '#C9913F', c4: '#5D6A8C', c5: '#B66F7E', c6: '#8D8A45', c7: '#86688C', bubble: '#EDEEE8', sea: '#E6EDEF', depth: '#86A0AC', land: '#E2DDD1', ice: '#F5F8F7' } },
+        teal: '#5F7D5B', c3: '#C9913F', c4: '#5D6A8C', c5: '#B66F7E', c6: '#8D8A45', c7: '#86688C', bubble: '#EDEEE8', sea: '#E6EDEF', depth: '#86A0AC', land: '#E2DDD1', ice: '#F5F8F7', shade: '#626654' } },
     { id: 'slate', name: T('Slate'), note: T('Cool stone, slate blue and navy, on limestone'),
       pal: { bg: '#ECEBE7', snow: '#F5F5F2', snow2: '#F2F2EE', soft: '#E0DFDA', soft2: '#DBDAD4', soft3: '#D2D1CA', line: '#C4C4BD', other: '#AAABA6', white: '#FDFDFB',
         ink: '#1F2B3A', ink2: '#415062', ink3: '#7A8088', deep: '#2A3D52', navy: '#1F2F45', mid: '#8DA2B8', pale: '#DFE5EB', pale2: '#E5E9EE', tiptext: '#D6DCE3',
         red: '#9C5B4A', redsoft: '#F0DCD3', peach: '#EFE3DA', blush: '#DCC3B6', flax: '#C9A27A', peach2: '#E6D3C6', orange: '#C08668', redtext: '#5E3226', redtext2: '#5A3024',
-        teal: '#4A6D8F', c3: '#B98B4E', c4: '#5B5F95', c5: '#B06C86', c6: '#5F8467', c7: '#7F6A9E', bubble: '#EDEFF1', sea: '#E2EAF1', depth: '#7896B3', land: '#DEDCD5', ice: '#F3F6F9' } },
+        teal: '#4A6D8F', c3: '#B98B4E', c4: '#5B5F95', c5: '#B06C86', c6: '#5F8467', c7: '#7F6A9E', bubble: '#EDEFF1', sea: '#E2EAF1', depth: '#7896B3', land: '#DEDCD5', ice: '#F3F6F9', shade: '#5F6268' } },
     { id: 'aurora', name: T('Aurora'), note: T('Navy, blush and sage grey, rounded and flat'),
       pal: { bg: '#F4EFE9', snow: '#FAF7F3', snow2: '#F7F3EE', soft: '#E7DED4', soft2: '#E3D9CE', soft3: '#DACFC3', line: '#CDC2B5', other: '#B5AA9D', white: '#FFFEFD',
         ink: '#24344A', ink2: '#46566B', ink3: '#85898F', deep: '#25354B', navy: '#26364C', mid: '#94A5B6', pale: '#E4E8EC', pale2: '#E9ECEF', tiptext: '#D8DEE6',
         red: '#B56B52', redsoft: '#F3DDD2', peach: '#F2E2D6', blush: '#E8D4C4', flax: '#D9AE84', peach2: '#EED6C5', orange: '#CC8C6C', redtext: '#6B3524', redtext2: '#673322',
-        teal: '#5B7D78', c3: '#C99A5B', c4: '#5A5E8F', c5: '#B9738A', c6: '#7D8F6B', c7: '#8A7196', bubble: '#F1ECE7', sea: '#E7EDF3', depth: '#8AA0B8', land: '#E6DDD2', ice: '#F6F8FA' } },
+        teal: '#5B7D78', c3: '#C99A5B', c4: '#5A5E8F', c5: '#B9738A', c6: '#7D8F6B', c7: '#8A7196', bubble: '#F1ECE7', sea: '#E7EDF3', depth: '#8AA0B8', land: '#E6DDD2', ice: '#F6F8FA', shade: '#6E6259' } },
     { id: 'gilt', name: T('Gilt'), note: T('Charcoal, greys and gold, on white paper'),
       pal: { bg: '#ECEBE8', snow: '#F7F7F5', snow2: '#F4F4F2', soft: '#E3E2DF', soft2: '#DFDEDA', soft3: '#D5D4D0', line: '#C5C4BF', other: '#B9B7B1', white: '#FDFDFC',
         ink: '#1E1E1E', ink2: '#424242', ink3: '#7E7C78', deep: '#2B2B2B', navy: '#262626', mid: '#9B9994', pale: '#E5E4E1', pale2: '#EAE9E7', tiptext: '#DCDBD8',
         red: '#A67C2E', redsoft: '#F1E6C9', peach: '#F3EBD7', blush: '#E6D3A4', flax: '#C9A445', peach2: '#EEDFB9', orange: '#C29441', redtext: '#5A4314', redtext2: '#564010',
-        teal: '#3D3D3D', c3: '#C9A446', c4: '#7B7B7B', c5: '#946F2F', c6: '#DCC88D', c7: '#5D554B', bubble: '#EEEDEB', sea: '#E5E9EC', depth: '#8A98A4', land: '#DDDCD8', ice: '#F4F5F6' } },
+        teal: '#3D3D3D', c3: '#C9A446', c4: '#7B7B7B', c5: '#946F2F', c6: '#DCC88D', c7: '#5D554B', bubble: '#EEEDEB', sea: '#E5E9EC', depth: '#8A98A4', land: '#DDDCD8', ice: '#F4F5F6', shade: '#636260' } },
     { id: 'harbour', name: T('Harbour'), note: T('A dark navy menu down the left, on soft linen'),
       pal: { bg: '#EDEAE4', snow: '#F6F4F0', snow2: '#F3F1EC', soft: '#E2DED6', soft2: '#DEDAD1', soft3: '#D5D0C6', line: '#C7C1B6', other: '#ADA79C', white: '#FEFDFB',
         ink: '#1D2939', ink2: '#3E4C5E', ink3: '#7B8089', deep: '#26364A', navy: '#1F2E42', mid: '#8EA1B6', pale: '#DEE4EA', pale2: '#E4E9ED', tiptext: '#D5DCE4',
         red: '#B4553C', redsoft: '#F4DCD2', peach: '#F3E4D8', blush: '#E4C2AE', flax: '#E0A84F', peach2: '#EED4C2', orange: '#CF8460', redtext: '#663020', redtext2: '#622E1E',
-        teal: '#3D7397', c3: '#D19A3E', c4: '#5C5A96', c5: '#B9688A', c6: '#5B8A63', c7: '#8268A6', bubble: '#EEF0F2', sea: '#E2EAF0', depth: '#7B97B0', land: '#DFD9CE', ice: '#F3F6F8' } }
+        teal: '#3D7397', c3: '#D19A3E', c4: '#5C5A96', c5: '#B9688A', c6: '#5B8A63', c7: '#8268A6', bubble: '#EEF0F2', sea: '#E2EAF0', depth: '#7B97B0', land: '#DFD9CE', ice: '#F3F6F8', shade: '#6B6257' } }
   ];
 
   const defaultDesign = () => DESIGNS.find(d => d.id === DEFAULT_DESIGN) || DESIGNS[0];

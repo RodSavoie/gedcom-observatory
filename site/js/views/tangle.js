@@ -22,9 +22,10 @@
       const count = d3.rollup(data.people.filter(p => p.surname && !p.hidden), x => x.length, sn);
       const all = [...count.entries()].sort((a, b) => b[1] - a[1]);
       if (all.length < 2) { ui.empty(v.stage, T('Not enough surnames'), T('This file has fewer than two surnames, so there is nothing to tangle.')); return; }
-      // how many surnames: 36 to start, up to MAX_SURNAMES; a link can ask for a number (#/tangle?surnames=100)
+      // how many surnames: 36 to start, up to MAX_SURNAMES; after that the visitor's last choice is kept, and a link can ask
+      // for a number (#/tangle?surnames=100)
       const MAX_SURNAMES = 100;
-      const asked = parseInt(FO.hashParam('surnames'), 10);
+      const asked = parseInt(FO.hashParam('surnames') || FO.prefs.get('tangle.surnames', ''), 10);
       let N = Math.min(asked > 0 ? Math.max(8, Math.min(MAX_SURNAMES, asked)) : 36, all.length), sim = null;
       const root = svg('svg', {}), g = svg('g');
       root.append(g); v.stage.append(root);
@@ -141,7 +142,7 @@
       v.controls.append(ui.scopeSeg());
       v.controls.append(el('label', { class: 'ctl' }, chooser), ui.button(T('Most-married pairs'), () => FO.showList(T('Most-married pairs of surnames'), T('Click a pair to list its couples'), topPairs.map(l => el('li', {}, el('button', { type: 'button', class: 'plink', text: l.source.id + ' × ' + l.target.id, onclick: () => listCouples(T('{id} and {id2}', { id: l.source.id, id2: l.target.id }), couplesOf(l.source.id, l.target.id)) }), el('small', { text: l.n + (l.n === 1 ? T(' marriage') : T(' marriages')) }))))));
       v.controls.append(ui.button(T('Reset layout'), () => { unpin(); d3.select(root).transition().duration(500).call(zoom.transform, d3.zoomIdentity); }));
-      v.controls.append(ui.range(T('Surnames shown'), Math.min(8, all.length), Math.min(MAX_SURNAMES, all.length), N, n => { N = n; FO.setHashParam('surnames', n); build(); }));
+      v.controls.append(ui.range(T('Surnames shown'), Math.min(8, all.length), Math.min(MAX_SURNAMES, all.length), N, n => { N = n; FO.setHashParam('surnames', n); FO.prefs.set('tangle.surnames', String(n)); build(); }));
       build();
       return () => { if (sim) { sim.stop(); sim.nodes().forEach(n => n.back && n.back.stop()); } };
     }

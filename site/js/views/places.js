@@ -7,7 +7,7 @@
   FO.view({
     id: 'places', order: 11, title: T('Where They Lived'),
     card: T('A map of where the family was born and died, a grid of births by place and period, or ribbons from parents’ birthplaces to their children’s.'),
-    how: {"see": T("Three pictures of where the family lived. The map shows where people were born or died. The ribbons show how birthplaces changed from parents to children. The grid shows which places held the family, period by period."), "marks": [T("On the map, each bubble is one place, sized by how many people were born (or died) there. A dashed ring stands for people whose place is known only by its region, such as “Acadie” or “France”, and sits at that region’s centre."), T("In the ribbons, a grey ribbon is children born in the same region as their parent; a coloured ribbon is children born somewhere else, coloured by where they were born."), T("In the grid, each square is one place in one period; darker means more births."), T("The number at the end of a grid row is that place’s total.")], "can": [T("Switch between Ribbons, Grid and Map."), T("On the map, choose births or deaths and a century, scroll to zoom, drag to move, and click a bubble to list its people."), T("On the map, Layers switches the colours of land, sea and ice (the sea darker where it is deeper) and adds a latitude and longitude grid or the colonial borders of North America at the time."), T("Point at a ribbon or a square for its count; click it to list the people."), T("In the grid, switch between regions and the places within them.")], "care": T("The map finds each place from its name, so a name it cannot match, or a village it does not know, is placed at its region or left off; the note under the map counts both. Old names and Acadian settlements are known; French villages missing from the world list are placed at the centre of their département. Elsewhere, places are grouped by how they are written in the file, so two spellings of one place can appear as two rows. A child with two recorded parents counts twice in the ribbons.")},
+    how: {"see": T("Three pictures of where the family lived. The map shows where people were born or died. The ribbons show how birthplaces changed from parents to children. The grid shows which places held the family, period by period."), "marks": [T("On the map, each bubble is one place, sized by how many people were born (or died) there. A dashed ring stands for people whose place is known only by its region, such as “Acadie” or “France”, and sits at that region’s centre."), T("In the ribbons, a grey ribbon is children born in the same region as their parent; a coloured ribbon is children born somewhere else, coloured by where they were born."), T("In the grid, each square is one place in one period; darker means more births."), T("The number at the end of a grid row is that place’s total.")], "can": [T("Switch between Ribbons, Grid and Map."), T("On the map, choose births or deaths and a century, scroll to zoom, drag to move, and click a bubble to list its people."), T("On the map, Layers switches the colours of land, sea and ice (the sea darker where it is deeper) and adds relief, a latitude and longitude grid or the colonial borders of North America at the time."), T("Point at a ribbon or a square for its count; click it to list the people."), T("In the grid, switch between regions and the places within them.")], "care": T("The map finds each place from its name, so a name it cannot match, or a village it does not know, is placed at its region or left off; the note under the map counts both. Old names and Acadian settlements are known; French villages missing from the world list are placed at the centre of their département. Elsewhere, places are grouped by how they are written in the file, so two spellings of one place can appear as two rows. A child with two recorded parents counts twice in the ribbons.")},
     blurb: T('Three pictures of where the family lived. The map shows each birthplace or place of death as a bubble, sized by how many people it holds. The ribbons join each parent’s birth region, on the left, to their child’s, on the right, so a family’s moves show up as crossings. The grid counts births in each place for each period; darker means more.'),
     icon: '<g fill="#FFE8CF" stroke="none"><rect x="10" y="12" width="10" height="10"/><rect x="22" y="12" width="10" height="10" fill="#8FA8BD"/><rect x="34" y="24" width="10" height="10" fill="#2C3B4D"/><rect x="22" y="24" width="10" height="10" fill="#2B80AA"/><rect x="46" y="24" width="10" height="10" fill="#8FA8BD"/><rect x="34" y="36" width="10" height="10"/><rect x="46" y="36" width="10" height="10" fill="#2B80AA"/><rect x="46" y="48" width="10" height="10" fill="#2C3B4D"/></g><path d="M8 10 V60 H58" />',
     render(v) {
@@ -16,7 +16,7 @@
       if (ppl.length < 3) { ui.empty(v.stage, T('No birthplaces recorded'), T('This view needs places of birth, and the file has too few.')); return; }
       /* a link can set any of these for this visit, e.g. #/places?view=map&what=births&period=1700&regions=hide
          (view: map, grid or ribbons; what: births or deaths; period: a century such as 1700, or all; regions: show or
-         hide; rows: places or regions, for the grid; layers: colours, grid and borders, joined by commas, or none; era: the old borders' era, such as 1713, or auto); otherwise the visitor's last choices are used */
+         hide; rows: places or regions, for the grid; layers: colours, relief, grid and borders, joined by commas, or none; era: the old borders' era, such as 1713, or auto); otherwise the visitor's last choices are used */
       const link = (name, map) => { const x = FO.hashParam(name); return x != null && map[x.toLowerCase()] !== undefined ? map[x.toLowerCase()] : null; };
       let mode = link('view', { map: 'map', grid: 'grid', ribbons: 'ribbons' }) || FO.prefs.get('places.view', 'grid', ['grid', 'ribbons', 'map']);
       let level = link('rows', { places: 'place', place: 'place', regions: 'region', region: 'region' }) || FO.prefs.get('places.rows', 'place', ['place', 'region']);
@@ -162,12 +162,22 @@
         const eraSel = ui.select(T('Era'), [{ v: 'auto', label: T('Follows the period') }].concat(FO.OLD_BORDER_ERAS.map(e => ({ v: e.id, label: e.label }))), era, x => {
           era = x; FO.prefs.set('places.map.era', x); FO.setHashParam('era', x === 'auto' ? null : x); draw(); });
         eraSel.classList.add('era');
-        const showEra = () => { eraSel.style.display = layers.has('borders') ? '' : 'none'; };
+        const showEra = () => { eraSel.style.display = layers.has('borders') ? '' : 'none'; fit(); };
         const ticks = FO.MAP_LAYERS.map(([id, label]) => {
           const box = el('input', { type: 'checkbox', checked: layers.has(id) ? 'checked' : null, onchange: () => { if (box.checked) layers.add(id); else layers.delete(id); save(); showEra(); draw(); } });
           return el('label', {}, box, el('span', { text: label }));
         });
-        const menu = el('details', { class: 'layers-menu' }, el('summary', { class: 'btn', text: T('Layers') }), el('div', { class: 'layers-panel' }, ticks, eraSel));
+        const panel = el('div', { class: 'layers-panel' }, ticks, eraSel);
+        const menu = el('details', { class: 'layers-menu' }, el('summary', { class: 'btn', text: T('Layers') }), panel);
+        // the panel opens under the button, and shifts left when it would run off the right of the window
+        function fit() {
+          if (!menu.open) return;
+          panel.style.left = '0px';
+          const r = panel.getBoundingClientRect(), over = r.right - (document.documentElement.clientWidth - 12);
+          if (over > 0) panel.style.left = -Math.min(over, r.left - 12) + 'px';
+        }
+        menu.addEventListener('toggle', fit);
+        window.addEventListener('resize', fit);
         showEra();
         // closes when clicking anywhere else
         document.addEventListener('click', e => { if (menu.isConnected && menu.open && !menu.contains(e.target)) menu.open = false; });

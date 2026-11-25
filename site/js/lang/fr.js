@@ -712,7 +712,7 @@ window.FO.DICT = {
   "Ribbons": "Rubans",
   "Grid": "Grille",
   "Map": "Carte",
-  "On the map, Layers switches the colours of land, sea and ice (the sea darker where it is deeper) and adds a latitude and longitude grid or the colonial borders of North America at the time.": "Sur la carte, Calques active les couleurs de la terre, de la mer et des glaces (la mer plus foncée là où elle est plus profonde) et ajoute une grille de latitude et longitude ou les frontières coloniales de l’Amérique du Nord à l’époque.",
+  "On the map, Layers switches the colours of land, sea and ice (the sea darker where it is deeper) and adds relief, a latitude and longitude grid or the colonial borders of North America at the time.": "Sur la carte, Calques active les couleurs de la terre, de la mer et des glaces (la mer plus foncée là où elle est plus profonde) et ajoute le relief, une grille de latitude et longitude ou les frontières coloniales de l’Amérique du Nord à l’époque.",
   "Layers": "Calques",
   "Follows the period": "Selon la période",
 
@@ -756,6 +756,8 @@ window.FO.DICT = {
   "Mexican": "Mexique",
   "Russian": "Russie",
   "Colours": "Couleurs",
+  "Relief": "Relief",
+  "Relief: ETOPO1 (NOAA), via Fatiando a Terra (CC BY 4.0).": "Relief : ETOPO1 (NOAA), par Fatiando a Terra (CC BY 4.0).",
   "Latitude and longitude": "Latitude et longitude",
   "Old borders": "Anciennes frontières",
   "Old borders: {era}. They are drawn by hand from treaty lines and only approximate, and most of this land was Indigenous country.": "Anciennes frontières : {era}. Elles sont tracées à la main d’après les traités et ne sont qu’approximatives; la plupart de ces terres étaient des territoires autochtones.",

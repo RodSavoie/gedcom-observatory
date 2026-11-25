@@ -29,3 +29,5 @@ node_modules/
 
 # Downloaded sources and in-between files of the map tools (tools/build-map-*.js)
 tools/ne_*.geojson
+tools/earth-topography-*.nc
+tools/relief-*.f32

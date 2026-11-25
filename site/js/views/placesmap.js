@@ -19,10 +19,13 @@
   const MAX_R = 30;                // the biggest bubble's radius, in pixels, before zooming
   const SEA_RING = 1.6;            // width of the dotted ring around a death or birth at sea
   const LABELS = 14;               // how many of the biggest places get a name on the map
+  // places always named, with a small dot, before any other (where Acadians were settled in France after the Deportation):
+  // [name, longitude, latitude]
+  const ALWAYS_NAMED = [['Belle-Île-en-Mer', -3.18, 47.33], ['Morlaix', -3.827, 48.578], ['Châtellerault', 0.546, 46.818]];
   const WRAP = true;               // the map wraps around east and west (Russia carries on left of Alaska); false stops at the edges
 
   /* Layers, switched on and off under "Layers" above the map. LAYERS_DEFAULT is what a new visitor sees (any of 'colours',
-     'grid', 'borders'); after that each visitor's own choice is kept. Their files are fetched only when first needed. */
+     'relief', 'grid', 'borders'); after that each visitor's own choice is kept. Their files are fetched only when first needed. */
   const LAYERS_DEFAULT = ['colours'];
   // Colours: a light blue sea that darkens with depth (200 m, then 1, 2, 3, 4, 5 and 6 km), land a shade darker than the
   // page, and glaciers and ice shelves almost white. These are the colours of the default palette; each design has its own
@@ -30,12 +33,16 @@
   const SEA = '#E3EBF1', DEPTH = '#7F9CB4', LAND_COLOURED = '#E3DCCF', ICE = '#F5F8FA';
   const ICE_EDGE = 0.25;           // how strongly the ice's edge is drawn (in the deep-water colour), 0 to 1
   const DEPTH_OPACITY = 0.05;      // how much colour each step down adds (0 to 1)
+  // Relief: soft shadows and highlights on mountains and on the sea floor, as if lit from the north-west (data/map/relief.json,
+  // traced from ETOPO1 by tools/build-map-relief.py). Each of the three levels of shadow and two of light adds this much.
+  const SHADE = '#6A6052';         // the shadows on land (each design has its own: shade in js/designs.js); at sea they take DEPTH
+  const RELIEF_LAND_SHADOW = 0.06, RELIEF_LAND_LIGHT = 0.12, RELIEF_SEA_SHADOW = 0.06, RELIEF_SEA_LIGHT = 0.10;
   const GRID = '#8FA8BD', GRID_OPACITY = 0.35, GRID_STEP = 5;   // the latitude and longitude grid: colour, strength, degrees apart
   const OLD_COLOURS = { fr: '#3B6EA5', gb: '#B5473A', es: '#C9921F', us: '#5E7186', ca: '#7C5A8E', mx: '#6E8B3D', ru: '#3F8C7A' };
   const OLD_FILL = 0.15;           // old borders: how strongly each colony is tinted
   const OLD_LINE = '#6B5E50';      // and the colour of the borders between them
   const OLD_ERA_FOR = { 1600: '1632', 1700: '1713', 1800: '1803', 1900: '1867', 2000: '1867', all: '1713' };   // the era shown for each period, unless one is picked
-  const LAYERS_VERSION = 3;        // raise when a layer's files are rebuilt, so browsers fetch the new ones
+  const LAYERS_VERSION = 5;        // raise when a layer's files are rebuilt, so browsers fetch the new ones
   let mapCount = 0;
 
   // the eras of the old borders (data/map/history.json, built by tools/build-map-history.js)
@@ -47,7 +54,7 @@
     { id: '1803', label: T('1803–1867: before Confederation') },
     { id: '1867', label: T('1867–1949: Confederation') }];
   const OLD_POWER = { fr: T('French'), gb: T('British'), es: T('Spanish'), us: T('American'), ca: T('Canadian'), mx: T('Mexican'), ru: T('Russian') };
-  FO.MAP_LAYERS = [['colours', T('Colours')], ['grid', T('Latitude and longitude')], ['borders', T('Old borders')]];
+  FO.MAP_LAYERS = [['colours', T('Colours')], ['relief', T('Relief')], ['grid', T('Latitude and longitude')], ['borders', T('Old borders')]];
   FO.MAP_LAYERS_DEFAULT = LAYERS_DEFAULT;
   const files = {};
   const fetchLayer = f => files[f] || (files[f] = fetch('data/map/' + f + '?v=' + LAYERS_VERSION).then(r => (r.ok ? r.json() : null)).catch(() => null).then(j => { if (!j) delete files[f]; return j; }));
@@ -123,7 +130,8 @@
       const baseCopies = COPIES.map(() => { const g = svg('g'); g.append(svg('use', { href: '#' + baseId })); zoomG.append(g); return g; });
       let riverTiers = [];
       const era = layers.has('borders') ? (o.era && o.era !== 'auto' ? o.era : OLD_ERA_FOR[o.period] || OLD_ERA_FOR.all) : null;
-      const want = (coloured ? ['layers.json'] : []).concat(era ? ['history.json'] : []);
+      const relief = layers.has('relief');
+      const want = (coloured ? ['layers.json'] : []).concat(relief ? ['relief.json'] : [], era ? ['history.json'] : []);
       want.forEach(f => { if (!loaded[f]) fetchLayer(f).then(j => { if (j && !loaded[f]) { loaded[f] = j; if (baseG.isConnected) { drawBase(current); legend(); } } }); });
       // the land as a clipping shape, so the colonies' tints stop at the coast
       const landId = baseId + '-land', clipId = baseId + '-clip';
@@ -140,7 +148,12 @@
         if (depth) ['d200', 'd1000', 'd2000', 'd3000', 'd4000', 'd5000', 'd6000'].forEach(k => {
           if (depth.objects[k]) baseG.append(svg('path', { d: path(topojson.feature(depth, depth.objects[k])), fill: DEPTH, 'fill-opacity': DEPTH_OPACITY, stroke: 'none' }));
         });
+        // the relief: shadows and light, at sea under the land and on land clipped to the coast
+        const rel = relief && loaded['relief.json'];
+        const shading = (key, colour, opacity) => rel.objects[key] ? topojson.feature(rel, rel.objects[key]).features.map(f => svg('path', { d: path(f), fill: colour, 'fill-opacity': opacity, stroke: 'none' })) : [];
+        if (rel) baseG.append(...shading('seaShadow', DEPTH, RELIEF_SEA_SHADOW), ...shading('seaLight', '#FFFFFF', RELIEF_SEA_LIGHT));
         baseG.append(svg('path', { id: landId, d: path(countries) + (lakes ? path(lakes) : ''), fill: coloured ? LAND_COLOURED : LAND, 'fill-rule': 'evenodd', stroke: 'none' }));
+        if (rel) baseG.append(svg('g', { 'clip-path': 'url(#' + clipId + ')' }, ...shading('landShadow', SHADE, RELIEF_LAND_SHADOW), ...shading('landLight', '#FFFFFF', RELIEF_LAND_LIGHT)));
         if (depth && depth.objects.ice) baseG.append(svg('path', Object.assign({ d: path(topojson.feature(depth, depth.objects.ice)), fill: ICE, stroke: DEPTH, 'stroke-opacity': ICE_EDGE, 'stroke-width': 0.6 }, ns)));
         const hist = era && loaded['history.json'];
         const eraData = hist && hist.eras.find(e => e.id === era);
@@ -242,6 +255,19 @@
             tx.textContent = l.text; oldG.append(tx);
           }
         }
+        for (const [name, lon, lat] of ALWAYS_NAMED) {
+          const [px, py] = proj([lon, lat]), y = t.applyY(py);
+          if (y < 8 || y > H - 8) continue;
+          for (const d of COPIES) {
+            const x = t.applyX(px + (atCopy + d) * worldW);
+            const w = name.length * 6.6 + 6, bx = x + 6, by = y - 8;
+            if (x < 0 || bx + w > W || boxes.some(b => bx < b[0] + b[2] && bx + w > b[0] && by < b[1] + 16 && by + 16 > b[1])) continue;
+            boxes.push([bx, by, w]);
+            labelG.append(svg('circle', { cx: x, cy: y, r: 2.6, fill: '#1B2632', stroke: '#F7F4EE', 'stroke-width': 1.2 }));
+            const tx = svg('text', { x: bx, y: y + 4, style: 'font-size:12px;fill:#1B2632;paint-order:stroke;stroke:#F7F4EE;stroke-width:3px;stroke-linejoin:round' });
+            tx.textContent = name; labelG.append(tx);
+          }
+        }
         for (const s of named) {
           if (shown >= LABELS) break;
           const y = t.applyY(s.y), r = Math.max(2.5, r0(s.n)) * Math.sqrt(t.k);
@@ -280,7 +306,7 @@
 
       // sources, as GeoNames' licence asks
       const credit = svg('text', { x: 12, y: 18, style: 'font-size:10.5px;fill:#7C8088;paint-order:stroke;stroke:#F7F4EE;stroke-width:3px;stroke-linejoin:round' });
-      credit.textContent = T('Map: Natural Earth. Places: GeoNames (CC BY 4.0), Natural Resources Canada, INSEE.');
+      credit.textContent = T('Map: Natural Earth. Places: GeoNames (CC BY 4.0), Natural Resources Canada, INSEE.') + (relief ? ' ' + T('Relief: ETOPO1 (NOAA), via Fatiando a Terra (CC BY 4.0).') : '');
       root.append(credit);
       root.append(svg('rect', { x: 0.5, y: 0.5, width: W - 1, height: H - 1, rx: 4, fill: 'none', stroke: FRAME, 'stroke-opacity': FRAME_OPACITY, 'pointer-events': 'none' }));
 
