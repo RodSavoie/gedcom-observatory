@@ -30,9 +30,9 @@
      drawn again, sharp, as soon as the movement stops or pauses for SETTLE_AFTER milliseconds. MARGIN is how much map is
      drawn beyond each edge of the window, as a share of its size, so a drag shows map there straight away; a drag fast
      and long enough to go past it shows plain sea at the edge until the map is drawn again. */
-  const QUICK_MOVE = true;         // false: everything is drawn again at every step, as before (slower with layers)
+  const QUICK_MOVE = false;         // false: everything is drawn again at every step, as before (slower with layers)
   const MARGIN = 0.5;
-  const SETTLE_AFTER = 120;      // (a drag only: a zoom with the wheel is drawn again once the wheel stops)
+  const SETTLE_AFTER = 20;      // (a drag only: a zoom with the wheel is drawn again once the wheel stops)
 
   /* Layers, switched on and off under "Layers" above the map. LAYERS_DEFAULT is what a new visitor sees (any of 'colours',
      'relief', 'grid', 'borders'); after that each visitor's own choice is kept. Their files are fetched only when first needed. */
