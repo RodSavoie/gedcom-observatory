@@ -53,7 +53,7 @@ A link can open the site on a given family, design or view, and the parameters c
 | `?design=ochre`, `mineral`, `sage`, `slate`, `aurora`, `gilt`, `harbour` | switches the design (and remembers it) |
 | `?lang=fr`, `?lang=en` | opens the site in French or English (and remembers it) |
 | `?wt=Savoie-2387&anc=10&desc=1&sib=0` | draws a family from WikiTree (see below) |
-| `#/places?view=map&what=deaths&period=1750&layers=relief,borders&era=1763` | opens a view with its settings (`layers=` any of `relief`, `depth`, `ice`, `grid`, `borders`, or `none`; `era=` an era's first year, or `auto`). Where They Lived, The Tangle (`surnames=`) and the Everyone / Direct ancestors switch (`show=`) write their settings back to the address as you change them, so it can be copied and shared |
+| `#/places?view=map&what=deaths&period=1750&layers=colours,borders&era=1763` | opens a view with its settings (`layers=` any of `colours`, `grid`, `borders`, or `none`; `era=` an era's first year, or `auto`). Where They Lived, The Tangle (`surnames=`) and the Everyone / Direct ancestors switch (`show=`) write their settings back to the address as you change them, so it can be copied and shared |
 | `#/about?families` | opens the About page at one of its sections |
 
 ## Try it on your computer
@@ -112,24 +112,24 @@ by hand in `site/js/geo.js`. If you rebuild the map files, raise `MAP_VERSION` a
 `geo.js` so browsers fetch the new ones.
 
 The map wraps around east and west (`WRAP` at the top of `site/js/views/placesmap.js`), and its
-**Layers** menu adds any of five layers, each fetched only the first time it is switched on:
+**Layers** menu has three layers, each fetched only the first time it is needed:
 
 | Layer | Files in `site/data/map/` | Built by |
 |---|---|---|
-| Shaded relief | `relief.jpg` (the world), `relief-na.jpg`, `relief-eu.jpg` (sharper, for Atlantic Canada and New England, and France) | `tools/build-map-relief.py`, from Natural Earth's shaded relief |
-| Ocean depth | `layers.json` (sea deeper than 200 m, 1, 2, 3, 4, 5 and 6 km) | `tools/build-map-layers.js`, from Natural Earth |
-| Glaciers and ice | `layers.json` | the same |
-| Latitude and longitude | none: drawn by the page, every 30°, 10°, 5° or 1° depending on the zoom | |
-| Old borders | `history.json`: North America in six eras, 1632–1713, 1713–1763, 1763–1783, 1784–1803, 1803–1867 and 1867–1949 | `tools/build-map-history.js` |
+| Colours (on for new visitors): a light blue sea, darker where it is deeper (200 m, then 1 to 6 km), land a shade darker than the page, and glaciers and ice shelves almost white | `layers.json` | `tools/build-map-layers.js`, from Natural Earth |
+| Latitude and longitude, every 5° | none: drawn by the page | |
+| Old borders: North America in six eras, 1632–1713, 1713–1763, 1763–1783, 1784–1803, 1803–1867 and 1867–1949 | `history.json` | `tools/build-map-history.js` |
 
-The old borders are drawn by hand from treaty lines and cut out of today's provinces and states,
-so they follow the coast; they are approximate, and the page says so. Each era's colonies, their
-names in English and French, their colours and where their names sit are listed in
-`build-map-history.js`, so a border can be corrected there and the file rebuilt. The era shown
-follows the Period setting (the 1700s show 1713–1763, the era of the Deportation) unless one is
-picked in the menu. Which layers a new visitor sees, their strength and colours, and the era for
-each period are the constants at the top of `placesmap.js` (`LAYERS_DEFAULT`, `RELIEF_OPACITY`,
-`OLD_ERA_FOR` and so on). If you rebuild a layer's files, raise `LAYERS_VERSION` there.
+Each design has its own sea, deep-water, land and ice colours (`sea`, `depth`, `land` and `ice` in each palette
+in `site/js/designs.js`). The old borders are drawn by hand from treaty lines and cut out of today's
+provinces and states, so they follow the coast; they are approximate, and the page says so. Each
+era's colonies, their names in English and French, their colours and where their names sit are
+listed in `build-map-history.js`, so a border can be corrected there and the file rebuilt. The era
+shown follows the Period setting (the 1700s show 1713–1763, the era of the Deportation) unless one
+is picked in the menu. Which layers a new visitor sees, how strong the depth steps are, the grid's
+spacing and the era for each period are the constants at the top of `placesmap.js`
+(`LAYERS_DEFAULT`, `DEPTH_OPACITY`, `GRID_STEP`, `OLD_ERA_FOR` and so on). If you rebuild a layer's
+files, raise `LAYERS_VERSION` there.
 
 ### Drawing families from WikiTree
 
@@ -233,8 +233,7 @@ site/
 tools/
   scrub.js              makes a cleaned, publishable copy of a GEDCOM
   build-map-data.js     builds site/data/map/ (sources in map-sources/)
-  build-map-layers.js   builds the map's ocean depth and ice layers (layers.json)
-  build-map-relief.py   builds the map's shaded relief (relief*.jpg)
+  build-map-layers.js   builds the depth of the sea for the map's colours (layers.json)
   build-map-history.js  builds the map's old borders (history.json)
   test-wikitree.js      checks the WikiTree import: node tools/test-wikitree.js
   check-french.js       lists strings that lack a French translation

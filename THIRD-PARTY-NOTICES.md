@@ -17,8 +17,7 @@ The files in `site/data/map/` are built by `tools/build-map-data.js` from these 
 | What | Used for | Licence |
 |---|---|---|
 | Natural Earth, 1:10m countries (via the world-atlas package), states and provinces, lakes and rivers | the base map | Public domain |
-| Natural Earth, 1:10m bathymetry, glaciated areas and Antarctic ice shelves | the map's Ocean depth and Glaciers and ice layers | Public domain |
-| Natural Earth shaded relief (via the basemap-data package, MIT) | the map's Shaded relief layer | Public domain |
+| Natural Earth, 1:10m bathymetry, glaciated areas and Antarctic ice shelves | the sea's depth and the ice in the map's Colours layer | Public domain |
 | GeoNames, cities500 (via the cities-500-structured package) and region names (via cities.json) | place names and coordinates worldwide | Creative Commons Attribution 4.0 (geonames.org) |
 | Geolocated placenames in Canada, Natural Resources Canada and Crown-Indigenous Relations and Northern Affairs Canada (via the R package loon.data) | Canadian villages and hamlets | Open Government Licence – Canada |
 | Découpage administratif, Etalab / INSEE | every French commune and its département | Licence Ouverte 2.0 |

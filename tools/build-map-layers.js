@@ -1,6 +1,5 @@
-/* Builds site/data/map/layers.json, the "Ocean depth" and "Glaciers and ice" layers of the map in Where They Lived,
-   and two outlines (relief-land.geojson, relief-lakes.geojson) that build-map-relief.py uses to cut the sea out of the
-   shaded relief. Nothing here runs on the website.
+/* Builds site/data/map/layers.json, the depth of the sea, and glaciers and ice shelves, for the "Colours" layer of the map in Where They Lived.
+   Nothing here runs on the website.
 
    Sources (Natural Earth, public domain; github.com/nvkelso/natural-earth-vector, folder geojson, into this folder):
      ne_10m_bathymetry_K_200, _J_1000, _I_2000, _H_3000, _G_4000, _F_5000, _E_6000   sea deeper than 200 m, 1 km ... 6 km
@@ -35,8 +34,3 @@ t = tc.quantize(t, GRID);
 fs.writeFileSync(path.join(OUT, 'layers.json'), JSON.stringify(t));
 console.log('layers.json', (fs.statSync(path.join(OUT, 'layers.json')).size / 1024).toFixed(0) + ' KB');
 
-// the land and lakes of the site's own detailed map, for build-map-relief.py
-const w = JSON.parse(fs.readFileSync(path.join(OUT, 'world-detail.json')));
-fs.writeFileSync('relief-land.geojson', JSON.stringify(tc.feature(w, w.objects.countries)));
-fs.writeFileSync('relief-lakes.geojson', JSON.stringify(tc.feature(w, w.objects.lakes)));
-console.log('relief-land.geojson and relief-lakes.geojson, for build-map-relief.py');
