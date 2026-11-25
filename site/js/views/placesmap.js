@@ -19,6 +19,8 @@
   const MAX_R = 30;                // the biggest bubble's radius, in pixels, before zooming
   const SEA_RING = 1.6;            // width of the dotted ring around a death or birth at sea
   const LABELS = 14;               // how many of the biggest places get a name on the map
+  const WRAP = true;               // the map wraps around east and west (Russia carries on left of Alaska); false stops at the edges
+  let mapCount = 0;
 
   /* opts: {stage, root (svg), hint, data (scoped), what: 'birth'|'death', period: 'all'|century, regions: bool, onLegend} */
   FO.placesMap = function (o) {
@@ -75,8 +77,17 @@
       const zoomG = svg('g');
       root.append(zoomG);
       const ns = { 'vector-effect': 'non-scaling-stroke' };
-      const baseG = svg('g');
-      zoomG.append(baseG);
+      /* The world is drawn once (baseG, kept in <defs>) and shown side by side as copies; when WRAP is on there are three,
+         and they move along as the map is dragged east or west, so there is always world on either side. Each copy has its
+         own bubbles, so pointing and clicking work on all of them. */
+      const x0 = proj([-180, 0])[0], worldW = proj([180, 0])[0] - x0;
+      const COPIES = WRAP ? [-1, 0, 1] : [0];
+      const defs = svg('defs');
+      root.append(defs);
+      const baseId = 'fo-map-base-' + (++mapCount);
+      const baseG = svg('g', { id: baseId, class: 'fo-map-base' });
+      defs.append(baseG);
+      const baseCopies = COPIES.map(() => { const g = svg('g'); g.append(svg('use', { href: '#' + baseId })); zoomG.append(g); return g; });
       let riverTiers = [];
       // the land, lakes, rivers and borders; drawn again with the finer map once someone zooms in
       function drawBase(w) {
@@ -113,11 +124,10 @@
 
       const col = o.what === 'birth' ? BIRTH : DEATH;
       const r0 = d3.scaleSqrt().domain([0, d3.max(list, s => s.n) || 1]).range([0, MAX_R]);
-      const bubbles = svg('g');
-      zoomG.append(bubbles);
-      const dots = list.map(s => {
-        const [x, y] = proj([s.lon, s.lat]);
-        s.x = x; s.y = y;
+      const bubbleCopies = COPIES.map(() => { const g = svg('g'); zoomG.append(g); return g; });
+      list.forEach(s => { const [x, y] = proj([s.lon, s.lat]); s.x = x; s.y = y; });
+      const dots = bubbleCopies.flatMap(bubbles => list.map(s => {
+        const x = s.x, y = s.y;
         const region = s.level === 'region', sea = s.level === 'sea';
         const c = svg('circle', Object.assign({ cx: x, cy: y, r: Math.max(2.5, r0(s.n)), fill: col, 'fill-opacity': region ? 0.08 : BUBBLE_OPACITY, stroke: region || sea ? col : '#FFFFFF', 'stroke-width': region ? 1.3 : sea ? SEA_RING : 0.9, 'stroke-opacity': region ? 0.75 : 0.9, style: 'cursor:pointer' }, ns));
         if (region) c.setAttribute('stroke-dasharray', '4 3');
@@ -137,7 +147,15 @@
         c.addEventListener('click', () => FO.showList(sea ? s.label : s.top, ui.fmt(s.n) + what + (region ? T(', known only by region') : ''), s.people.slice().sort((a, b) => (year(a) || 0) - (year(b) || 0))));
         bubbles.append(c);
         return [c, s];
-      });
+      }));
+      // which copy of the world is under the middle of the window; the copies sit on it and on either side of it
+      let atCopy = null;
+      const centreCopy = t => WRAP ? Math.floor(((W / 2 - t.x) / t.k - x0) / worldW) : 0;
+      function placeCopies(n) {
+        if (n === atCopy) return;
+        atCopy = n;
+        COPIES.forEach((d, i) => { const tr = 'translate(' + (n + d) * worldW + ',0)'; baseCopies[i].setAttribute('transform', tr); bubbleCopies[i].setAttribute('transform', tr); });
+      }
 
       // names of the biggest places, kept upright and the same size while zooming
       const labelG = svg('g', { 'pointer-events': 'none' });
@@ -148,8 +166,10 @@
         const boxes = []; let shown = 0;
         for (const s of named) {
           if (shown >= LABELS) break;
-          const x = t.applyX(s.x), y = t.applyY(s.y), r = Math.max(2.5, r0(s.n)) * Math.sqrt(t.k);
-          if (x < 0 || x > W || y < 0 || y > H) continue;
+          const y = t.applyY(s.y), r = Math.max(2.5, r0(s.n)) * Math.sqrt(t.k);
+          // on whichever copy of the world the place is in view
+          const x = COPIES.map(d => t.applyX(s.x + (atCopy + d) * worldW)).find(v => v >= 0 && v <= W);
+          if (x == null || y < 0 || y > H) continue;
           const text = s.label.length > 24 ? s.label.slice(0, 22) + '…' : s.label;
           const w = text.length * 6.6 + 6, bx = x + r + 3, by = y - 8;
           if (bx + w > W || boxes.some(b => bx < b[0] + b[2] && bx + w > b[0] && by < b[1] + 16 && by + 16 > b[1])) continue;
@@ -159,9 +179,13 @@
         }
       }
 
-      // the map cannot be dragged past the edges of the world: Antarctica stays above the bottom edge, Chukotka inside the left one
-      const zoom = d3.zoom().scaleExtent([0.5, 80]).extent([[0, 0], [W, H]]).translateExtent(path.bounds({ type: 'Sphere' })).on('zoom', e => {
+      // the map cannot be dragged past the top and bottom of the world (Antarctica stays above the bottom edge); east and west it
+      // wraps around, and it can be zoomed out until the whole world is a little under half the width of the window
+      const sphere = path.bounds({ type: 'Sphere' });
+      const zoom = d3.zoom().scaleExtent([WRAP ? Math.min(0.5, W * 0.45 / worldW) : 0.5, 80]).extent([[0, 0], [W, H]])
+        .translateExtent(WRAP ? [[-Infinity, sphere[0][1]], [Infinity, sphere[1][1]]] : sphere).on('zoom', e => {
         const t = e.transform;
+        placeCopies(centreCopy(t));
         if (o.keep) o.keep.t = t;
         zoomG.setAttribute('transform', t.toString());
         dots.forEach(([c, s]) => c.setAttribute('r', Math.max(2.5, r0(s.n)) / Math.sqrt(t.k)));
