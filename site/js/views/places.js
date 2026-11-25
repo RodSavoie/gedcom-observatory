@@ -186,7 +186,7 @@
       let legendBox = null;
       function draw() {
         root.innerHTML = ''; ui.untip(); if (legendBox) { legendBox.remove(); legendBox = null; }
-        v.stage.querySelectorAll('svg.map-under').forEach(e => e.remove());   // the map's land and sea, under root
+        v.stage.querySelectorAll('.map-under').forEach(e => e.remove());   // the map's land and sea (a canvas), under root
         mapCtl.style.display = mode === 'map' ? 'contents' : 'none';
         v.stage.classList.toggle('map-mode', mode === 'map');
         if (mode !== 'map') mapRun = null;

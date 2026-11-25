@@ -111,9 +111,10 @@ historic regions such as French Louisiana, and the routes for deaths and births 
 by hand in `site/js/geo.js`. If you rebuild the map files, raise `MAP_VERSION` at the top of
 `geo.js` so browsers fetch the new ones.
 
-While the map is dragged or zoomed, the land, the sea and the layers move as one picture and are
-drawn again, sharp, when the movement stops, so it stays quick with every layer on (`QUICK_MOVE`
-and `MARGIN` at the top of `site/js/views/placesmap.js`); the bubbles and names follow live.
+The land, the sea and the layers are drawn on a canvas, which the browser draws with the graphics
+card, again at every step of a drag or zoom, so the map stays sharp while it moves; the bubbles and
+names are SVG on top of it (`SHARPNESS` at the top of `site/js/views/placesmap.js` caps the canvas
+resolution on high-resolution screens).
 The map wraps around east and west (`WRAP` in the same place), and its
 **Layers** menu has four layers, each fetched only the first time it is needed:
 
