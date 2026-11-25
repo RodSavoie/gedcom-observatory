@@ -351,7 +351,7 @@
       }
 
       // the map cannot be dragged past the top and bottom of the world (Antarctica stays above the bottom edge); east and west it
-      // wraps around, and it can be zoomed out until the whole world is a little under half the width of the window
+      // wraps around
       const sphere = path.bounds({ type: 'Sphere' });
       // at every step of a drag or zoom: the canvas, the bubbles and the names, once per frame of the screen
       let queued = 0, lastK = null;
@@ -367,7 +367,8 @@
         if (t.k >= DETAIL_FROM) wantDetail();
         labels(t); ui.untip();
       }
-      const zoom = d3.zoom().scaleExtent([WRAP ? Math.min(0.5, W * 0.45 / worldW) : 0.5, 80]).extent([[0, 0], [W, H]])
+      // zoomed out, the world fills the frame from top to bottom and goes no smaller (east and west it wraps)
+      const zoom = d3.zoom().scaleExtent([WRAP ? Math.min(1, H / (sphere[1][1] - sphere[0][1])) : 0.5, 80]).extent([[0, 0], [W, H]])
         .translateExtent(WRAP ? [[-Infinity, sphere[0][1]], [Infinity, sphere[1][1]]] : sphere).on('zoom', e => {
         now = e.transform;
         if (o.keep) o.keep.t = now;
