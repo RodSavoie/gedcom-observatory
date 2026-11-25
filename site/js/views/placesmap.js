@@ -20,9 +20,44 @@
   const SEA_RING = 1.6;            // width of the dotted ring around a death or birth at sea
   const LABELS = 14;               // how many of the biggest places get a name on the map
   const WRAP = true;               // the map wraps around east and west (Russia carries on left of Alaska); false stops at the edges
+
+  /* Layers, switched on and off under "Layers" above the map. LAYERS_DEFAULT is what a new visitor sees (any of 'relief',
+     'depth', 'ice', 'grid', 'borders'); after that each visitor's own choice is kept. Their files are fetched only when
+     a layer is first switched on. */
+  const LAYERS_DEFAULT = [];
+  const RELIEF_OPACITY = 0.6;      // shaded relief (data/map/relief*.jpg, from Natural Earth): how strong, 0 to 1
+  const RELIEF_COLOUR = 0.6;       // how much of Natural Earth's green and tan colouring is kept: 0 grey, 1 full colour
+  const RELIEF_FADE = [8, 24];     // it is a picture, so it blurs up close: it fades from the first zoom and is gone by the second
+  const RELIEF_IMAGES = [          // [file, west, east, north, south]: the world, then sharper pictures where the family lived
+    ['relief.jpg', -180, 180, 84, -62], ['relief-na.jpg', -80, -52, 53.5, 40], ['relief-eu.jpg', -6, 10, 52, 41]];
+  const DEPTH_COLOUR = '#8FA8BD', DEPTH_OPACITY = 0.07;   // ocean depth: each step down (200 m, 1, 2, 3, 4, 5 and 6 km) adds this much colour
+  const ICE = '#FFFFFF', ICE_EDGE = '#C3D2DD';            // glaciers and ice shelves
+  const GRID = '#8FA8BD', GRID_OPACITY = 0.35;            // the latitude and longitude grid
+  const GRID_STEPS = [[30, 0, 3], [10, 3, 12], [5, 12, 40], [1, 40, 1e9]];   // [degrees apart, from zoom, up to zoom]
+  const OLD_COLOURS = { fr: '#3B6EA5', gb: '#B5473A', es: '#C9921F', us: '#5E7186', ca: '#7C5A8E', mx: '#6E8B3D', ru: '#3F8C7A' };
+  const OLD_FILL = 0.15;           // old borders: how strongly each colony is tinted
+  const OLD_LINE = '#6B5E50';      // and the colour of the borders between them
+  const OLD_ERA_FOR = { 1600: '1632', 1700: '1713', 1800: '1803', 1900: '1867', 2000: '1867', all: '1713' };   // the era shown for each period, unless one is picked
+  const LAYERS_VERSION = 1;        // raise when a layer's files are rebuilt, so browsers fetch the new ones
   let mapCount = 0;
 
-  /* opts: {stage, root (svg), hint, data (scoped), what: 'birth'|'death', period: 'all'|century, regions: bool, onLegend} */
+  // the eras of the old borders (data/map/history.json, built by tools/build-map-history.js)
+  FO.OLD_BORDER_ERAS = [
+    { id: '1632', label: T('1632–1713: Acadie and New France') },
+    { id: '1713', label: T('1713–1763: after the Treaty of Utrecht') },
+    { id: '1763', label: T('1763–1783: after the Treaty of Paris') },
+    { id: '1784', label: T('1784–1803: after the American Revolution') },
+    { id: '1803', label: T('1803–1867: before Confederation') },
+    { id: '1867', label: T('1867–1949: Confederation') }];
+  const OLD_POWER = { fr: T('French'), gb: T('British'), es: T('Spanish'), us: T('American'), ca: T('Canadian'), mx: T('Mexican'), ru: T('Russian') };
+  FO.MAP_LAYERS = [['relief', T('Shaded relief')], ['depth', T('Ocean depth')], ['ice', T('Glaciers and ice')], ['grid', T('Latitude and longitude')], ['borders', T('Old borders')]];
+  FO.MAP_LAYERS_DEFAULT = LAYERS_DEFAULT;
+  const files = {};
+  const fetchLayer = f => files[f] || (files[f] = fetch('data/map/' + f + '?v=' + LAYERS_VERSION).then(r => (r.ok ? r.json() : null)).catch(() => null).then(j => { if (!j) delete files[f]; return j; }));
+  const loaded = {};   // the layers' files once here
+
+  /* opts: {stage, root (svg), hint, data (scoped), what: 'birth'|'death', period: 'all'|century, regions: bool,
+     layers: Set of layer ids, era: 'auto' or an era's id, onLegend} */
   FO.placesMap = function (o) {
     const { stage, root, hint } = o;
     const W = stage.clientWidth, H = stage.clientHeight;
@@ -89,13 +124,55 @@
       defs.append(baseG);
       const baseCopies = COPIES.map(() => { const g = svg('g'); g.append(svg('use', { href: '#' + baseId })); zoomG.append(g); return g; });
       let riverTiers = [];
-      // the land, lakes, rivers and borders; drawn again with the finer map once someone zooms in
+      // what changes with the zoom, as [element, attribute, function of the zoom]; set only when the value changes, since
+      // every change is copied to each copy of the world
+      let byZoom = [];
+      const zoomed = k => byZoom.forEach(z => { const v = z[2](k); if (z[3] !== v) { z[3] = v; z[0].setAttribute(z[1], v); } });
+      const layers = o.layers || new Set();
+      const era = layers.has('borders') ? (o.era && o.era !== 'auto' ? o.era : OLD_ERA_FOR[o.period] || OLD_ERA_FOR.all) : null;
+      const want = (layers.has('depth') || layers.has('ice') ? ['layers.json'] : []).concat(era ? ['history.json'] : []);
+      want.forEach(f => { if (!loaded[f]) fetchLayer(f).then(j => { if (j && !loaded[f]) { loaded[f] = j; if (baseG.isConnected) { drawBase(current); legend(); } } }); });
+      // the land as a clipping shape, so the relief and the colonies' tints stop at the coast
+      const landId = baseId + '-land', clipId = baseId + '-clip';
+      defs.append(svg('clipPath', { id: clipId }, svg('use', { href: '#' + landId, 'clip-rule': 'evenodd' })));
+      let current = null, oldLabels = [];
+      // the land, lakes, rivers and borders, with the layers that are on; drawn again with the finer map once someone zooms in
       function drawBase(w) {
-        baseG.innerHTML = ''; riverTiers = [];
+        current = w;
+        baseG.innerHTML = ''; riverTiers = []; byZoom = []; oldLabels = [];
         const countries = topojson.feature(w, w.objects.countries);
         // land with the lakes cut out of it, so lakes show the same background as the sea
         const lakes = w.objects.lakes ? topojson.feature(w, w.objects.lakes) : null;
-        baseG.append(svg('path', { d: path(countries) + (lakes ? path(lakes) : ''), fill: LAND, 'fill-rule': 'evenodd', stroke: 'none' }));
+        const phys = loaded['layers.json'];
+        if (layers.has('depth') && phys) ['d200', 'd1000', 'd2000', 'd3000', 'd4000', 'd5000', 'd6000'].forEach(k => {
+          if (phys.objects[k]) baseG.append(svg('path', { d: path(topojson.feature(phys, phys.objects[k])), fill: DEPTH_COLOUR, 'fill-opacity': DEPTH_OPACITY, stroke: 'none' }));
+        });
+        baseG.append(svg('path', { id: landId, d: path(countries) + (lakes ? path(lakes) : ''), fill: LAND, 'fill-rule': 'evenodd', stroke: 'none' }));
+        if (layers.has('relief')) {
+          const g = svg('g', { 'clip-path': 'url(#' + clipId + ')', style: RELIEF_COLOUR < 1 ? 'filter:saturate(' + RELIEF_COLOUR + ')' : null });
+          RELIEF_IMAGES.forEach(([f, w0, e0, n0, s0], i) => {
+            const [xa, ya] = proj([w0, n0]), [xb, yb] = proj([e0, s0]);
+            const im = svg('image', { href: 'data/map/' + f + '?v=' + LAYERS_VERSION, x: xa, y: ya, width: xb - xa, height: yb - ya, preserveAspectRatio: 'none' });
+            g.append(im);
+            // the sharper pictures only once zoomed in, where their edges are out of sight
+            if (i) byZoom.push([im, 'display', k => (k >= DETAIL_FROM ? 'inline' : 'none')]);
+          });
+          baseG.append(g);
+          byZoom.push([g, 'opacity', k => { const f = Math.min(1, Math.max(0, (Math.log(k) - Math.log(RELIEF_FADE[0])) / (Math.log(RELIEF_FADE[1]) - Math.log(RELIEF_FADE[0])))); return String(Math.round(RELIEF_OPACITY * (1 - f) * 20) / 20); }]);
+        }
+        if (layers.has('ice') && phys && phys.objects.ice) baseG.append(svg('path', Object.assign({ d: path(topojson.feature(phys, phys.objects.ice)), fill: ICE, stroke: ICE_EDGE, 'stroke-width': 0.6 }, ns)));
+        const hist = era && loaded['history.json'];
+        const eraData = hist && hist.eras.find(e => e.id === era);
+        if (eraData) {
+          const obj = hist.objects['e' + era], fs = topojson.feature(hist, obj).features;
+          const g = svg('g', { 'clip-path': 'url(#' + clipId + ')' });
+          fs.forEach(f => { const r = eraData.regions[f.properties.i]; if (r && OLD_COLOURS[r.p]) g.append(svg('path', { d: path(f), fill: OLD_COLOURS[r.p], 'fill-opacity': OLD_FILL, stroke: 'none' })); });
+          baseG.append(g);
+          // names, biggest first, so the small ones give way when the map is zoomed out
+          oldLabels = fs.map(f => ({ r: eraData.regions[f.properties.i], a: path.area(f) })).filter(x => x.r && x.r.at).sort((a, b) => b.a - a.a)
+            .map(({ r }) => { const [x, y] = proj(r.at); return { x, y, text: FO.lang === 'fr' ? r.fr : r.en, colour: OLD_COLOURS[r.p] || '#6B6F75' }; });
+          baseG.oldMesh = path(topojson.mesh(hist, obj, (a, b) => a !== b));
+        } else baseG.oldMesh = null;
         if (lakes) baseG.append(svg('path', Object.assign({ d: path(lakes), fill: 'none', stroke: COAST, 'stroke-width': 0.6 }, ns)));
         if (w.objects.rivers) {
           const all = topojson.feature(w, w.objects.rivers).features;
@@ -109,12 +186,20 @@
         }
         baseG.append(svg('path', Object.assign({ d: path(topojson.mesh(w, w.objects.provinces, (a, b) => a !== b)), fill: 'none', stroke: BORDER, 'stroke-width': 0.7, 'stroke-dasharray': '3 2' }, ns)));
         baseG.append(svg('path', Object.assign({ d: path(topojson.mesh(w, w.objects.countries, (a, b) => a !== b)), fill: 'none', stroke: BORDER, 'stroke-width': 1 }, ns)));
+        if (baseG.oldMesh) baseG.append(svg('path', Object.assign({ d: baseG.oldMesh, fill: 'none', stroke: OLD_LINE, 'stroke-opacity': 0.75, 'stroke-width': 1.3, 'stroke-dasharray': '5 3', 'stroke-linejoin': 'round' }, ns)));
         baseG.append(svg('path', Object.assign({ d: path(topojson.mesh(w, w.objects.countries, (a, b) => a === b)), fill: 'none', stroke: COAST, 'stroke-width': 0.8 }, ns)));
+        if (layers.has('grid')) GRID_STEPS.forEach(([step, from, to]) => {
+          const el = svg('path', Object.assign({ d: path(d3.geoGraticule().extent([[-180, -80], [180.0001, 84]]).step([step, step]).precision(1)()), fill: 'none', stroke: GRID, 'stroke-opacity': GRID_OPACITY, 'stroke-width': 0.6 }, ns));
+          baseG.append(el); byZoom.push([el, 'display', k => (k >= from && k < to ? 'inline' : 'none')]);
+        });
         const k = d3.zoomTransform(root).k;
         riverTiers.forEach(([el, from]) => el.setAttribute('display', k >= from ? 'inline' : 'none'));
+        zoomed(k);
+        if (labelG) labels(d3.zoomTransform(root));
       }
       // the finer map: used straight away if it is already here, otherwise fetched the first time someone zooms in
       let fine = FO.geoDetailReady && FO.geoDetailReady();
+      let labelG = null;
       drawBase(fine || world);
       const wantDetail = () => {
         if (fine || !FO.geoDetail) return;
@@ -158,12 +243,28 @@
       }
 
       // names of the biggest places, kept upright and the same size while zooming
-      const labelG = svg('g', { 'pointer-events': 'none' });
-      root.append(labelG);
+      const oldG = svg('g', { 'pointer-events': 'none' });
+      labelG = svg('g', { 'pointer-events': 'none' });
+      root.append(oldG, labelG);
       const named = list.filter(s => s.level === 'place' || s.level === 'sea').slice(0, LABELS * 3);
       function labels(t) {
-        labelG.innerHTML = '';
+        labelG.innerHTML = ''; oldG.innerHTML = '';
         const boxes = []; let shown = 0;
+        // the names of the colonies, in italics, on every copy of the world in view, leaving out any that would overlap
+        const oldBoxes = [];
+        for (const l of oldLabels) {
+          const y = t.applyY(l.y), w = l.text.length * 6.2;
+          if (y < 8 || y > H - 8) continue;
+          for (const d of COPIES) {
+            const x = t.applyX(l.x + (atCopy + d) * worldW);
+            if (x < w / 2 || x > W - w / 2) continue;
+            const b = [x - w / 2 - 4, y - 9, w + 8, 18];
+            if (oldBoxes.some(o => b[0] < o[0] + o[2] && b[0] + b[2] > o[0] && b[1] < o[1] + o[3] && b[1] + b[3] > o[1])) continue;
+            oldBoxes.push(b);
+            const tx = svg('text', { x, y: y + 4, 'text-anchor': 'middle', style: 'font-size:11.5px;font-style:italic;letter-spacing:.02em;fill:' + l.colour + ';paint-order:stroke;stroke:#F7F4EE;stroke-width:3px;stroke-linejoin:round' });
+            tx.textContent = l.text; oldG.append(tx);
+          }
+        }
         for (const s of named) {
           if (shown >= LABELS) break;
           const y = t.applyY(s.y), r = Math.max(2.5, r0(s.n)) * Math.sqrt(t.k);
@@ -189,7 +290,8 @@
         if (o.keep) o.keep.t = t;
         zoomG.setAttribute('transform', t.toString());
         dots.forEach(([c, s]) => c.setAttribute('r', Math.max(2.5, r0(s.n)) / Math.sqrt(t.k)));
-        riverTiers.forEach(([el, from]) => el.setAttribute('display', t.k >= from ? 'inline' : 'none'));
+        riverTiers.forEach(([el, from]) => { const v = t.k >= from ? 'inline' : 'none'; if (el.getAttribute('display') !== v) el.setAttribute('display', v); });
+        zoomed(t.k);
         if (t.k >= DETAIL_FROM) wantDetail();
         labels(t); ui.untip();
       });
@@ -209,9 +311,21 @@
       const placed = ppl.length - missing - atRegion - atSea;
       const noun = o.what === 'birth' ? T('births') : T('deaths');
       hint.textContent = T('{length} {noun} with a place recorded: {placed} found at a town or village{x}, {atRegion} known only by region{x2}{x3}{x4}. Bubbles grow with the number of people. Scroll to zoom, drag to move, click a bubble to list the people.', { length: ui.fmt(ppl.length), noun: noun, placed: ui.fmt(placed), x: approx ? T(' ({approx} French villages at the centre of their département)', { approx: ui.fmt(approx) }) : '', atRegion: ui.fmt(atRegion), x2: o.regions ? T(' (dashed rings at the region’s centre)') : T(' (not shown)'), x3: atSea ? T(', {atSea} at sea (dotted rings, on the crossing they were most likely on)', { atSea: ui.fmt(atSea) }) : '', x4: missing ? T(', {missing} not found (a name the map does not know)', { missing: ui.fmt(missing) }) : '' });
-      if (o.onLegend) o.onLegend([{ label: o.what === 'birth' ? T('Births at a place') : T('Deaths at a place'), color: col }]
-        .concat(atSea ? [{ label: o.what === 'birth' ? T('Born at sea') : T('Died at sea'), color: col, sea: true }] : [])
-        .concat(atRegion && o.regions ? [{ label: T('Known only by region'), color: col, line: true }] : []));
+      if (era) {
+        const e = FO.OLD_BORDER_ERAS.find(x => x.id === era);
+        hint.textContent += ' ' + T('Old borders: {era}. They are drawn by hand from treaty lines and only approximate, and most of this land was Indigenous country.', { era: e ? e.label : era });
+      }
+      legend();
+      // the legend, with the colonial powers of the era when the old borders are on
+      function legend() {
+        if (!o.onLegend || (o.cancelled && o.cancelled(token))) return;
+        const hist = era && loaded['history.json'], e = hist && hist.eras.find(x => x.id === era);
+        const powers = e ? [...new Set(e.regions.map(r => r.p).filter(p => OLD_COLOURS[p]))] : [];
+        o.onLegend([{ label: o.what === 'birth' ? T('Births at a place') : T('Deaths at a place'), color: col }]
+          .concat(atSea ? [{ label: o.what === 'birth' ? T('Born at sea') : T('Died at sea'), color: col, sea: true }] : [])
+          .concat(atRegion && o.regions ? [{ label: T('Known only by region'), color: col, line: true }] : [])
+          .concat(powers.map(p => ({ label: OLD_POWER[p], color: OLD_COLOURS[p], area: true }))));
+      }
     }
   };
 })();

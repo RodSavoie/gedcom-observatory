@@ -26,3 +26,8 @@ desktop.ini
 
 # Node.js, if the tools ever grow dependencies
 node_modules/
+
+# Downloaded sources and in-between files of the map tools (tools/build-map-*.js)
+tools/ne_*.geojson
+tools/relief-*.geojson
+tools/shadedrelief.jpg

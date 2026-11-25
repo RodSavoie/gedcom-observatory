@@ -10,7 +10,7 @@
   'use strict';
   const FO = (window.FO = window.FO || {});
   const DEFAULT_LANG = 'en';
-  const DICT_VERSION = 1;
+  const DICT_VERSION = 2;
   const LANGS = [{ id: 'en', label: 'EN', name: 'English' }, { id: 'fr', label: 'FR', name: 'Français' }];
   const ids = LANGS.map(l => l.id);
 
