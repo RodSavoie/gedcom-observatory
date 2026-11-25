@@ -64,8 +64,10 @@
     if (!ids.includes(id) || id === FO.lang) return;
     if (FO.prefs) FO.prefs.set('lang', id);
     const u = new URL(location.href);
-    if (u.searchParams.has('lang')) u.searchParams.set('lang', id);
-    location.replace(u.toString());
+    // an address with ?lang= gets the new language; otherwise it stays the same, and a page whose address ends in a view
+    // (#/fan) would not reload on its own, so it is reloaded outright
+    if (u.searchParams.has('lang')) { u.searchParams.set('lang', id); location.replace(u.toString()); }
+    else location.reload();
   };
   // the FR | EN switch, built where app.js asks for it
   FO.langSwitch = function () {
