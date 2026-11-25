@@ -19,12 +19,25 @@
   const MAX_R = 30;                // the biggest bubble's radius, in pixels, before zooming
   const SEA_RING = 1.6;            // width of the dotted ring around a death or birth at sea
   const LABELS = 14;               // how many of the biggest places get a name on the map
-  // places always named, before the biggest places, when they are in view and their name has room (the French ports and
-  // towns where Acadians landed or were settled after the Deportation): [name, longitude, latitude, how far its bubble may
-  // be, in degrees]. The name goes on the bubble of that name, or else on the biggest bubble that near.
-  const ALWAYS_NAMED = [['Saint-Malo', -2.025, 48.649, 0.03], ['Cherbourg', -1.616, 49.639, 0.12], ['Brest', -4.486, 48.390, 0.12],
-    ['La Rochelle', -1.151, 46.160, 0.12], ['Belle-Île-en-Mer', -3.18, 47.33, 0.2], ['Morlaix', -3.827, 48.578, 0.12],
-    ['Châtellerault', 0.546, 46.818, 0.12], ['Saint-Servan', -2.012, 48.636, 0.03]];
+  /* Places named before any other, by region, wherever the family has a bubble there (the places of Acadian history: Acadie,
+     Canada, the exile in the Anglo-American colonies and England, France, Louisiana, the Caribbean and Guiana, Saint-Pierre).
+     Names are handed out one region at a time, the biggest bubble of each region first, so every region gets its main
+     places named even when the map is zoomed out; the rest follow as it is zoomed in. Each place: [name, longitude,
+     latitude, and optionally how far its bubble may be, in degrees (0.12 if not given)]; the name goes on the bubble of that
+     name, or else on the biggest bubble that near, and is left out where the family has none. */
+  const NAMED_PLACES = [
+    [['Annapolis Royal', -65.52, 44.74], ['Grand-Pré', -64.31, 45.10], ['Beaubassin', -64.28, 45.85], ['Louisbourg', -59.97, 45.92],
+      ['Pisiguit', -64.14, 44.99], ['Port LaJoye', -63.13, 46.20], ['Memramcook', -64.55, 46.00], ['Halifax', -63.57, 44.65]],
+    [['Québec', -71.21, 46.81], ['Bécancour', -72.43, 46.34], ['L’Acadie', -73.34, 45.31]],
+    [['Boston', -71.06, 42.36], [T('Philadelphia'), -75.17, 39.95], ['Baltimore', -76.61, 39.29], ['Charleston', -79.93, 32.78]],
+    [['Liverpool', -2.98, 53.41], ['Bristol', -2.59, 51.45], ['Southampton', -1.40, 50.90], ['Falmouth', -5.07, 50.15]],
+    [['Saint-Malo', -2.025, 48.649, 0.03], ['Saint-Servan', -2.012, 48.636, 0.03], ['Cherbourg', -1.616, 49.639], ['Brest', -4.486, 48.390],
+      ['La Rochelle', -1.151, 46.160], ['Rochefort', -0.963, 45.937], ['Nantes', -1.553, 47.218], ['Belle-Île-en-Mer', -3.18, 47.33, 0.2],
+      ['Morlaix', -3.827, 48.578], ['Châtellerault', 0.546, 46.818], ['Le Havre', 0.107, 49.494], ['Boulogne-sur-Mer', 1.614, 50.726]],
+    [[T('St. James'), -90.85, 30.03, 0.2], [T('St. Gabriel'), -91.10, 30.25], ['Saint-Martinville', -91.83, 30.13], [T('New Orleans'), -90.07, 29.95],
+      ['Opelousas', -92.08, 30.53], ['Lafayette', -92.02, 30.22]],
+    [['Môle-Saint-Nicolas', -73.38, 19.80], ['Mirebalais', -72.10, 18.83], ['Fort-Royal', -61.07, 14.60], ['Sinnamary', -52.96, 5.38], ['Cayenne', -52.33, 4.94]],
+    [['Saint-Pierre', -56.18, 46.78], ['Miquelon', -56.38, 47.10], ['Plaisance', -53.97, 47.24]]];
   const WRAP = true;               // the map wraps around east and west (Russia carries on left of Alaska); false stops at the edges
   /* The land, the sea and the layers are drawn on a canvas, which the browser draws with the graphics card, again at every
      step of a drag or a zoom, so the map stays sharp while it moves; the bubbles and names are drawn over it. SHARPNESS caps
@@ -294,19 +307,18 @@
       const oldG = svg('g', { 'pointer-events': 'none' });
       labelG = svg('g', { 'pointer-events': 'none' });
       root.append(oldG, labelG);
-      // the always-named places, each on its bubble if it has one (a name alone, with no bubble, where the family has none):
-      // first every bubble of the same name (St- and Ste- read as Saint- and Sainte-), then the biggest one near enough
+      // the named places, each on its bubble: first a bubble of the same name (St- and Ste- read as Saint- and Sainte-), then
+      // the biggest one near enough; then, region by region, the biggest first
       const plain = x => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\b(ste?)\b\.?[\s-]*/g, (m, a) => (a === 'st' ? 'saint' : 'sainte')).replace(/[^a-z]/g, '');
       const used = new Set();
-      const nearTo = ([, lon, lat, within]) => list.filter(s => s.level === 'place' && !used.has(s) && Math.abs(s.lat - lat) <= within && Math.abs(s.lon - lon) <= within / Math.cos(lat * Math.PI / 180));
-      const spot = ALWAYS_NAMED.map(a => { const s = nearTo(a).find(s => plain(s.label) === plain(a[0])); if (s) used.add(s); return s; });
-      const pinned = ALWAYS_NAMED.map((a, i) => {
-        let s = spot[i] || nearTo(a).sort((x, y) => y.n - x.n)[0];
-        if (s) used.add(s);
-        else { const [x, y] = proj([a[1], a[2]]); s = { x, y, n: 0 }; }
-        return { text: a[0], s };
-      });
-      const pinnedSpots = new Set(pinned.map(p => p.s)), pinnedNames = new Set(ALWAYS_NAMED.map(a => plain(a[0])));
+      const nearTo = ([, lon, lat, within = 0.12]) => list.filter(s => s.level === 'place' && !used.has(s) && Math.abs(s.lat - lat) <= within && Math.abs(s.lon - lon) <= within / Math.cos(lat * Math.PI / 180));
+      const groups = NAMED_PLACES.map(g => g.map(a => ({ a, s: nearTo(a).find(s => plain(s.label) === plain(a[0])) })));
+      groups.forEach(g => g.forEach(x => { if (x.s) used.add(x.s); }));
+      groups.forEach(g => g.forEach(x => { if (!x.s) { x.s = nearTo(x.a).sort((p, q) => q.n - p.n)[0]; if (x.s) used.add(x.s); } }));
+      const byRegion = groups.map(g => g.filter(x => x.s).sort((p, q) => q.s.n - p.s.n));
+      const pinned = [];
+      for (let i = 0; byRegion.some(g => g[i]); i++) byRegion.forEach(g => { if (g[i]) pinned.push({ text: g[i].a[0], s: g[i].s }); });
+      const pinnedSpots = new Set(pinned.map(p => p.s)), pinnedNames = new Set(NAMED_PLACES.flat().map(a => plain(a[0])));
       const named = list.filter(s => (s.level === 'place' || s.level === 'sea') && !pinnedSpots.has(s) && !pinnedNames.has(plain(s.label))).slice(0, LABELS * 3);
       function labels(t) {
         labelG.innerHTML = ''; oldG.innerHTML = '';

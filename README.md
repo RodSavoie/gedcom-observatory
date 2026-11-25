@@ -134,9 +134,10 @@ shown follows the Period setting (the 1700s show 1713–1763, the era of the Dep
 is picked in the menu. Which layers a new visitor sees, how strong the depth steps are, the grid's
 spacing and the era for each period are the constants at the top of `placesmap.js`
 (`LAYERS_DEFAULT`, `DEPTH_OPACITY`, `RELIEF_LAND_SHADOW`, `GRID_STEP`, `OLD_ERA_FOR` and so on).
-The French ports and towns where Acadians landed or were settled after the Deportation (Saint-Malo,
-Saint-Servan, Cherbourg, Brest, La Rochelle, Belle-Île-en-Mer, Morlaix and Châtellerault) are named
-before any other place when there is room (`ALWAYS_NAMED` there). If you rebuild a layer's
+The places of Acadian history are named before any other where the family has a bubble: Acadie,
+Canada, the colonies and English ports of the exile, the French ports and towns, Louisiana, the
+Caribbean and Guiana, and Saint-Pierre. Names are handed out region by region, biggest first, so
+each region keeps its main places named when the map is zoomed out (`NAMED_PLACES` there). If you rebuild a layer's
 files, raise `LAYERS_VERSION` there.
 
 ### Drawing families from WikiTree
