@@ -27,10 +27,12 @@
     ['Châtellerault', 0.546, 46.818, 0.12], ['Saint-Servan', -2.012, 48.636, 0.03]];
   const WRAP = true;               // the map wraps around east and west (Russia carries on left of Alaska); false stops at the edges
   /* While the map is dragged or zoomed, the land, the sea and the layers move as one picture, which is quick, and are
-     drawn again, sharp, when the movement stops, or sooner once the picture has moved this far. MARGIN is how much map
-     is drawn beyond each edge of the window, as a share of its size, so a drag shows map there straight away. */
+     drawn again, sharp, as soon as the movement stops or pauses for SETTLE_AFTER milliseconds. MARGIN is how much map is
+     drawn beyond each edge of the window, as a share of its size, so a drag shows map there straight away; a drag fast
+     and long enough to go past it shows plain sea at the edge until the map is drawn again. */
   const QUICK_MOVE = true;         // false: everything is drawn again at every step, as before (slower with layers)
-  const MARGIN = 0.35;
+  const MARGIN = 0.5;
+  const SETTLE_AFTER = 120;      // (a drag only: a zoom with the wheel is drawn again once the wheel stops)
 
   /* Layers, switched on and off under "Layers" above the map. LAYERS_DEFAULT is what a new visitor sees (any of 'colours',
      'relief', 'grid', 'borders'); after that each visitor's own choice is kept. Their files are fetched only when first needed. */
@@ -128,6 +130,9 @@
       stage.querySelectorAll('svg.map-under').forEach(e => e.remove());
       const under = svg('svg', { class: 'map-under', viewBox: [-mx, -my, W + 2 * mx, H + 2 * my].join(' '), 'aria-hidden': 'true',
         style: 'inset:auto;left:' + -mx + 'px;top:' + -my + 'px;width:' + (W + 2 * mx) + 'px;height:' + (H + 2 * my) + 'px;pointer-events:none;transform-origin:' + mx + 'px ' + my + 'px' + (QUICK_MOVE ? ';will-change:transform' : '') });
+      // plain sea behind it, which shows only where a quick drag goes past what was drawn
+      const seaBack = svg('svg', { class: 'map-under', 'aria-hidden': 'true', style: 'pointer-events:none' }, svg('rect', { width: W, height: H, fill: coloured ? SEA : WATER, 'fill-opacity': coloured ? 1 : WATER_OPACITY }));
+      stage.insertBefore(seaBack, root);
       stage.insertBefore(under, root);
       under.append(svg('rect', { x: -mx, y: -my, width: W + 2 * mx, height: H + 2 * my, fill: coloured ? SEA : WATER, 'fill-opacity': coloured ? 1 : WATER_OPACITY }));
       const baseZoom = svg('g');
@@ -328,21 +333,24 @@
       const sphere = path.bounds({ type: 'Sphere' });
       /* the map under the bubbles: drawn ("settled") at the transform "drawn", and while moving only shifted and scaled
          as a picture, until the movement stops or goes past what was drawn */
-      let drawn = null, now = d3.zoomIdentity, queued = 0, lastK = null;
+      let drawn = null, now = d3.zoomIdentity, queued = 0, lastK = null, pause = 0;
       function settle() {
+        clearTimeout(pause);
         const t = now;
         drawn = t; under.style.transform = '';
         baseZoom.setAttribute('transform', t.toString());
         placeCopies(centreCopy(t), t, baseCopies, mx);
         riverTiers.forEach(([el, from]) => show(el, t.k >= from));
       }
+      let wheeling = false;
       function moveUnder(t) {
         if (!QUICK_MOVE || !drawn) return settle();
         const s = t.k / drawn.k, dx = t.x - drawn.x * s, dy = t.y - drawn.y * s;
-        // the window must stay inside what was drawn (the margin included), and not too blurred: otherwise drawn again now
-        const covered = dx <= s * mx && dx >= W - s * (W + mx) && dy <= s * my && dy >= H - s * (H + my);
-        if (!covered || s > 2 || centreCopy(t) !== centreCopy(drawn)) return settle();
+        // only a zoom far beyond what was drawn (very blurred, or very small) is drawn again in the middle of a movement
+        if (s > 4 || s < 0.25) return settle();
         under.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(' + s + ')';
+        clearTimeout(pause);
+        if (!wheeling) pause = setTimeout(settle, SETTLE_AFTER);
       }
       // the bubbles and names follow at every step; the work is done once per frame of the screen
       function step() {
@@ -360,6 +368,7 @@
       const zoom = d3.zoom().scaleExtent([WRAP ? Math.min(0.5, W * 0.45 / worldW) : 0.5, 80]).extent([[0, 0], [W, H]])
         .translateExtent(WRAP ? [[-Infinity, sphere[0][1]], [Infinity, sphere[1][1]]] : sphere).on('zoom', e => {
         now = e.transform;
+        wheeling = !!(e.sourceEvent && e.sourceEvent.type === 'wheel');
         if (o.keep) o.keep.t = now;
         if (!QUICK_MOVE || !drawn) { if (queued) cancelAnimationFrame(queued); step(); }
         else if (!queued) queued = requestAnimationFrame(step);
