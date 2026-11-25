@@ -29,7 +29,7 @@ def shade(e, steep, blur):
     dy = np.gradient(e, axis=0) / cell
     dx = np.gradient(e, axis=1) / (cell * np.cos(np.radians(lat))[:, None].clip(0.05, 1))
     dx *= steep; dy *= steep
-    slope = np.arctan(np.hypot(dx, dy)); aspect = np.arctan2(-dy, dx)
+    slope = np.arctan(np.hypot(dx, dy)); aspect = np.arctan2(dy, -dx)   # dy runs southward, as rows do
     az = math.radians(360 - LIGHT_FROM + 90); alt = math.radians(LIGHT_HEIGHT)
     return math.sin(alt) * np.cos(slope) + math.cos(alt) * np.sin(slope) * np.cos(az - aspect) - math.sin(alt)
 

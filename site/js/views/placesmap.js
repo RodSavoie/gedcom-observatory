@@ -19,9 +19,12 @@
   const MAX_R = 30;                // the biggest bubble's radius, in pixels, before zooming
   const SEA_RING = 1.6;            // width of the dotted ring around a death or birth at sea
   const LABELS = 14;               // how many of the biggest places get a name on the map
-  // places always named, with a small dot, before any other (where Acadians were settled in France after the Deportation):
-  // [name, longitude, latitude]
-  const ALWAYS_NAMED = [['Belle-Île-en-Mer', -3.18, 47.33], ['Morlaix', -3.827, 48.578], ['Châtellerault', 0.546, 46.818]];
+  // places always named, before the biggest places, when they are in view and their name has room (the French ports and
+  // towns where Acadians landed or were settled after the Deportation): [name, longitude, latitude, how far its bubble may
+  // be, in degrees]. The name goes on the bubble of that name, or else on the biggest bubble that near.
+  const ALWAYS_NAMED = [['Saint-Malo', -2.025, 48.649, 0.03], ['Cherbourg', -1.616, 49.639, 0.12], ['Brest', -4.486, 48.390, 0.12],
+    ['La Rochelle', -1.151, 46.160, 0.12], ['Belle-Île-en-Mer', -3.18, 47.33, 0.2], ['Morlaix', -3.827, 48.578, 0.12],
+    ['Châtellerault', 0.546, 46.818, 0.12], ['Saint-Servan', -2.012, 48.636, 0.03]];
   const WRAP = true;               // the map wraps around east and west (Russia carries on left of Alaska); false stops at the edges
 
   /* Layers, switched on and off under "Layers" above the map. LAYERS_DEFAULT is what a new visitor sees (any of 'colours',
@@ -42,7 +45,7 @@
   const OLD_FILL = 0.15;           // old borders: how strongly each colony is tinted
   const OLD_LINE = '#6B5E50';      // and the colour of the borders between them
   const OLD_ERA_FOR = { 1600: '1632', 1700: '1713', 1800: '1803', 1900: '1867', 2000: '1867', all: '1713' };   // the era shown for each period, unless one is picked
-  const LAYERS_VERSION = 6;        // raise when a layer's files are rebuilt, so browsers fetch the new ones
+  const LAYERS_VERSION = 7;        // raise when a layer's files are rebuilt, so browsers fetch the new ones
   let mapCount = 0;
 
   // the eras of the old borders (data/map/history.json, built by tools/build-map-history.js)
@@ -236,7 +239,20 @@
       const oldG = svg('g', { 'pointer-events': 'none' });
       labelG = svg('g', { 'pointer-events': 'none' });
       root.append(oldG, labelG);
-      const named = list.filter(s => s.level === 'place' || s.level === 'sea').slice(0, LABELS * 3);
+      // the always-named places, each on its bubble if it has one (a name alone, with no bubble, where the family has none):
+      // first every bubble of the same name (St- and Ste- read as Saint- and Sainte-), then the biggest one near enough
+      const plain = x => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\b(ste?)\b\.?[\s-]*/g, (m, a) => (a === 'st' ? 'saint' : 'sainte')).replace(/[^a-z]/g, '');
+      const used = new Set();
+      const nearTo = ([, lon, lat, within]) => list.filter(s => s.level === 'place' && !used.has(s) && Math.abs(s.lat - lat) <= within && Math.abs(s.lon - lon) <= within / Math.cos(lat * Math.PI / 180));
+      const spot = ALWAYS_NAMED.map(a => { const s = nearTo(a).find(s => plain(s.label) === plain(a[0])); if (s) used.add(s); return s; });
+      const pinned = ALWAYS_NAMED.map((a, i) => {
+        let s = spot[i] || nearTo(a).sort((x, y) => y.n - x.n)[0];
+        if (s) used.add(s);
+        else { const [x, y] = proj([a[1], a[2]]); s = { x, y, n: 0 }; }
+        return { text: a[0], s };
+      });
+      const pinnedSpots = new Set(pinned.map(p => p.s)), pinnedNames = new Set(ALWAYS_NAMED.map(a => plain(a[0])));
+      const named = list.filter(s => (s.level === 'place' || s.level === 'sea') && !pinnedSpots.has(s) && !pinnedNames.has(plain(s.label))).slice(0, LABELS * 3);
       function labels(t) {
         labelG.innerHTML = ''; oldG.innerHTML = '';
         const boxes = []; let shown = 0;
@@ -255,31 +271,27 @@
             tx.textContent = l.text; oldG.append(tx);
           }
         }
-        for (const [name, lon, lat] of ALWAYS_NAMED) {
-          const [px, py] = proj([lon, lat]), y = t.applyY(py);
-          if (y < 8 || y > H - 8) continue;
-          for (const d of COPIES) {
-            const x = t.applyX(px + (atCopy + d) * worldW);
-            const w = name.length * 6.6 + 6, bx = x + 6, by = y - 8;
-            if (x < 0 || bx + w > W || boxes.some(b => bx < b[0] + b[2] && bx + w > b[0] && by < b[1] + 16 && by + 16 > b[1])) continue;
-            boxes.push([bx, by, w]);
-            labelG.append(svg('circle', { cx: x, cy: y, r: 2.6, fill: '#1B2632', stroke: '#F7F4EE', 'stroke-width': 1.2 }));
-            const tx = svg('text', { x: bx, y: y + 4, style: 'font-size:12px;fill:#1B2632;paint-order:stroke;stroke:#F7F4EE;stroke-width:3px;stroke-linejoin:round' });
-            tx.textContent = name; labelG.append(tx);
-          }
-        }
-        for (const s of named) {
-          if (shown >= LABELS) break;
-          const y = t.applyY(s.y), r = Math.max(2.5, r0(s.n)) * Math.sqrt(t.k);
+        // a place's name to the right of its bubble, or to the left if that is taken, unless it would run off the map or over
+        // another name
+        function name(s, label) {
+          const y = t.applyY(s.y), r = (s.n ? Math.max(2.5, r0(s.n)) : 0) * Math.sqrt(t.k);
           // on whichever copy of the world the place is in view
           const x = COPIES.map(d => t.applyX(s.x + (atCopy + d) * worldW)).find(v => v >= 0 && v <= W);
-          if (x == null || y < 0 || y > H) continue;
-          const text = s.label.length > 24 ? s.label.slice(0, 22) + '…' : s.label;
-          const w = text.length * 6.6 + 6, bx = x + r + 3, by = y - 8;
-          if (bx + w > W || boxes.some(b => bx < b[0] + b[2] && bx + w > b[0] && by < b[1] + 16 && by + 16 > b[1])) continue;
+          if (x == null || y < 0 || y > H) return false;
+          const text = label.length > 24 ? label.slice(0, 22) + '…' : label;
+          const w = text.length * 6.6 + 6, by = y - 8;
+          const free = bx => bx >= 0 && bx + w <= W && !boxes.some(b => bx < b[0] + b[2] && bx + w > b[0] && by < b[1] + 16 && by + 16 > b[1]);
+          const bx = [x + r + 3, x - r - 3 - w].find(free);
+          if (bx == null) return false;
           boxes.push([bx, by, w]);
           const tx = svg('text', { x: bx, y: y + 4, style: 'font-size:12px;fill:#1B2632;paint-order:stroke;stroke:#F7F4EE;stroke-width:3px;stroke-linejoin:round' });
-          tx.textContent = text; labelG.append(tx); shown++;
+          tx.textContent = text; labelG.append(tx);
+          return true;
+        }
+        pinned.forEach(p => name(p.s, p.text));
+        for (const s of named) {
+          if (shown >= LABELS) break;
+          if (name(s, s.label)) shown++;
         }
       }
 
