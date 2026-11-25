@@ -51,7 +51,9 @@
           legendBox = null; // the tick-boxes above the picture are the key
           void 0;
         } else {
-          const cat = FO.topCategories(shown, colorBy === 'surname' ? p => p.surname : p => FO.region(p.b && p.b.place));
+          // spellings of one surname (Hébert and Hebert, LeBlanc and Le Blanc) count as one, shown in the commonest, as in the other views
+          const sn = FO.surnameCanon(shown);
+          const cat = FO.topCategories(shown, colorBy === 'surname' ? p => sn(p) : p => FO.region(p.b && p.b.place));
           colorOf = cat.color;
           legendBox = FO.legend(v.stage, colorBy === 'surname' ? T('Surname') : T('Born in'), cat.legend);
         }
