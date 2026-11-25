@@ -28,6 +28,21 @@
   const PINS = {
     'Tracadie, Colony of Nova Scotia': [47.514, -64.915],   // Tracadie, New Brunswick (Rod, 2026-11-21)
     'Fort Royal de Martinique, France': [14.604, -61.074],   // today's Fort-de-France
+    // a comma missing between the town and its region
+    'Port-Royal Acadie, Nouvelle-France': [44.745, -65.511],
+    'Port Toulouse Isle Royale, Acadie, Nouvelle-France': [45.66, -60.87],   // today's St. Peter's
+    'Baie Egmont Ile Saint-Jean, Acadie, Nouvelle-France': [46.53, -64.13],   // Egmont Bay, Prince Edward Island
+    'Saint-Pierre-du-Nord Ile Saint-Jean, Acadie, Nouvelle-France': [46.43, -62.58],   // St. Peters, Prince Edward Island
+    'Québec, Canada, New, France': [46.81, -71.21],
+    // in New France, Plaisance is today's Placentia, Newfoundland (the Plaisance in Quebec came later)
+    'Plaisance, Nouvelle-France': [47.244, -53.963],
+    // the Maine of the United States, not the French province
+    'Bangor, Penobscot, Maine': [44.80, -68.77],
+    // Miquelon, the island off Newfoundland, written with France after it
+    'Miquelon, France': [47.098, -56.381], 'Île Miquelon, France': [47.098, -56.381], 'Île-de-Miquelon, France': [47.098, -56.381],
+    'Iles-de-St-Pierre et Miquelon, France': [46.78, -56.18],
+    // the Beauce of Quebec, not the French one
+    'Beauce, Canada, Nouvelle-France': [46.2, -70.78],
   };
 
   /* Places and regions the gazetteers don't know, or know under a modern name: [lat, lon, country, region code, kind, reach, own]
@@ -44,7 +59,7 @@
   add(['Bas-Canada', 'Lower Canada', 'Canada East', 'Canada-Est', 'Province de Québec', 'Quebec Province'], [46.8, -71.5, 'CA', '10', 'r']);
   add(['Haut-Canada', 'Upper Canada', 'Canada West', 'Canada-Ouest'], [44.0, -79.0, 'CA', '08', 'r']);
   add(['Île Saint-Jean', 'Isle Saint-Jean', "St. John's Island", 'Isle St. John', 'Saint John Island', 'St. John Island', 'Island of St. John'], [46.35, -63.25, 'CA', '09', 'r']);
-  add(['Île Royale', 'Isle Royale', 'Cape Breton', 'Cap-Breton', 'Cape Breton Island'], [46.1, -60.75, 'CA', '07', 'r']);
+  add(['Île Royale', 'Isle Royale', 'Cape Breton', 'Cap-Breton', 'Cape Breton Island', 'Île du Cap-Breton', 'Isle du Cap-Breton'], [46.1, -60.75, 'CA', '07', 'r']);
   add(['Port-Royal', 'Port Royal', 'Annapolis Royale'], [44.745, -65.511, 'CA', '07', 'p']);   // today's Annapolis Royal, so the two names share one bubble
   add(['Beaubassin'], [45.855, -64.29, 'CA', '07', 'p']);
   add(['Grand-Pré', 'Grand Pré', 'Grand-Pre'], [45.104, -64.307, 'CA', '07', 'p']);
@@ -93,7 +108,10 @@
   add(['Nouveau-Brunswick', 'NB', 'N.B.', 'N-B'], [46.4, -65.9, 'CA', '04', 'r']);
   add(['Nouvelle-Écosse', 'NS', 'N.S.', 'N-É'], [45.1, -63.4, 'CA', '07', 'r']);
   add(['Île-du-Prince-Édouard', 'Ile du Prince Edouard', 'PEI', 'P.E.I.', 'PE', 'Î.-P.-É.'], [46.35, -63.25, 'CA', '09', 'r']);
-  add(['Terre-Neuve', 'Newfoundland', 'NL', 'NF'], [48.5, -56.0, 'CA', '05', 'r']);
+  add(['Terre-Neuve', 'Newfoundland', 'NL', 'NF', 'Terre-Neuve-et-Labrador', 'Newfoundland and Labrador', 'Newfoundland & Labrador'], [48.5, -56.0, 'CA', '05', 'r']);
+  // Sainte-Anne-du-Ruisseau (Eel Brook), Yarmouth County, Nova Scotia; Fort de Chartres, in the Illinois Country of Louisiana
+  add(['Sainte-Anne-du-Ruisseau', 'Sainte-Anne-de-Ruisseau', 'Saint Anne du Ruisseau', 'Saint Anne de Ruisseau', 'Eel Brook'], [43.94, -65.99, 'CA', '07', 'p']);
+  add(['Fort de Chartres', 'Fort Chartres'], [38.08, -90.16, 'US', 'IL', 'p']);
   add(['QC', 'PQ', 'P.Q.', 'Qué', 'Que'], [46.8, -71.5, 'CA', '10', 'r']);
   add(['ON', 'Ont'], [44.0, -79.0, 'CA', '08', 'r']);
   // elsewhere
@@ -149,7 +167,8 @@
   add(['Massachusetts Bay'], [42.3, -71.6, 'US', 'MA', 'r']);
   add(['New England', 'Nouvelle-Angleterre'], [43.6, -71.5, 'US', '', 'r', 500]);
   add(['French Louisiana', 'Louisiane française', 'Louisiane francaise', 'La Louisiane', 'La Louisiane française'], [30.5, -91.5, 'US', 'LA', 'r']);
-  add(['Orleans Territory', 'Territory of Orleans', "Territoire d'Orléans", "Territoire d'Orleans"], [30.5, -91.5, 'US', 'LA', 'r']);   // Louisiana, 1804-1812
+  add(['Orleans Territory', 'Territory of Orleans', "Territoire d'Orléans", "Territoire d'Orleans",
+    'Lower Louisiana', 'Lower Louisiana Territory', 'Basse-Louisiane', 'Basse Louisiane'], [30.5, -91.5, 'US', 'LA', 'r']);   // Louisiana, 1804-1812
   // parts that say nothing about where
   add(['At Sea', 'En mer', 'Lost at sea', 'Unknown', 'Inconnu', 'Spanish Empire'], [0, 0, '', '', 'x']);
   // old colonies larger than the state they are tied to: French Louisiana took in Mobile, Massachusetts Bay took in Maine
@@ -288,7 +307,7 @@
   const localTo = (kk, cc) => !!cc && ((idx.a1.get(kk) || []).some(o => o.cc === cc) || (idx.dep.get(kk) || []).some(o => o.cc === cc));
   function regionOf(part, cc, a1) {
     const k = key(part); if (!k) return null;
-    for (const kk of [k, bare(k)]) {
+    for (const kk of [k, bare(k), k.replace(/^l /, '')]) {   // "l'Île Saint-Jean" is Île Saint-Jean
       const h = HISTORIC[kk];
       // an old region of another country gives way to a place of that name in this one ("Lubec, Maine, United States" is not the French Maine)
       if (h && !(h[4] !== 'x' && cc && h[2] && h[2] !== cc && localTo(kk, cc)))
@@ -407,7 +426,7 @@
       ctx = r; ctxI = i;
     }
     if (!cc) cc = countryOf(place);
-    let out = null;
+    let out = null, outI = -1;
     for (let i = 0; i < ctxI && !out; i++) {
       // a part that names a country or a historic region is that region, not a hamlet that shares its name
       const asRegion = regionOf(parts[i], cc, ctx && ctx.a1);
@@ -429,14 +448,32 @@
       }
       let p = findPlace(parts[i], cc, ctx || (cc && idx.country.get(key(regionsName(cc)))), ctx && ctx.a1);
       if (p && townToo && (p.longer || p.approx)) p = null;   // only a town of exactly that name, not a village called "Perche-something"
-      if (p) out = { lat: p.lat, lon: p.lon, level: 'place', name: parts[i], approx: !!p.approx };
+      if (p) { out = { lat: p.lat, lon: p.lon, level: 'place', name: parts[i], approx: !!p.approx }; outI = i; }
+    }
+    /* a church or parish named before its town ("Saint-Jean-Baptiste, Annapolis Royal, Acadie", "Saint-Nicolas, La Rochelle"):
+       the parish lies in the town, so when a village far away happens to share the parish's name, the town wins. Not for a
+       place placed by hand, a saint's name that is a town's own ("Saint-Antoine-sur-Richelieu", "Saint-Édouard-de-Gentilly"),
+       or a town that is itself a saint's name ("St. Servan, St. Malo") */
+    const km = (a, b) => Math.hypot(a.lat - b.lat, (a.lon - b.lon) * Math.cos(a.lat * Math.PI / 180)) * 111;
+    const k0 = key(parts[0] || '');
+    if (out && outI === 0 && /^(saint|sainte|notre dame|sacre coeur|tres saint) /.test(k0) && !/ (sur|les|en) /.test(k0) && !(HISTORIC[k0] && HISTORIC[k0][4] === 'p')) {
+      const of = k0.match(/ (?:de la|de l|des|du|de|d) (.+)$/), own = of && findPlace(of[1], cc, ctx || (cc && idx.country.get(key(regionsName(cc)))), ctx && ctx.a1);
+      if (!(own && km(own, out) < 30)) for (let j = 1; j < ctxI; j++) {
+        const asRegion = regionOf(parts[j], cc, ctx && ctx.a1);
+        if (asRegion && !asRegion.skip) continue;
+        if (/^(saint|sainte) /.test(key(parts[j]))) break;
+        const t = findPlace(parts[j], cc, ctx || (cc && idx.country.get(key(regionsName(cc)))), ctx && ctx.a1);
+        if (!t) continue;
+        if (km(t, out) > 80) out = { lat: t.lat, lon: t.lon, level: 'place', name: parts[j], approx: !!t.approx };
+        break;
+      }
     }
     if (!out && parts.length) {
       // the most specific region named: "Acadie, Nouvelle-France" is Acadie; "Canada, Nouvelle-France" is New France
       let x = regionOf(parts[0], cc, ctx && ctx.a1);
       if (!x && vast()) x = regionOf(parts[0], '');   // "Louisiana, New France"
       // "Martinique, France": the colony (but "Saint-Martin, France" is more likely a parish than the island)
-      const xc = x || regionOf(parts[0], ''), col = (!x || x.kind === 'c') && !/^(saint|sainte) /.test(key(parts[0])) && colony(xc, 0);
+      const xc = x || regionOf(parts[0], ''), col = (!x || x.kind === 'c') && !/^(saint|sainte) [a-z]+$/.test(key(parts[0])) && colony(xc, 0);
       if (col) x = xc;
       const r0 = x && !x.skip ? x : null;
       const r = [r0 && (r0.kind !== 'c' || col) ? r0 : null, ctx, r0].find(o => o && !o.any) || ((ctx && ctx.any) || (r0 && r0.any) ? cc && idx.country.get(key(regionsName(cc))) : null);
