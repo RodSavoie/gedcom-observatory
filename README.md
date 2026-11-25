@@ -38,6 +38,11 @@ Seven designs can be switched at the top of the page: Ochre, Mineral, Sage, Slat
 (charcoal and gold, with a torn-paper edge) and Harbour (a navy menu down the left side, on
 linen). Harbour is the default. Each visitor's choices are remembered.
 
+The whole site is in English and French: **FR | EN** at the right end of the same strip switches
+it, and the choice is remembered. It opens in English. Names, places and dates from the family
+files are shown as written; dates, relationships and the life stories are written in proper French
+(né, née, cousin germain, le 12 mars 1750).
+
 ## Links
 
 A link can open the site on a given family, design or view, and the parameters can be combined:
@@ -46,6 +51,7 @@ A link can open the site on a given family, design or view, and the parameters c
 |---|---|
 | `?family=savoie`, `acadians`, `acadians-plus` | opens one of the families on the site |
 | `?design=ochre`, `mineral`, `sage`, `slate`, `aurora`, `gilt`, `harbour` | switches the design (and remembers it) |
+| `?lang=fr`, `?lang=en` | opens the site in French or English (and remembers it) |
 | `?wt=Savoie-2387&anc=10&desc=1&sib=0` | draws a family from WikiTree (see below) |
 | `#/places?view=map&what=deaths&period=1750` | opens a view with its settings. Where They Lived, The Tangle (`surnames=`) and the Everyone / Direct ancestors switch (`show=`) write their settings back to the address as you change them, so it can be copied and shared |
 | `#/about?families` | opens the About page at one of its sections |
@@ -165,6 +171,19 @@ the top of the file list them.
 | Places that should count as one | the `alias(...)` lines in `site/js/gedcom.js` |
 | Places the map should know, and how names are matched | `site/js/geo.js` |
 | Historical events on timelines | `FO.HISTORY` in `site/js/charts.js` |
+| French wording | `site/js/lang/fr.js` (see below); the About me and Contact me pages each hold their French text beside the English (`HTML_FR`) |
+| Language the site opens in | `DEFAULT_LANG` in `site/js/i18n.js` |
+
+### Translating
+
+Every English string in the code goes through `T('…')`, which looks it up in `site/js/lang/fr.js`:
+one line per string, `"English": "French"`, with the English exactly as the code writes it. Words in
+braces, such as `{name}`, are filled in by the site and may move within the sentence. A translation
+that changes with the person's sex is written `{ m: "…", f: "…" }`. After editing the file, raise
+`DICT_VERSION` in `site/js/i18n.js` so browsers fetch the new copy. `node tools/check-french.js`
+lists any string without a French translation (after a change to the English, say) and any French
+entry no longer used. Relationship names in French (cousin germain, petite-nièce) are built in
+`site/js/kin.js`, and the French life story in `site/js/views/story.js`.
 
 ## How the code is organised
 
@@ -181,6 +200,8 @@ site/
     kin.js              relationships, lines of descent, pedigree collapse
     charts.js           shared drawing helpers, SVG export, history events
     designs.js          the designs and the switcher
+    i18n.js             the languages: T(), the FR | EN switch
+    lang/fr.js          the French text
     geo.js              finds places for the map, including at sea
     wikitree.js         draws a family from WikiTree
     aboutme.js, contact.js, totop.js
@@ -193,6 +214,7 @@ tools/
   scrub.js              makes a cleaned, publishable copy of a GEDCOM
   build-map-data.js     builds site/data/map/ (sources in map-sources/)
   test-wikitree.js      checks the WikiTree import: node tools/test-wikitree.js
+  check-french.js       lists strings that lack a French translation
 .github/workflows/deploy.yml   publishes site/ to the web host
 ```
 

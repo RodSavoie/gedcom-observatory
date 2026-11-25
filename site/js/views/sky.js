@@ -2,6 +2,7 @@
 (function () {
   'use strict';
   const FO = window.FO, ui = FO.ui, el = ui.el, C = FO.C;
+  const T = FO.T;
 
   function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return ((h >>> 0) % 100000) / 100000; }
 
@@ -188,7 +189,7 @@
     });
     const oldest = chain[chain.length - 1];
     if (chain.length > 2 && oldest && !oldest.hidden) {
-      box.append(el('div', { class: 'tag' }, el('i'), el('div', {}, el('b', { text: (chain.length - 1) + ' fathers back' }), 'The red line runs from ' + s.home.name.split(' ')[0] + ' to ' + oldest.name + (oldest.by ? ', born ' + (oldest.b.date.q ? 'about ' : '') + oldest.by : '') + '.')));
+      box.append(el('div', { class: 'tag' }, el('i'), el('div', {}, el('b', { text: T('{x} fathers back', { x: chain.length - 1 }) }), T('The red line runs from {x} to {name}{x2}.', { x: s.home.name.split(' ')[0], name: oldest.name, x2: oldest.by ? (oldest.b.date.q ? T(', born about {by}', { by: oldest.by, _sex: oldest.sex }) : T(', born {by}', { by: oldest.by, _sex: oldest.sex })) : '' }))));
     }
     const tick = t => {
       if (!start) start = t;
@@ -202,30 +203,30 @@
   };
 
   FO.view({
-    id: 'sky', order: 1, title: 'Star Chart',
-    card: 'One star for every person, with the oldest births at the centre.',
-    how: {"see": "Everyone in the file as a star. Distance from the centre is birth year: the earliest births sit in the middle and the latest at the rim. Surnames run clockwise in alphabetical order and children sit beside their father, so each family name fans outward as its own spray.", "marks": ["Black stars are the home person’s direct ancestors. The home person wears a red ring.", "The red line is the line you chose with the Red line buttons: fathers, mothers, or every ancestor.", "Blue stars are recorded descendants of the featured ancestor, who wears a blue ring. To begin with it is the named ancestor with the most recorded descendants in the file; choose another, or nobody, from the list above the chart.", "A bigger star has more recorded children. Pale stars are people who may be living, never named. Dark lines join a child to a father, faint blue ones to a mother, and faint rings mark years."], "can": ["Point at a star for a short card; click it to open that person and trace their line.", "Scroll, or use the + and − buttons, to zoom; drag to move. Names appear as you zoom in.", "Use Find to fly to one person, and Reset zoom to come back."], "care": "Only people whose birth year is recorded, or can be estimated from a parent, partner or child, appear. An estimated year makes that star’s distance from the centre approximate."},
-    blurb: s => 'Each dot is a person. The centre is the earliest birth in the file and every ring outward is later. Surnames run clockwise in alphabetical order, so each family name forms its own spray of stars. Black stars are direct ancestors of ' + s.home.name + '.',
+    id: 'sky', order: 1, title: T('Star Chart'),
+    card: T('One star for every person, with the oldest births at the centre.'),
+    how: {"see": T("Everyone in the file as a star. Distance from the centre is birth year: the earliest births sit in the middle and the latest at the rim. Surnames run clockwise in alphabetical order and children sit beside their father, so each family name fans outward as its own spray."), "marks": [T("Black stars are the home person’s direct ancestors. The home person wears a red ring."), T("The red line is the line you chose with the Red line buttons: fathers, mothers, or every ancestor."), T("Blue stars are recorded descendants of the featured ancestor, who wears a blue ring. To begin with it is the named ancestor with the most recorded descendants in the file; choose another, or nobody, from the list above the chart."), T("A bigger star has more recorded children. Pale stars are people who may be living, never named. Dark lines join a child to a father, faint blue ones to a mother, and faint rings mark years.")], "can": [T("Point at a star for a short card; click it to open that person and trace their line."), T("Scroll, or use the + and − buttons, to zoom; drag to move. Names appear as you zoom in."), T("Use Find to fly to one person, and Reset zoom to come back.")], "care": T("Only people whose birth year is recorded, or can be estimated from a parent, partner or child, appear. An estimated year makes that star’s distance from the centre approximate.")},
+    blurb: s => T('Each dot is a person. The centre is the earliest birth in the file and every ring outward is later. Surnames run clockwise in alphabetical order, so each family name forms its own spray of stars. Black stars are direct ancestors of {name}.', { name: s.home.name }),
     icon: '<circle cx="32" cy="32" r="26" stroke="#C9C1B1"/><circle cx="32" cy="32" r="15" stroke="#C9C1B1"/><path d="M32 32 L40 22 L47 14 L55 12" stroke="#A35139" stroke-width="1.8"/><g fill="#1B2632" stroke="none"><circle cx="32" cy="32" r="1.6"/><circle cx="22" cy="26" r="1.3"/><circle cx="26" cy="42" r="1.3"/><circle cx="44" cy="40" r="1.6"/><circle cx="14" cy="38" r="1.2"/><circle cx="20" cy="14" r="1.3"/><circle cx="38" cy="52" r="1.3"/><circle cx="52" cy="30" r="1.3"/><circle cx="12" cy="24" r="1.1"/><circle cx="48" cy="50" r="1.2"/></g><g fill="#A35139" stroke="none"><circle cx="40" cy="22" r="2"/><circle cx="47" cy="14" r="2"/><circle cx="55" cy="12" r="2.2"/></g>',
     render(v) {
       const s = v.state, L = FO.skyLayout(v.data), kin = FO.kin();
       let mode = 'father', hover = null, pick = [];
       const scope = FO.scope();
       const feat = s.noFeatured || scope ? null : FO.featured(), fdesc = feat ? FO.descent(feat).min : null;
-      let T = d3.zoomIdentity;
+      let Z = d3.zoomIdentity;
       const draw = api => {
         api.ctx.clearRect(0, 0, api.w, api.h);
         const R = Math.min(api.w, api.h) * 0.4;
-        drawSky(api.ctx, L, { rim: true, cx: api.w / 2, cy: api.h / 2, R, k: T.k, tx: T.x, ty: T.y, anc: kin.anc.min, chain: mode === 'father' || mode === 'mother' ? lineOf(s.home, mode) : null, allAnc: mode === 'all', home: s.home, hover, pick, desc: fdesc, feat, scope, labels: true, w: api.w, h: api.h });
+        drawSky(api.ctx, L, { rim: true, cx: api.w / 2, cy: api.h / 2, R, k: Z.k, tx: Z.x, ty: Z.y, anc: kin.anc.min, chain: mode === 'father' || mode === 'mother' ? lineOf(s.home, mode) : null, allAnc: mode === 'all', home: s.home, hover, pick, desc: fdesc, feat, scope, labels: true, w: api.w, h: api.h });
       };
       const cv = ui.canvas(v.stage, draw);
-      const zoom = d3.zoom().scaleExtent([0.8, 40]).on('zoom', e => { T = e.transform; cv.redraw(); });
+      const zoom = d3.zoom().scaleExtent([0.8, 40]).on('zoom', e => { Z = e.transform; cv.redraw(); });
       const sel = d3.select(cv.canvas).call(zoom).on('dblclick.zoom', null);
       const nearest = e => {
         const r = cv.canvas.getBoundingClientRect();
         const R = Math.min(cv.w, cv.h) * 0.4;
-        const x = ((e.clientX - r.left - T.x) / T.k - cv.w / 2) / R, y = ((e.clientY - r.top - T.y) / T.k - cv.h / 2) / R;
-        const lim = 9 / (R * T.k);
+        const x = ((e.clientX - r.left - Z.x) / Z.k - cv.w / 2) / R, y = ((e.clientY - r.top - Z.y) / Z.k - cv.h / 2) / R;
+        const lim = 9 / (R * Z.k);
         let best = null, bd = lim * lim;
         for (const t of L.pts) { if (scope && !scope.has(t.p)) continue; const d = (t.x - x) * (t.x - x) + (t.y - y) * (t.y - y); if (d < bd) { bd = d; best = t; } }
         return best;
@@ -253,22 +254,22 @@
       const fl = FO.founders().slice();
       if (feat && !fl.some(f => f.p === feat)) fl.unshift({ p: feat, n: FO.descent(feat).min.size - 1 });
       v.controls.append(ui.scopeSeg());
-      if (!scope && fl.length) v.controls.append(ui.select('Blue stars: descendants of', [{ v: 'none', label: 'Nobody' }].concat(fl.map((f, k) => ({ v: k, label: f.p.name + ' (' + ui.fmt(f.n) + ')' }))), feat ? fl.findIndex(f => f.p === feat) : 'none', k => { if (k === 'none') { s.noFeatured = true; } else { s.noFeatured = false; s.founder = fl[+k].p; } FO.render(); }));
+      if (!scope && fl.length) v.controls.append(ui.select(T('Blue stars: descendants of'), [{ v: 'none', label: T('Nobody') }].concat(fl.map((f, k) => ({ v: k, label: f.p.name + ' (' + ui.fmt(f.n) + ')' }))), feat ? fl.findIndex(f => f.p === feat) : 'none', k => { if (k === 'none') { s.noFeatured = true; } else { s.noFeatured = false; s.founder = fl[+k].p; } FO.render(); }));
       v.controls.append(
-        el('span', { class: 'ctl' }, el('span', { text: 'Red line' }), ui.seg([{ v: 'father', label: 'Fathers' }, { v: 'mother', label: 'Mothers' }, { v: 'all', label: 'All ancestors' }, { v: 'off', label: 'Off' }], mode, m => { mode = m; cv.redraw(); })),
-        ui.picker('Find', null, p => {
+        el('span', { class: 'ctl' }, el('span', { text: T('Red line') }), ui.seg([{ v: 'father', label: T('Fathers') }, { v: 'mother', label: T('Mothers') }, { v: 'all', label: T('All ancestors') }, { v: 'off', label: T('Off') }], mode, m => { mode = m; cv.redraw(); })),
+        ui.picker(T('Find'), null, p => {
           const t = L.byPerson.get(p);
-          if (!t) { ui.toast(p.name + ' has no usable date, so they are not on the chart.'); return; }
+          if (!t) { ui.toast(T('{name} has no usable date, so they are not on the chart.', { name: p.name })); return; }
           const R = Math.min(cv.w, cv.h) * 0.4, k = 9;
           sel.transition().duration(900).call(zoom.transform, d3.zoomIdentity.translate(cv.w / 2 - (cv.w / 2 + t.x * R) * k, cv.h / 2 - (cv.h / 2 + t.y * R) * k).scale(k));
           pick = [p]; hover = p; FO.select(p);
-        }, 'Find someone…'),
+        }, T('Find someone…')),
         el('span', { class: 'ctl-group' },
-          ui.button('Reset zoom', () => sel.transition().duration(600).call(zoom.transform, d3.zoomIdentity)),
-          ui.button('Save as SVG', () => FO.saveCanvasSVG(draw, cv, { title: 'Star Chart', legend: skyLegend, view: true }))));
-      const skyLegend = FO.legend(v.stage, null, [{ label: 'Direct ancestor', color: '#1B2632' }, feat ? { label: 'Descendants of ' + feat.name + ', who wears a blue ring', color: '#2B80AA' } : null, scope ? null : { label: 'Everyone else', color: 'rgba(27,38,50,.42)' }, { label: 'The line you chose', color: C.red, line: true }, { label: 'A person you clicked', color: C.teal, line: true }].filter(Boolean));
-      v.stage.append(el('div', { class: 'zoombtns' }, el('button', { class: 'btn', 'aria-label': 'Zoom in', text: '+', onclick: () => sel.transition().duration(250).call(zoom.scaleBy, 1.6) }), el('button', { class: 'btn', 'aria-label': 'Zoom out', text: '−', onclick: () => sel.transition().duration(250).call(zoom.scaleBy, 1 / 1.6) })));
-      v.stage.append(el('div', { class: 'hint', text: 'Scroll to zoom, drag to move, point at a star to see who it is. Names appear as you zoom in.' }));
+          ui.button(T('Reset zoom'), () => sel.transition().duration(600).call(zoom.transform, d3.zoomIdentity)),
+          ui.button(T('Save as SVG'), () => FO.saveCanvasSVG(draw, cv, { title: T('Star Chart'), legend: skyLegend, view: true }))));
+      const skyLegend = FO.legend(v.stage, null, [{ label: T('Direct ancestor'), color: '#1B2632' }, feat ? { label: T('Descendants of {name}, who wears a blue ring', { name: feat.name }), color: '#2B80AA' } : null, scope ? null : { label: T('Everyone else'), color: 'rgba(27,38,50,.42)' }, { label: T('The line you chose'), color: C.red, line: true }, { label: T('A person you clicked'), color: C.teal, line: true }].filter(Boolean));
+      v.stage.append(el('div', { class: 'zoombtns' }, el('button', { class: 'btn', 'aria-label': T('Zoom in'), text: '+', onclick: () => sel.transition().duration(250).call(zoom.scaleBy, 1.6) }), el('button', { class: 'btn', 'aria-label': T('Zoom out'), text: '−', onclick: () => sel.transition().duration(250).call(zoom.scaleBy, 1 / 1.6) })));
+      v.stage.append(el('div', { class: 'hint', text: T('Scroll to zoom, drag to move, point at a star to see who it is. Names appear as you zoom in.') }));
       return () => { cv.destroy(); };
     }
   });

@@ -64,6 +64,14 @@ h1, h2, h3 { font-weight: 400; line-height: 1.15; margin: 0; letter-spacing: -.0
 .pill { border: 1.5px solid var(--teal); color: var(--teal-deep); background: rgba(255,255,255,.35); border-radius: 999px; padding: 11px 26px; text-transform: uppercase; letter-spacing: .2em; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
 .pill:hover { background: var(--teal); color: #fff; }
 .pill.dark { border-color: var(--ink); color: var(--text); }
+/* the menu across the top, tightened step by step when it does not fit the window (fitHeader in js/app.js) */
+.top.fit1 { gap: clamp(12px, 1.6vw, 64px); }
+.top.fit1 .nav { gap: clamp(12px, 1.6vw, 40px); }
+.top.fit1 .nav button, .top.fit1 .nav a { letter-spacing: .08em; }
+.top.fit1 .loads { gap: 8px; }
+.top.fit1 .loads .pill { padding-left: 16px; padding-right: 16px; letter-spacing: .12em; }
+.top.fit2 .nav.side { display: none; }
+.top.fit3 #finder { display: none; }
 .pill.dark:hover { background: var(--ink); color: #fff; }
 .pill.small { padding: 7px 16px; font-size: 11px; letter-spacing: .14em; }
 

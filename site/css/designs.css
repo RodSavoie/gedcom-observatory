@@ -13,6 +13,12 @@ html.fo-pending body { visibility: hidden; }
 .design-bar i { width: 22px; height: 8px; border-radius: 4px; display: inline-block; box-shadow: 0 0 0 1px rgba(0,0,0,.08); }
 .design-bar .ds-note { margin-left: auto; font-size: 11.5px; opacity: .85; }
 @media (max-width: 900px) { .design-bar .ds-note { display: none; } }
+/* FR | EN, at the right end of the strip */
+.design-bar .lang-switch { display: inline-flex; align-items: center; gap: 7px; margin-left: 22px; }
+.design-bar .ds-note + .lang-switch { margin-left: 22px; }
+.design-bar .lang-switch button { font-size: 11.5px; letter-spacing: .08em; }
+.design-bar .lang-switch .sep { opacity: .45; }
+@media (max-width: 900px) { .design-bar .lang-switch { margin-left: auto; } }
 body.in-view .design-bar { padding-top: 4px; padding-bottom: 3px; }
 
 /* ---------- the top band (all designs): a light black wash behind the switcher, the header and the view tabs ---------- */
@@ -235,6 +241,9 @@ html[data-design="harbour"] .pill.dark:hover { background: #B4553C; border-color
   /* the family, about me, contact */
   html[data-design="harbour"] .nav.main { order: 3; flex-direction: column; align-items: stretch; gap: 0; margin: 10px 0 0; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.08); }
   html[data-design="harbour"] .nav.main::before { content: 'This site'; }
+  /* the same two headings in French (js/i18n.js sets <html lang>) */
+  html[lang="fr"][data-design="harbour"] #menu-views::before { content: 'Les vues'; }
+  html[lang="fr"][data-design="harbour"] .nav.main::before { content: 'Ce site'; }
   html[data-design="harbour"] #btn-views { display: none; }
   html[data-design="harbour"] .nav.main :is(button, a) { text-align: left; color: var(--rail-text); padding: 6px 20px 6px 21px; border-bottom: 0; border-left: 3px solid transparent; font-size: 12px; letter-spacing: .13em; }
   html[data-design="harbour"] .nav.main :is(button, a):hover { background: rgba(255,255,255,.06); }

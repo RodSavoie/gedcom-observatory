@@ -2,18 +2,19 @@
 (function () {
   'use strict';
   const FO = window.FO, ui = FO.ui, el = ui.el, svg = ui.svg;
+  const T = FO.T;
 
   /* A list of people (or any rows) shown in the side drawer. */
   FO.showList = function (title, sub, rows) {
     const d = document.getElementById('drawer');
     if (!d) return;
     const inn = el('div', { class: 'drawer-in' });
-    inn.append(el('button', { class: 'x', 'aria-label': 'Close', text: '×', onclick: () => FO.select(null) }));
+    inn.append(el('button', { class: 'x', 'aria-label': T('Close'), text: '×', onclick: () => FO.select(null) }));
     inn.append(el('h2', { text: title }));
     if (sub) inn.append(el('p', { class: 'life', text: sub }));
     const ul = el('ul', { class: 'plist' });
     rows.slice(0, 400).forEach(r => ul.append(r instanceof Node ? r : el('li', {}, el('span', {}, ui.plink(r), ' ', ui.wt(r, '')), el('small', { text: FO.lifespan(r) }))));
-    if (rows.length > 400) ul.append(el('li', { class: 'muted', text: '…and ' + (rows.length - 400) + ' more' }));
+    if (rows.length > 400) ul.append(el('li', { class: 'muted', text: T('…and {x} more', { x: rows.length - 400 }) }));
     inn.append(ul);
     d.innerHTML = ''; d.append(inn); d.classList.add('open'); d.scrollTop = 0;
   };
@@ -139,15 +140,15 @@
   /* A few fixed points of French North American history, shown only for families who lived there. */
   const NA = new Set(['Acadie', 'Nova Scotia', 'New Brunswick', 'Nouvelle-France', 'Québec', 'Prince Edward Island', 'Cape Breton']);
   FO.HISTORY = [
-    [1605, 'Port-Royal is founded in Acadie', NA], [1608, 'Québec is founded', NA],
-    [1632, 'The Treaty of Saint-Germain-en-Laye returns Acadie and Québec to France', NA],
-    [1654, 'An English force from Boston captures Port-Royal', NA], [1667, 'The Treaty of Breda returns Acadie to France', NA],
-    [1710, 'Port-Royal falls to the British for the last time', NA], [1713, 'The Treaty of Utrecht cedes mainland Acadie to Britain', NA],
-    [1755, 'The deportation of the Acadians, the Grand Dérangement, begins', NA], [1758, 'Louisbourg falls to the British', NA],
-    [1763, 'The Treaty of Paris ends French rule in North America', NA], [1764, 'Acadians are allowed to settle again in Nova Scotia', NA],
-    [1784, 'New Brunswick becomes a separate colony', NA], [1867, 'Canadian Confederation', NA],
-    [1881, 'The first Acadian National Convention meets at Memramcook', NA], [1884, 'The Acadian flag is adopted at Miscouche', NA],
-    [1914, 'The First World War begins', null], [1918, 'The First World War ends', null], [1939, 'The Second World War begins', null], [1945, 'The Second World War ends', null]
+    [1605, T('Port-Royal is founded in Acadie'), NA], [1608, T('Québec is founded'), NA],
+    [1632, T('The Treaty of Saint-Germain-en-Laye returns Acadie and Québec to France'), NA],
+    [1654, T('An English force from Boston captures Port-Royal'), NA], [1667, T('The Treaty of Breda returns Acadie to France'), NA],
+    [1710, T('Port-Royal falls to the British for the last time'), NA], [1713, T('The Treaty of Utrecht cedes mainland Acadie to Britain'), NA],
+    [1755, T('The deportation of the Acadians, the Grand Dérangement, begins'), NA], [1758, T('Louisbourg falls to the British'), NA],
+    [1763, T('The Treaty of Paris ends French rule in North America'), NA], [1764, T('Acadians are allowed to settle again in Nova Scotia'), NA],
+    [1784, T('New Brunswick becomes a separate colony'), NA], [1867, T('Canadian Confederation'), NA],
+    [1881, T('The first Acadian National Convention meets at Memramcook'), NA], [1884, T('The Acadian flag is adopted at Miscouche'), NA],
+    [1914, T('The First World War begins'), null], [1918, T('The First World War ends'), null], [1939, T('The Second World War begins'), null], [1945, T('The Second World War ends'), null]
   ];
 
   /* open arc at radius r; angles clockwise from 12 o'clock */
@@ -158,6 +159,10 @@
   };
 
   /* Top-N categories with everything else folded into "Other". Returns {color(key), legend:[{label,color,count}]} */
+  // The region names js/gedcom.js gives places (FO.region), shown in the reader's language wherever a legend or a row
+  // names them: T('Acadie'), T('British North America'), T('Cape Breton'), T('England'), T('France'), T('Germany'),
+  // T('Ireland'), T('Louisiana'), T('Massachusetts'), T('New Brunswick'), T('Nouvelle-France'), T('Nova Scotia'), T('Ontario'),
+  // T('Prince Edward Island'), T('Québec'), T('Scotland'), T('Spain'), T('Switzerland')
   FO.topCategories = function (people, keyFn, n) {
     const counts = new Map();
     for (const p of people) { const k = keyFn(p); if (k) counts.set(k, (counts.get(k) || 0) + 1); }
@@ -165,9 +170,9 @@
     const hues = FO.CAT.slice(1);
     const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, Math.min(n || hues.length, hues.length));
     const map = new Map(top.map((t, i) => [t[0], hues[i]]));
-    const legend = top.map((t, i) => ({ label: t[0], color: hues[i], count: t[1] }));
+    const legend = top.map((t, i) => ({ label: T(t[0]), key: t[0], color: hues[i], count: t[1] }));   // T(): region names such as Nova Scotia, in the reader's language
     const rest = people.length - top.reduce((a, t) => a + t[1], 0);
-    if (rest > 0) legend.push({ label: 'Other or unknown', color: FO.OTHER, count: rest });
+    if (rest > 0) legend.push({ label: T('Other or unknown'), color: FO.OTHER, count: rest });
     return { color: p => map.get(keyFn(p)) || FO.OTHER, legend };
   };
   FO.legend = function (stage, title, items) {
@@ -201,7 +206,7 @@
     let st = { fill: '#000', stroke: '#000', lw: 1, cap: 'butt', join: 'miter', dash: [], font: '10px sans-serif', align: 'start', base: 'alphabetic', alpha: 1, m: [1, 0, 0, 1, 0, 0], parent: root, groups: 0 };
     const stack = [];
     let path = '', cx = null, cy = null, clipN = 0;
-    const T = (x, y) => [st.m[0] * x + st.m[2] * y + st.m[4], st.m[1] * x + st.m[3] * y + st.m[5]];
+    const TP = (x, y) => [st.m[0] * x + st.m[2] * y + st.m[4], st.m[1] * x + st.m[3] * y + st.m[5]];
     const scale = () => Math.hypot(st.m[0], st.m[1]);
     const add = (tag, attrs) => { const e = document.createElementNS(NS, tag); for (const k in attrs) if (attrs[k] != null) e.setAttribute(k, attrs[k]); st.parent.append(e); return e; };
     const paint = (c, kind) => {
@@ -242,8 +247,8 @@
       clearRect() {},
       beginPath() { path = ''; cx = cy = null; },
       closePath() { path += 'Z'; },
-      moveTo(x, y) { const p = T(x, y); path += 'M' + r2(p[0]) + ',' + r2(p[1]); cx = p[0]; cy = p[1]; },
-      lineTo(x, y) { const p = T(x, y); path += (cx == null ? 'M' : 'L') + r2(p[0]) + ',' + r2(p[1]); cx = p[0]; cy = p[1]; },
+      moveTo(x, y) { const p = TP(x, y); path += 'M' + r2(p[0]) + ',' + r2(p[1]); cx = p[0]; cy = p[1]; },
+      lineTo(x, y) { const p = TP(x, y); path += (cx == null ? 'M' : 'L') + r2(p[0]) + ',' + r2(p[1]); cx = p[0]; cy = p[1]; },
       fillRect(x, y, w, h) { const keep = path, kx = cx, ky = cy; ctx.beginPath(); ctx.rect(x, y, w, h); ctx.fill(); path = keep; cx = kx; cy = ky; },
       strokeRect(x, y, w, h) { const keep = path, kx = cx, ky = cy; ctx.beginPath(); ctx.rect(x, y, w, h); ctx.stroke(); path = keep; cx = kx; cy = ky; },
       rect(x, y, w, h) { ctx.moveTo(x, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + h); ctx.lineTo(x, y + h); path += 'Z'; },
@@ -251,7 +256,7 @@
         let sweep = ccw ? a0 - a1 : a1 - a0;
         if (sweep < 0) sweep += Math.PI * 2 * Math.ceil(-sweep / (Math.PI * 2));
         const full = sweep >= Math.PI * 2 - 1e-6;
-        const pt = a => T(x + r * Math.cos(a), y + r * Math.sin(a)), R = r2(r * scale()), dir = ccw ? 0 : 1;
+        const pt = a => TP(x + r * Math.cos(a), y + r * Math.sin(a)), R = r2(r * scale()), dir = ccw ? 0 : 1;
         const p0 = pt(a0);
         path += (cx == null ? 'M' : 'L') + r2(p0[0]) + ',' + r2(p0[1]);
         if (full) { const pm = pt(a0 + (ccw ? -Math.PI : Math.PI)); path += 'A' + R + ',' + R + ' 0 1 ' + dir + ' ' + r2(pm[0]) + ',' + r2(pm[1]) + 'A' + R + ',' + R + ' 0 1 ' + dir + ' ' + r2(p0[0]) + ',' + r2(p0[1]); cx = p0[0]; cy = p0[1]; return; }
@@ -272,7 +277,7 @@
       measureText(t) { return measure.measureText(t); },
       fillText(text, x, y) {
         const m = st.m, rotated = Math.abs(m[1]) > 1e-9 || Math.abs(m[2]) > 1e-9 || Math.abs(m[0] - 1) > 1e-9 || Math.abs(m[3] - 1) > 1e-9;
-        const p = rotated ? [x, y] : T(x, y);
+        const p = rotated ? [x, y] : TP(x, y);
         const e = add('text', Object.assign({ x: r2(p[0]), y: r2(p[1]), style: 'font:' + st.font.replace(/"/g, "'"), 'text-anchor': alignMap[st.align] !== 'start' ? alignMap[st.align] : null,
           'dominant-baseline': baseMap[st.base] || null, transform: rotated ? 'matrix(' + m.map(r2).join(' ') + ')' : null, opacity: st.alpha < 1 ? st.alpha : null }, paint(st.fill, 'fill')));
         e.textContent = text;

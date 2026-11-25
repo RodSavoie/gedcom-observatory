@@ -2,6 +2,7 @@
 (function () {
   'use strict';
   const FO = window.FO, ui = FO.ui, el = ui.el;
+  const T = FO.T;
 
   const WORDS = ['', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth', 'eleventh', 'twelfth'];
   const nth = n => WORDS[n] || FO.ord(n);
@@ -21,7 +22,7 @@
     const para = (...parts) => paras.push(parts.filter(x => x !== '' && x != null));
     const link = q => (q.hidden ? 'someone who may still be living' : q);
     const by = p.by, dy = p.dy;
-    const add = (y, text, cls) => { if (y != null) tl.push({ y, text, cls, age: by != null ? y - by : null }); };
+    const add = (y, text, cls, mark) => { if (y != null) tl.push({ y, text, cls, mark, age: by != null ? y - by : null }); };
 
     // birth and parents
     const bw = [when(p.b), where(p.b)].filter(Boolean).join(' ');
@@ -39,7 +40,7 @@
       if (ages.length) s1.push(' ' + cap(ages.join(' and ')) + ' at the time.');
     } else s1.push(' ' + cap(P.p) + ' parents are not recorded here, so for now this line ends with ' + P.o + '.');
     para(...s1);
-    add(by, 'Born' + (p.b && p.b.place ? ' ' + where(p.b) : ''), 'key');
+    add(by, 'Born' + (p.b && p.b.place ? ' ' + where(p.b) : ''), 'key', 'birth');
 
     // childhood losses
     const early = [];
@@ -94,7 +95,7 @@
       const dw = [when(p.d), where(p.d)].filter(Boolean).join(' ');
       const age = by != null && dy != null && dy >= by ? ', aged ' + approx(p, dy) : '';
       para(first(p) + ' died ' + dw + age + '.' + (rb && rd && rb !== rd ? ' Born in ' + rb + ', ' + P.s + ' ended ' + P.p + ' days in ' + rd + '.' : ''));
-      add(dy, 'Dies' + (p.d && p.d.place ? ' ' + where(p.d) : '') + (age ? age : ''), 'key');
+      add(dy, 'Dies' + (p.d && p.d.place ? ' ' + where(p.d) : '') + (age ? age : ''), 'key', 'death');
     } else if (p.dead || !p.living) para('No death date is recorded for ' + P.o + '.');
 
     // legacy
@@ -117,15 +118,151 @@
         tl.push({ y, text, cls: 'ctx', age: y - by }); n++;
       });
     }
-    tl.sort((a, b) => a.y - b.y || (a.cls === 'key' && a.text.startsWith('Born') ? -1 : 0));
+    tl.sort((a, b) => a.y - b.y || (a.mark === 'birth' ? -1 : 0));
+    return { paras, tl };
+  }
+
+  /* ---------- the same story in French ----------
+     Written apart rather than word by word: French agrees with the person's sex (né, née), puts the date as "le 12 mars
+     1750" or "en 1750", and says "en Acadie", "au Québec", "à Grand-Pré". Same facts, same order as the English above. */
+  const RANGS = ['', 'premier', 'deuxième', 'troisième', 'quatrième', 'cinquième', 'sixième', 'septième', 'huitième', 'neuvième', 'dixième', 'onzième', 'douzième'];
+  const NOMBRES = ['aucun', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf', 'dix', 'onze', 'douze'];
+  const nombre = n => (n <= 12 ? NOMBRES[n] : String(n));
+  // the preposition that goes with a region or a place: "en Acadie", "au Québec", "à Grand-Pré", "au Havre"
+  const DANS = { 'Acadie': 'en Acadie', 'Nouvelle-France': 'en Nouvelle-France', 'Nova Scotia': 'en Nouvelle-Écosse', 'New Brunswick': 'au Nouveau-Brunswick',
+    'Québec': 'au Québec', 'Prince Edward Island': 'à l’Île-du-Prince-Édouard', 'Cape Breton': 'au Cap-Breton', 'France': 'en France', 'Louisiana': 'en Louisiane',
+    'Louisiane': 'en Louisiane', 'England': 'en Angleterre', 'Maine': 'au Maine', 'Massachusetts': 'au Massachusetts', 'Canada': 'au Canada', 'Ontario': 'en Ontario',
+    'United States': 'aux États-Unis', 'USA': 'aux États-Unis', 'Newfoundland': 'à Terre-Neuve', 'Terre-Neuve': 'à Terre-Neuve', 'Saint-Pierre-et-Miquelon': 'à Saint-Pierre-et-Miquelon',
+    'Martinique': 'en Martinique', 'Guadeloupe': 'en Guadeloupe', 'Saint-Domingue': 'à Saint-Domingue', 'Bretagne': 'en Bretagne', 'Poitou': 'en Poitou', 'Normandie': 'en Normandie' };
+  const dans = name => DANS[name] || (/^Le /.test(name) ? 'au ' + name.slice(3) : /^Les /.test(name) ? 'aux ' + name.slice(4) : 'à ' + T(name));
+  const quandFr = ev => {
+    const d = ev && ev.date; if (!d || !d.y) return '';
+    if (d.q) return d.text;
+    return d.d ? 'le ' + d.text.replace(/^1 /, '1er ') : 'en ' + d.text;
+  };
+  const ouFr = ev => (ev && ev.place ? dans(FO.shortPlace(ev.place)) : '');
+  const environ = (p, y) => (p.b && p.b.date && p.b.date.q ? 'environ ' : '') + (y - p.by);
+
+  function tellFr(p, home) {
+    const g = (q, m, f) => (q && q.sex === 'F' ? f : m);
+    const il = p.sex === 'M' ? 'il' : p.sex === 'F' ? 'elle' : first(p), lui = p.sex === 'M' ? 'lui' : p.sex === 'F' ? 'elle' : first(p), Il = cap(il);
+    const paras = [], tl = [];
+    const para = (...parts) => paras.push(parts.filter(x => x !== '' && x != null));
+    const link = q => (q.hidden ? 'une personne peut-être encore vivante' : q);
+    const de = q => (q.hidden || /^[aeiouyhàâéèêîïôûœ]/i.test(q.name) ? 'd’' : 'de ');
+    const by = p.by, dy = p.dy;
+    const add = (y, text, cls, mark) => { if (y != null) tl.push({ y, text, cls, mark, age: by != null ? y - by : null }); };
+
+    // naissance et parents
+    const bw = [quandFr(p.b), ouFr(p.b)].filter(Boolean).join(' ');
+    const s1 = bw ? [link(p), ' ' + g(p, 'est né', 'est née') + ' ' + bw + '.'] : ['La naissance ' + de(p), link(p), ' n’est pas inscrite dans ce fichier.'];
+    const f = p.father, m = p.mother;
+    if (f || m) {
+      const sibs = p.famc.children.slice().sort((a, b) => (a.est || 9999) - (b.est || 9999));
+      const pos = sibs.indexOf(p) + 1, n = sibs.length;
+      const role = n === 1 ? g(p, 'le seul enfant connu ', 'la seule enfant connue ')
+        : pos === 1 && n > 2 ? g(p, 'l’aîné', 'l’aînée') + ' des ' + nombre(n) + ' enfants connus '
+        : pos === n && n > 2 ? g(p, 'le cadet', 'la cadette') + ' des ' + nombre(n) + ' enfants connus '
+        : g(p, 'le ', 'la ') + (pos === 1 ? g(p, 'premier', 'première') : RANGS[pos] || pos + 'e') + ' des ' + nombre(n) + ' enfants connus ';
+      s1.push(' ' + Il + ' était ' + role);
+      if (f) s1.push(de(f), link(f)); if (f && m) s1.push(' et '); if (m) s1.push(de(m), link(m)); s1.push('.');
+      const ages = [];
+      if (by != null && f && f.by != null && by - f.by > 10 && by - f.by < 90) ages.push('son père avait ' + environ(f, by) + ' ans');
+      if (by != null && m && m.by != null && by - m.by > 10 && by - m.by < 65) ages.push('sa mère ' + (ages.length ? '' : 'avait ') + environ(m, by) + ' ans');
+      if (ages.length) s1.push(' ' + cap(ages.join(' et ')) + ' à sa naissance.');
+    } else s1.push(' Ses parents ne sont pas inscrits ici. Pour l’instant, cette lignée s’arrête avec ' + lui + '.');
+    para(...s1);
+    add(by, 'Naissance' + (p.b && p.b.place ? ' ' + ouFr(p.b) : ''), 'key', 'birth');
+
+    // deuils de l'enfance
+    const early = [];
+    [[m, 'sa mère'], [f, 'son père']].forEach(([q, w]) => {
+      if (q && q.dy != null && by != null && q.dy >= by) {
+        add(q.dy, cap(w) + ', ' + first(q) + ', meurt');
+        if (q.dy - by < 16) early.push((q.dy - by < 1 ? il + ' était encore nourrisson' : il + ' avait environ ' + (q.dy - by) + ' ans') + ' quand ' + w + ' est ' + g(q, 'mort', 'morte') + ' en ' + q.dy);
+      }
+    });
+    if (early.length) para(cap(early.join(', et ')) + '.');
+
+    // mariages et enfants
+    const fams = p.fams.slice().sort((a, b) => ((a.my || (a.children[0] && a.children[0].est) || 9999) - (b.my || (b.children[0] && b.children[0].est) || 9999)));
+    let kidsTotal = 0, lostKids = 0;
+    fams.forEach((fam, k) => {
+      const sp = fam.husb === p ? fam.wife : fam.husb;
+      const kids = fam.children.slice().sort((a, b) => (a.est || 9999) - (b.est || 9999));
+      kidsTotal += kids.length;
+      const parts = [];
+      if (sp) {
+        if (fam.my != null) {
+          const at = by != null && fam.my - by > 10 && fam.my - by < 95 ? ', à ' + environ(p, fam.my) + ' ans,' : '';
+          const quand = fam.m.date.q ? cap(fam.m.date.text) : 'En ' + fam.my;
+          parts.push(quand + at + ' ' + il + ' ' + (k > 0 ? g(p, 's’est remarié', 's’est remariée') + ' avec ' : 'a épousé '), link(sp), (fam.m.place ? ' ' + ouFr(fam.m) : '') + '.');
+          if (!sp.hidden && sp.by != null && fam.my - sp.by > 10 && fam.my - sp.by < 95) parts.push(' ' + first(sp) + ' avait ' + environ(sp, fam.my) + ' ans.');
+          add(fam.my, 'Mariage' + (sp.hidden ? '' : ' avec ' + sp.name) + (fam.m.place ? ' ' + ouFr(fam.m) : ''), 'key');
+        } else parts.push(Il + (k > 0 ? ' a aussi eu' : ' a eu') + ' une famille avec ', link(sp), '. Aucune date de mariage n’est inscrite.');
+      } else if (kids.length) parts.push(Il + ' a eu des enfants avec une personne qui n’est pas inscrite.');
+      if (kids.length) {
+        const ys = kids.filter(c => c.by != null).map(c => c.by);
+        const named = kids.filter(c => !c.hidden).slice(0, 6);
+        const list = [];
+        named.forEach((c, i) => { if (i) list.push(i === named.length - 1 && kids.length === named.length ? ' et ' : ', '); list.push(c); });
+        const more = kids.length - named.length;
+        if (more) list.push(named.length ? (more === 1 ? ' et un autre' : ' et ' + nombre(more) + ' autres') : nombre(kids.length) + ' enfants');
+        const combien = kids.length === 1 ? 'un enfant connu' : nombre(kids.length) + ' enfants connus';
+        const quand = ys.length > 1 && d3.max(ys) > d3.min(ys) ? ' entre ' + d3.min(ys) + ' et ' + d3.max(ys) : ys.length === 1 && kids.length === 1 ? ' en ' + ys[0] : '';
+        parts.push(' Ensemble, ils ont eu ' + combien + quand + '\u00a0: ', ...list, '.');   // \u00a0: a colon never starts a line
+        kids.forEach(c => {
+          if (!c.hidden) add(c.by, 'Naissance ' + (c.sex === 'M' ? 'de son fils ' : c.sex === 'F' ? 'de sa fille ' : 'de son enfant ') + first(c));
+          if (!c.hidden && c.dy != null && dy != null && c.dy < dy) { lostKids++; add(c.dy, first(c) + ' meurt' + (c.by != null ? ', à ' + (c.dy - c.by) + (c.dy - c.by > 1 ? ' ans' : ' an') : '')); }
+        });
+      }
+      if (sp && !sp.hidden && sp.dy != null && dy != null && sp.dy < dy && (fam.my == null || sp.dy >= fam.my)) {
+        add(sp.dy, first(sp) + ' meurt');
+        if (k === fams.length - 1 && dy - sp.dy >= 1) parts.push(' ' + first(sp) + ' est ' + g(sp, 'mort', 'morte') + ' en ' + sp.dy + ', et ' + il + ' a vécu encore ' + (dy - sp.dy === 1 ? 'un an' : nombre(dy - sp.dy) + ' ans') + '.');
+      }
+      if (parts.length) para(...parts);
+    });
+    if (!fams.length) para('Aucun mariage ni enfant n’est inscrit pour ' + lui + ' dans ce fichier.');
+    if (lostKids) para(Il + ' a survécu à au moins ' + nombre(lostKids) + ' de ses enfants.');
+
+    // décès
+    const rb = FO.region(p.b && p.b.place), rd = FO.region(p.d && p.d.place);
+    if (dy != null || (p.d && p.d.place)) {
+      const dw = [quandFr(p.d), ouFr(p.d)].filter(Boolean).join(' ');
+      const age = by != null && dy != null && dy >= by ? ', à ' + environ(p, dy) + ' ans' : '';
+      para(first(p) + ' est ' + g(p, 'mort', 'morte') + (dw ? ' ' + dw : '') + age + '.' + (rb && rd && rb !== rd ? ' ' + g(p, 'Né', 'Née') + ' ' + dans(rb) + ', ' + il + ' a fini ses jours ' + dans(rd) + '.' : ''));
+      add(dy, 'Décès' + (p.d && p.d.place ? ' ' + ouFr(p.d) : '') + age, 'key', 'death');
+    } else if (p.dead || !p.living) para('Aucune date de décès n’est inscrite pour ' + lui + '.');
+
+    // descendance
+    const des = FO.descent(p);
+    const nDesc = des.min.size - 1;
+    const tail = [];
+    if (nDesc > kidsTotal && nDesc > 1) tail.push('Ce fichier suit ' + ui.fmt(nDesc) + ' de ses descendants sur ' + nombre(des.gens.length - 1) + ' générations.');
+    if (p !== home) { const r = FO.relToHome(p); if (r) tail.push(Il + ' est ' + r + '.'); }
+    if (tail.length) para(tail.join(' '));
+
+    // contexte
+    if (by != null) {
+      const end = dy != null ? dy : by + 70;
+      const regs = new Set([rb, rd].filter(Boolean));
+      let n = 0;
+      CONTEXT.forEach(([y, text, set]) => {
+        if (y < by || y > end || n >= 5) return;
+        if (set && ![...regs].some(r => set.has(r))) return;
+        if (!set && !regs.size) return;
+        tl.push({ y, text, cls: 'ctx', age: y - by }); n++;
+      });
+    }
+    tl.sort((a, b) => a.y - b.y || (a.mark === 'birth' ? -1 : 0));
     return { paras, tl };
   }
 
   FO.view({
-    id: 'story', order: 8, title: 'Life Story',
-    card: 'One person’s life told in sentences, beside a timeline of their years.',
-    how: {"see": "A short life story for one person, written from the dates, places and family links on record, beside a timeline of the dated events in their life.", "marks": ["Red dots on the timeline are the person’s own birth, marriages and death.", "Open dots are family events: a child born, a parent or partner dying.", "Small grey entries in italics are moments of history, shown only where the person lived in the region concerned."], "can": ["Type a name to choose whose story to read, or press Surprise me.", "Click any name in the story to read that person’s story instead.", "Open details for the full record, or make the person the home person."], "care": "The story says nothing the file does not say, and repeats the file’s mistakes if it has any. No story is written for someone who may be living."},
-    blurb: 'A short account written from the dates and places on record: birth, parents, marriages, children, losses and death. It says nothing the file does not say.',
+    id: 'story', order: 8, title: T('Life Story'),
+    card: T('One person’s life told in sentences, beside a timeline of their years.'),
+    how: {"see": T("A short life story for one person, written from the dates, places and family links on record, beside a timeline of the dated events in their life."), "marks": [T("Red dots on the timeline are the person’s own birth, marriages and death."), T("Open dots are family events: a child born, a parent or partner dying."), T("Small grey entries in italics are moments of history, shown only where the person lived in the region concerned.")], "can": [T("Type a name to choose whose story to read, or press Surprise me."), T("Click any name in the story to read that person’s story instead."), T("Open details for the full record, or make the person the home person.")], "care": T("The story says nothing the file does not say, and repeats the file’s mistakes if it has any. No story is written for someone who may be living.")},
+    blurb: T('A short account written from the dates and places on record: birth, parents, marriages, children, losses and death. It says nothing the file does not say.'),
     icon: '<path d="M10 14 H34 M10 22 H30 M10 30 H34 M10 38 H26 M10 46 H32"/><path d="M46 10 V54"/><circle cx="46" cy="14" r="3.4" fill="#A35139" stroke="#A35139"/><circle cx="46" cy="30" r="3" fill="#fff"/><circle cx="46" cy="42" r="3" fill="#fff"/><circle cx="46" cy="54" r="3.4" fill="#1B2632"/>',
     render(v) {
       const s = v.state, data = v.data;
@@ -140,23 +277,23 @@
         return s.home;
       };
       let subject = s.subject && !s.subject.hidden ? s.subject : fallback();
-      const pick = ui.picker('Whose story', subject, p => { subject = p; show(); });
-      v.controls.append(pick, ui.button('Surprise me', () => { if (pool.length) { subject = pool[Math.floor(Math.random() * pool.length)]; show(); } }));
+      const pick = ui.picker(T('Whose story'), subject, p => { subject = p; show(); });
+      v.controls.append(pick, ui.button(T('Surprise me'), () => { if (pool.length) { subject = pool[Math.floor(Math.random() * pool.length)]; show(); } }));
       function show() {
         s.subject = subject; pick.setPerson(subject);
         sheet.innerHTML = '';
-        const t = tell(subject, s.home);
-        const prose = el('div', { class: 'prose' }, el('h2', { text: subject.name }), el('p', { class: 'life' }, FO.lifespan(subject) || 'Dates unknown', '  ', ui.wt(subject)));
+        const t = (FO.lang === 'fr' ? tellFr : tell)(subject, s.home);
+        const prose = el('div', { class: 'prose' }, el('h2', { text: subject.name }), el('p', { class: 'life' }, FO.lifespan(subject) || T('Dates unknown'), '  ', ui.wt(subject)));
         t.paras.forEach(parts => {
           const p = el('p');
           parts.forEach(x => p.append(typeof x === 'string' ? x : ui.plink(x, q => { subject = q; show(); v.stage.scrollTop = 0; })));
           prose.append(p);
         });
-        prose.append(el('p', { class: 'muted', style: { fontSize: '14px' }, text: 'Click any name to read that person’s story.' }),
-          el('div', { style: { display: 'flex', gap: '8px', flexWrap: 'wrap' } }, ui.button('Open details', () => FO.select(subject)), subject !== s.home ? ui.button('Centre the views here', () => FO.setHome(subject)) : null));
+        prose.append(el('p', { class: 'muted', style: { fontSize: '14px' }, text: T('Click any name to read that person’s story.') }),
+          el('div', { style: { display: 'flex', gap: '8px', flexWrap: 'wrap' } }, ui.button(T('Open details'), () => FO.select(subject)), subject !== s.home ? ui.button(T('Centre the views here'), () => FO.setHome(subject)) : null));
         const tl = el('ol', { class: 'timeline' });
-        t.tl.forEach(e => tl.append(el('li', { class: e.cls || '' }, el('b', { text: e.y }), e.text, e.age != null && e.age > 0 && e.cls !== 'ctx' && !e.text.startsWith('Dies') ? el('small', { text: '  age ' + e.age }) : null)));
-        sheet.append(el('div', { class: 'story' }, prose, el('div', {}, el('h3', { text: 'Timeline', style: { marginBottom: '14px' } }), t.tl.length ? tl : el('p', { class: 'muted', text: 'No dated events are recorded.' }))));
+        t.tl.forEach(e => tl.append(el('li', { class: e.cls || '' }, el('b', { text: e.y }), e.text, e.age != null && e.age > 0 && e.cls !== 'ctx' && e.mark !== 'death' ? el('small', { text: T('  age {age}', { age: e.age }) }) : null)));
+        sheet.append(el('div', { class: 'story' }, prose, el('div', {}, el('h3', { text: T('Timeline'), style: { marginBottom: '14px' } }), t.tl.length ? tl : el('p', { class: 'muted', text: T('No dated events are recorded.') }))));
       }
       show();
       return () => {};

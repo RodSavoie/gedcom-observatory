@@ -14,6 +14,7 @@
 (function () {
   'use strict';
   const FO = window.FO;
+  const T = (s, v) => (FO.T ? FO.T(s, v) : s);   // the at-sea names and notes are shown to readers (js/i18n.js)
   const BASE = 'data/map/';
   const MAP_VERSION = 4;   // raise when world.json or regions.json is rebuilt, so browsers fetch the new files
   const strip = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -163,19 +164,19 @@
   // … or these anywhere in it
   const SEA_ANY = /(^| )(at sea|shipwrecked|during (the )?(deportation|expulsion|transport|crossing))( |$)/;
   const SEA = {
-    violet:    [49.45, -7.9, 'Wreck of the Violet', 'About where the Violet sank, 12 December 1758, in the approaches to the English Channel'],
-    duke:      [49.75, -6.3, 'Wreck of the Duke William', 'About where the Duke William sank, 13 December 1758; her crew rowed to Penzance'],
-    ruby:      [38.5, -28.62, 'Wreck of the Ruby', 'Off Pico, in the Azores, where the Ruby struck the rocks, 16 December 1758'],
-    newfoundland: [47.2, -52.2, 'Off Newfoundland', 'Off the coast of Newfoundland'],
-    madeleine: [47.6, -61.5, 'Off the Magdalen Islands', 'Off the Magdalen Islands'],
-    margaree:  [46.45, -61.3, 'Off Margaree', 'Off Margaree, Cape Breton'],
-    inagua:    [21.0, -73.85, 'Off Inagua', 'Off the Inagua Islands'],
-    stmalo:    [48.7, -2.1, 'Off Saint-Malo', 'Off Saint-Malo and Saint-Servan'],
-    england:   [49.7, -5.0, 'Off England', 'In the English Channel, off England'],
-    france:    [47.0, -31.0, 'Crossing to France', 'Shown midway on the crossing from Île Saint-Jean and Île Royale to France (1758–1759 deportation)'],
-    colonies:  [40.4, -68.6, 'Crossing to the colonies', 'Shown midway on the crossing from Nova Scotia to the Anglo-American colonies (1755–1756 deportation)'],
-    louisiana: [31.0, -47.0, 'Crossing to Louisiana', 'Shown midway on the crossing from France to Louisiana (1785)'],
-    atlantic:  [42.0, -42.0, 'At sea', 'At sea, no route recorded: shown in the middle of the Atlantic'],
+    violet:    [49.45, -7.9, T('Wreck of the Violet'), T('About where the Violet sank, 12 December 1758, in the approaches to the English Channel')],
+    duke:      [49.75, -6.3, T('Wreck of the Duke William'), T('About where the Duke William sank, 13 December 1758; her crew rowed to Penzance')],
+    ruby:      [38.5, -28.62, T('Wreck of the Ruby'), T('Off Pico, in the Azores, where the Ruby struck the rocks, 16 December 1758')],
+    newfoundland: [47.2, -52.2, T('Off Newfoundland'), T('Off the coast of Newfoundland')],
+    madeleine: [47.6, -61.5, T('Off the Magdalen Islands'), T('Off the Magdalen Islands')],
+    margaree:  [46.45, -61.3, T('Off Margaree'), T('Off Margaree, Cape Breton')],
+    inagua:    [21.0, -73.85, T('Off Inagua'), T('Off the Inagua Islands')],
+    stmalo:    [48.7, -2.1, T('Off Saint-Malo'), T('Off Saint-Malo and Saint-Servan')],
+    england:   [49.7, -5.0, T('Off England'), T('In the English Channel, off England')],
+    france:    [47.0, -31.0, T('Crossing to France'), T('Shown midway on the crossing from Île Saint-Jean and Île Royale to France (1758–1759 deportation)')],
+    colonies:  [40.4, -68.6, T('Crossing to the colonies'), T('Shown midway on the crossing from Nova Scotia to the Anglo-American colonies (1755–1756 deportation)')],
+    louisiana: [31.0, -47.0, T('Crossing to Louisiana'), T('Shown midway on the crossing from France to Louisiana (1785)')],
+    atlantic:  [42.0, -42.0, T('At sea'), T('At sea, no route recorded: shown in the middle of the Atlantic')],
   };
   function seaRoute(k, year) {
     if (/\bviolet\b/.test(k)) return 'violet';

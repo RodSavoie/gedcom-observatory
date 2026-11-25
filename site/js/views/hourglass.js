@@ -2,13 +2,14 @@
 (function () {
   'use strict';
   const FO = window.FO, ui = FO.ui, el = ui.el, svg = ui.svg, C = FO.C;
+  const T = FO.T;
   const BW = 132, BH = 60, GX = 14, GY = 46;   // box width and height, and the gaps between boxes
 
   FO.view({
-    id: 'hourglass', order: 3, title: 'Hourglass',
-    card: 'Ancestors above, descendants below, as a classic family chart.',
-    how: {"see": "A chart drawn around the home person, who sits in the middle in black. Ancestors rise above, each father on the left and mother on the right. Descendants hang below.", "marks": ["Each box is one person with a name and years. The stripe on a box’s left edge shows the sex the file records.", "A red outline means the same person fills more than one place on the chart, which happens when cousins married.", "A dashed box is a parent the file does not record. Blue-edged boxes are descendants.", "An arrow after the years means the line continues beyond what is shown."], "can": ["Choose how many generations to show above and below.", "Click a box for details; double-click it to make that person the home person.", "Scroll to zoom, drag to move, and use Fit to window to see it all."], "care": "Very large families are cut off after a few thousand boxes so the chart stays usable."},
-    blurb: s => 'Parents and grandparents rise above ' + s.home.name + '; children and grandchildren fall below. Choose how many generations to show in each direction.',
+    id: 'hourglass', order: 3, title: T('Hourglass'),
+    card: T('Ancestors above, descendants below, as a classic family chart.'),
+    how: {"see": T("A chart drawn around the home person, who sits in the middle in black. Ancestors rise above, each father on the left and mother on the right. Descendants hang below."), "marks": [T("Each box is one person with a name and years. The stripe on a box’s left edge shows the sex the file records."), T("A red outline means the same person fills more than one place on the chart, which happens when cousins married."), T("A dashed box is a parent the file does not record. Blue-edged boxes are descendants."), T("An arrow after the years means the line continues beyond what is shown.")], "can": [T("Choose how many generations to show above and below."), T("Click a box for details; double-click it to make that person the home person."), T("Scroll to zoom, drag to move, and use Fit to window to see it all.")], "care": T("Very large families are cut off after a few thousand boxes so the chart stays usable.")},
+    blurb: s => T('Parents and grandparents rise above {name}; children and grandchildren fall below. Choose how many generations to show in each direction.', { name: s.home.name }),
     icon: '<rect x="24" y="27" width="16" height="10" fill="#1B2632"/><rect x="8" y="8" width="14" height="8"/><rect x="42" y="8" width="14" height="8"/><rect x="4" y="48" width="12" height="8"/><rect x="26" y="48" width="12" height="8"/><rect x="48" y="48" width="12" height="8"/><path d="M15 16 V21 H49 V16 M32 21 V27 M32 37 V43 M10 48 V43 H54 V48 M32 43 V48"/>',
     render(v) {
       const s = v.state, home = s.home;
@@ -44,7 +45,7 @@
           if (!n.data.p) {
             const mg = svg('g', { transform: `translate(${n.x - BW / 2},${y - BH / 2})` });
             mg.append(svg('rect', { width: BW, height: BH, rx: 4, class: 'hbox-missing' }));
-            const mt = svg('text', { x: BW / 2, y: BH / 2 + 4, 'text-anchor': 'middle', style: 'font-size:11.5px;fill:#7C8088;font-style:italic' }); mt.textContent = (n.parent && n.parent.children.indexOf(n) === 0 ? 'father' : 'mother') + ' not recorded';
+            const mt = svg('text', { x: BW / 2, y: BH / 2 + 4, 'text-anchor': 'middle', style: 'font-size:11.5px;fill:#7C8088;font-style:italic' }); mt.textContent = T('{x} not recorded', { x: n.parent && n.parent.children.indexOf(n) === 0 ? 'father' : 'mother' });
             mg.append(mt); boxes.append(mg); return;
           }
           const p = n.data.p, isHome = p === home, rep = times.get(p) > 1 && !isHome;
@@ -58,7 +59,7 @@
           const nameStyle = `font-size:12.5px;font-weight:600;fill:${isHome ? '#fff' : '#1B2632'}`;
           const given = p.given || (p.surname ? '' : p.name), sur = p.surname || '';
           const lines = given && sur ? [given, sur] : [given || sur || p.name];
-          const dates = (FO.lifespan(p) || (p.hidden ? '' : 'dates unknown'));
+          const dates = (FO.lifespan(p) || (p.hidden ? '' : T('dates unknown')));
           const tn = lines.map((txt, k) => { const t = svg('text', { x: 13, y: lines.length > 1 ? 17 + k * 15 : dates ? 24 : BH / 2 + 4, style: nameStyle }); t.textContent = txt; return t; });
           const more = kind === 'a' && n.depth === up && (p.father || p.mother) ? ' ↑' : kind === 'd' && n.depth === down && p.children.length ? ' ↓ ' + p.children.length : '';
           const t2 = svg('text', { x: 13, y: lines.length > 1 ? 49 : 42, style: `font-size:11px;fill:${isHome ? '#D8DDE3' : C.ink3}` }); t2.textContent = dates + more;
@@ -78,7 +79,7 @@
         };
         aRoot.each(n => add(n, -n.y, 'a'));
         dRoot.each(n => { if (n.depth > 0) add(n, n.y, 'd'); });
-        hint.textContent = ui.fmt(aRoot.descendants().filter(n => n.data.p).length - 1) + ' ancestors and ' + ui.fmt(dRoot.descendants().length - 1) + ' descendants shown. Click a box for details, double-click to make that person the home person. ↑ and ↓ mean the line continues' + (repeats ? '; a red outline marks someone who fills more than one place.' : '.');
+        hint.textContent = T('{x} ancestors and {x2} descendants shown. Click a box for details, double-click to make that person the home person. ↑ and ↓ mean the line continues{x3}', { x: ui.fmt(aRoot.descendants().filter(n => n.data.p).length - 1), x2: ui.fmt(dRoot.descendants().length - 1), x3: repeats ? T('; a red outline marks someone who fills more than one place.') : '.' });
         fit();
       }
       function fit() {
@@ -96,10 +97,10 @@
       const maxUp = Math.max(1, Math.min(7, FO.kin().anc.gens.length - 1));
       up = Math.min(up, maxUp);
       v.controls.append(
-        ui.range('Generations up', 0, maxUp, up, n => { up = n; FO.prefs.set('hg.up', n); build(); }),
-        ui.range('Generations down', 0, 5, down, n => { down = n; FO.prefs.set('hg.down', n); build(); }),
-        ui.picker('Centre on', home, p => FO.setHome(p)),
-        ui.button('Fit to window', fit));
+        ui.range(T('Generations up'), 0, maxUp, up, n => { up = n; FO.prefs.set('hg.up', n); build(); }),
+        ui.range(T('Generations down'), 0, 5, down, n => { down = n; FO.prefs.set('hg.down', n); build(); }),
+        ui.picker(T('Centre on'), home, p => FO.setHome(p)),
+        ui.button(T('Fit to window'), fit));
       build();
       return () => {};
     }

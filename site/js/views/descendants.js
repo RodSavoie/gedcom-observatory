@@ -2,26 +2,27 @@
 (function () {
   'use strict';
   const FO = window.FO, ui = FO.ui, el = ui.el, svg = ui.svg, C = FO.C;
+  const T = FO.T;
 
   FO.view({
-    id: 'descendants', order: 10, title: 'Descendants',
-    card: 'Everyone who descends from one person, in rings coloured by child.',
-    how: {"see": "A circle with the starting person in the middle. Each ring outward is the next generation: children, then grandchildren, and so on. A wider slice has more descendants.", "marks": ["Each child of the person in the middle has a colour, and their whole branch keeps it, paling outward.", "A red edge marks a descendant who appears more than once, because two lines of descent married each other.", "A pale grey slice is someone who may be living."], "can": ["Point at a slice for a short card; click for details.", "Double-click a slice to put that person in the middle.", "Choose a starting person by name, or from the list of ancestors with the most descendants. Change the number of rings; scroll to zoom."], "care": "Only recorded descendants are drawn. Very large families are cut short in the outer rings."},
-    blurb: 'The person in the middle is surrounded by their children, then grandchildren, and so on outward. Each child’s branch keeps one colour. A red edge marks a descendant who appears more than once, through two different lines.',
+    id: 'descendants', order: 10, title: T('Descendants'),
+    card: T('Everyone who descends from one person, in rings coloured by child.'),
+    how: {"see": T("A circle with the starting person in the middle. Each ring outward is the next generation: children, then grandchildren, and so on. A wider slice has more descendants."), "marks": [T("Each child of the person in the middle has a colour, and their whole branch keeps it, paling outward."), T("A red edge marks a descendant who appears more than once, because two lines of descent married each other."), T("A pale grey slice is someone who may be living.")], "can": [T("Point at a slice for a short card; click for details."), T("Double-click a slice to put that person in the middle."), T("Choose a starting person by name, or from the list of ancestors with the most descendants. Change the number of rings; scroll to zoom.")], "care": T("Only recorded descendants are drawn. Very large families are cut short in the outer rings.")},
+    blurb: T('The person in the middle is surrounded by their children, then grandchildren, and so on outward. Each child’s branch keeps one colour. A red edge marks a descendant who appears more than once, through two different lines.'),
     icon: '<circle cx="32" cy="32" r="6" fill="#1B2632"/><path d="M32 18 A14 14 0 0 1 44 39 M41 43 A14 14 0 0 1 20 39 M18 32 A14 14 0 0 1 29 18.4"/><path d="M32 8 A24 24 0 0 1 52 19 M54 24 A24 24 0 0 1 50 48 M46 52 A24 24 0 0 1 16 50 M12 45 A24 24 0 0 1 12 20 M15 15 A24 24 0 0 1 27 8.5"/><path d="M54 24 A24 24 0 0 1 50 48" stroke="#A35139" stroke-width="2.4"/>',
     render(v) {
       const s = v.state, home = s.home, data = v.data;
       const list = FO.founders();
       const homeDesc = FO.descent(home).min.size - 1;
       let rootP = s.founder || (homeDesc >= 12 || !list.length ? home : FO.featured());
-      if (!rootP.children.length && !list.length) { ui.empty(v.stage, 'No descendants recorded', home.name + ' has no children in this file. Use the search box above to pick someone who does.'); }
+      if (!rootP.children.length && !list.length) { ui.empty(v.stage, T('No descendants recorded'), T('{name} has no children in this file. Use the search box above to pick someone who does.', { name: home.name })); }
       let G = FO.prefs.num('desc.gen', 6, 1, 12), nodes = [], legendBox = null;
       const root = svg('svg', {}), g = svg('g');
       root.append(g); v.stage.append(root);
       const zoom = d3.zoom().scaleExtent([0.6, 16]).on('zoom', e => g.setAttribute('transform', e.transform));
       d3.select(root).call(zoom).on('dblclick.zoom', null);
       const hint = el('div', { class: 'hint' }); v.stage.append(hint);
-      const pick = ui.picker('Descendants of', rootP, p => { rootP = p; draw(); });
+      const pick = ui.picker(T('Descendants of'), rootP, p => { rootP = p; draw(); });
 
       function draw() {
         g.innerHTML = ''; if (legendBox) legendBox.remove(); legendBox = null;
@@ -34,7 +35,7 @@
           return n;
         };
         const h = d3.hierarchy(mk(rootP, 0), d => d.kids).sum(d => (d.kids.length ? 0 : 1));
-        if (!h.children) { hint.textContent = rootP.name + ' has no children recorded in this file. Pick someone else above.'; const t = svg('text', { x: W / 2, y: H / 2, 'text-anchor': 'middle', style: 'font-size:16px;fill:#3D4B5E' }); t.textContent = 'No descendants recorded for ' + rootP.name; g.append(t); return; }
+        if (!h.children) { hint.textContent = T('{name} has no children recorded in this file. Pick someone else above.', { name: rootP.name }); const t = svg('text', { x: W / 2, y: H / 2, 'text-anchor': 'middle', style: 'font-size:16px;fill:#3D4B5E' }); t.textContent = T('No descendants recorded for {name}', { name: rootP.name }); g.append(t); return; }
         const depth = h.height;
         const R = Math.min(W, H) / 2 - 18, hole = Math.max(40, R * 0.16), ring = (R - hole) / depth;
         d3.partition().size([Math.PI * 2, depth + 1])(h);
@@ -72,20 +73,20 @@
           t.textContent = line.length > 18 ? line.slice(0, 17) + '…' : line; g.append(t);
         });
         const items = branches.slice(0, hues.length).map(b => ({ label: b.data.p.name, color: colorOf.get(b), count: b.descendants().length - 1 }));
-        if (branches.length > hues.length) items.push({ label: (branches.length - hues.length) + ' other children', color: FO.OTHER });
-        legendBox = FO.legend(v.stage, 'Children of ' + rootP.name.split(' ')[0] + ' (descendants shown)', items);
+        if (branches.length > hues.length) items.push({ label: T('{x} other children', { x: branches.length - hues.length }), color: FO.OTHER });
+        legendBox = FO.legend(v.stage, T('Children of {x} (descendants shown)', { x: rootP.name.split(' ')[0] }), items);
         const distinct = count.size - 1, places = nodes.length - 1;
-        hint.textContent = ui.fmt(distinct) + ' descendants over ' + depth + ' generations' + (places > distinct ? ', filling ' + ui.fmt(places) + ' places because some descend through more than one line' : '') + (truncated ? '. Very large tree: outer rings are cut short' : '') + '. Click for details, double-click a slice to put that person in the middle.';
+        hint.textContent = T('{distinct} descendants over {depth} generations{x}{x2}. Click for details, double-click a slice to put that person in the middle.', { distinct: ui.fmt(distinct), depth: depth, x: places > distinct ? T(', filling {places} places because some descend through more than one line', { places: ui.fmt(places) }) : '', x2: truncated ? T('. Very large tree: outer rings are cut short') : '' });
       }
       const at = e => { const i = e.target.getAttribute && e.target.getAttribute('data-i'); return i == null ? null : nodes[+i]; };
-      root.addEventListener('mousemove', e => { const n = at(e); if (n) ui.tip(ui.personTip(n.data.p, n.depth ? 'Generation ' + n.depth + (n.children ? ' · ' + (n.descendants().length - 1) + ' below in this chart' : '') : 'Centre of this chart'), e.clientX, e.clientY); else ui.untip(); });
+      root.addEventListener('mousemove', e => { const n = at(e); if (n) ui.tip(ui.personTip(n.data.p, n.depth ? T('Generation {depth}{x}', { depth: n.depth, x: n.children ? T(' · {x} below in this chart', { x: n.descendants().length - 1 }) : '' }) : T('Centre of this chart')), e.clientX, e.clientY); else ui.untip(); });
       root.addEventListener('mouseleave', ui.untip);
       let timer = null;
       root.addEventListener('click', e => { const n = at(e); if (!n) return; clearTimeout(timer); timer = setTimeout(() => FO.select(n.data.p), 220); });
       root.addEventListener('dblclick', e => { const n = at(e); if (!n || !n.depth) return; clearTimeout(timer); rootP = n.data.p; draw(); });
       v.controls.append(pick);
-      if (list.length) v.controls.append(ui.select('Ancestors with most descendants', [{ v: '', label: 'Choose…' }].concat(list.map((f, i) => ({ v: i, label: f.p.name + ' (' + ui.fmt(f.n) + ')' }))), '', i => { if (i !== '') { rootP = list[+i].p; draw(); } }));
-      v.controls.append(ui.range('Generations', 1, 12, G, n => { G = n; FO.prefs.set('desc.gen', n); draw(); }), ui.button('Reset zoom', () => d3.select(root).transition().duration(500).call(zoom.transform, d3.zoomIdentity)));
+      if (list.length) v.controls.append(ui.select(T('Ancestors with most descendants'), [{ v: '', label: T('Choose…') }].concat(list.map((f, i) => ({ v: i, label: f.p.name + ' (' + ui.fmt(f.n) + ')' }))), '', i => { if (i !== '') { rootP = list[+i].p; draw(); } }));
+      v.controls.append(ui.range(T('Generations'), 1, 12, G, n => { G = n; FO.prefs.set('desc.gen', n); draw(); }), ui.button(T('Reset zoom'), () => d3.select(root).transition().duration(500).call(zoom.transform, d3.zoomIdentity)));
       const ro = new ResizeObserver(draw); ro.observe(v.stage);
       return () => ro.disconnect();
     }

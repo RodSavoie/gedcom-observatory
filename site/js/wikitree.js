@@ -11,6 +11,7 @@
 (function () {
   'use strict';
   const FO = window.FO;
+  const T = FO.T || ((s, v) => v ? s.replace(/\{(\w+)\}/g, (m, k) => k in v ? v[k] : m) : s);   // in Node (tools/test-wikitree.js) the words stay in English
   const API = 'https://api.wikitree.com/api.php';
   const RELAY = 'wikitree.php';
   const APP_ID = 'FamilyObservatory';
@@ -53,23 +54,23 @@
     }
     let r;
     try { r = await fetch(RELAY, { method: 'POST', body: body(), headers: { Accept: 'application/json' } }); }
-    catch (e) { throw new Error('WikiTree could not be reached. Please check the connection and try again.'); }
-    if (r.status === 404 || r.status === 501) throw new Error('This copy of the site cannot reach WikiTree: its helper (wikitree.php) needs a web host that runs PHP.');
+    catch (e) { throw new Error(T('WikiTree could not be reached. Please check the connection and try again.')); }
+    if (r.status === 404 || r.status === 501) throw new Error(T('This copy of the site cannot reach WikiTree: its helper (wikitree.php) needs a web host that runs PHP.'));
     let j = null;
     try { j = await r.json(); } catch (e) { /* not JSON */ }
-    if (!r.ok) throw new Error((j && j.error) || (r.status === 429 ? busy() : 'WikiTree could not be reached (' + r.status + ').'));
-    if (!j) throw new Error('WikiTree sent an answer that could not be read. It may be busy; please try again shortly.');
+    if (!r.ok) throw new Error((j && j.error) || (r.status === 429 ? busy() : T('WikiTree could not be reached ({status}).', { status: r.status })));
+    if (!j) throw new Error(T('WikiTree sent an answer that could not be read. It may be busy; please try again shortly.'));
     return j;
   }
-  const busy = () => 'WikiTree is limiting how fast it answers. Please wait a minute and try again.';
+  const busy = () => T('WikiTree is limiting how fast it answers. Please wait a minute and try again.');
 
   function unwrap(res) {
     const o = Array.isArray(res) ? res[0] : res;
-    if (!o || typeof o !== 'object') throw new Error('WikiTree sent an empty answer.');
+    if (!o || typeof o !== 'object') throw new Error(T('WikiTree sent an empty answer.'));
     const st = typeof o.status === 'string' ? o.status.trim() : '';
     // "Maximum number of profiles (1025) reached" only means there are more pages to fetch
     if (/maximum number of profiles/i.test(st)) o.more = true;
-    else if (st) throw new Error('WikiTree says: ' + st);
+    else if (st) throw new Error(T('WikiTree says: {st}', { st: st }));
     return o;
   }
 
@@ -92,7 +93,7 @@
       if (sib) q.siblings = 1;   // with ancestors, WikiTree adds the brothers and sisters of every ancestor
       const o = unwrap(await call(q));
       const rk = o.resultByKey ? Object.values(o.resultByKey)[0] : null;
-      if (rk && rk.status) throw new Error(/illegal|invalid|not found|no profile/i.test(rk.status) ? 'WikiTree does not recognise ' + key + '. Check the ID, for example Savoie-2387.' : 'WikiTree says: ' + rk.status);
+      if (rk && rk.status) throw new Error(/illegal|invalid|not found|no profile/i.test(rk.status) ? T('WikiTree does not recognise {key}. Check the ID, for example Savoie-2387.', { key: key }) : T('WikiTree says: {status}', { status: rk.status }));
       if (rootId == null && rk && rk.Id) rootId = +rk.Id;
       const list = normalise(Object.values(o.people || {}).filter(p => p && p.Id != null), n);
       let fresh = 0;
@@ -113,7 +114,7 @@
   async function repairParents(people, progress, paged) {
     const ids = [...people.values()].filter(p => typeof p.Id === 'number' && paged.has(p.Id) && (typeof p.Father === 'string' || typeof p.Mother === 'string')).map(p => p.Id);
     if (!ids.length) return;
-    if (progress && progress.stage) progress.stage('Checking the parents of private profiles…');
+    if (progress && progress.stage) progress.stage(T('Checking the parents of private profiles…'));
     for (let i = 0; i < ids.length; i += 100) {
       let o;
       try { o = unwrap(await call({ action: 'getPeople', keys: ids.slice(i, i + 100).join(','), ancestors: 0, descendants: 0, fields: 'Id,Father,Mother', limit: PAGE, start: 0 })); }
@@ -147,7 +148,7 @@
   async function fetchTree(key, anc, desc, sib, progress) {
     const people = new Map(), seen = new Set();
     const paged = new Set(), note = ans => { if (ans.list.paged) ans.list.forEach(p => paged.add(p.Id)); return ans; };   // see repairParents
-    if (sib) progress.stage('Asking WikiTree for ' + key + ', with brothers and sisters…');
+    if (sib) progress.stage(T('Asking WikiTree for {key}, with brothers and sisters…', { key: key }));
     const a = note(await ask(key, anc, 0, progress, seen, sib));
     const rootId = a.rootId;
     let list = a.list;
@@ -156,7 +157,7 @@
     // the ancestor-only answer for the direct line, and align the siblings' parent links to it.
     // Give this query its own seen set so overlap with the siblings does not stop pagination.
     if (sib && anc > 0) {
-      progress.stage('Checking the direct ancestor line.');
+      progress.stage(T('Checking the direct ancestor line.'));
       const b = note(await ask(key, anc, 0, () => {}, new Set(), false));
       list = merge(b.list, list);
     }
@@ -164,19 +165,19 @@
     // and without brothers and sisters). A close-up of 6 generations (one page) can fill gaps
     // near the starting profile. Align its stand-ins with those in the larger answer.
     if (dangling(list).length && anc > 0) {
-      progress.stage('Filling in private profiles…');
+      progress.stage(T('Filling in private profiles…'));
       const c = note(await ask(key, Math.min(anc, 6), 0, () => {}, new Set(), false));   // its own count, so its pages are not cut short
       list = merge(c.list, list);
     }
     for (const p of list) if (!people.has(p.Id)) people.set(p.Id, p);
-    if (rootId == null || !people.has(rootId)) throw new Error('WikiTree did not send a profile for ' + key + '. Check the ID, for example Savoie-2387.');
+    if (rootId == null || !people.has(rootId)) throw new Error(T('WikiTree did not send a profile for {key}. Check the ID, for example Savoie-2387.', { key: key }));
     await repairParents(people, progress, paged);
 
     // the husbands and wives of the brothers and sisters (and later marriages of ancestors) come inside each spouse list
     if (sib) addSpouses(people, [...people.keys()]);
 
     if (desc > 0) {
-      progress.stage('Adding descendants…');
+      progress.stage(T('Adding descendants…'));
       const d = await ask(key, 0, desc, progress, seen);
       const ids = new Set(d.list.map(p => p.Id));
       // a living starting person comes back as a stand-in in this answer: the one person whose parents are not in it
@@ -373,7 +374,7 @@
   function familyTitle(people, rootId) {
     const p = people.get(rootId), m = p && typeof p.Mother === 'number' && p.Mother > 0 ? people.get(p.Mother) : null;
     const a = p ? one(p.LastNameAtBirth || p.LastNameCurrent) : '', b = m ? one(m.LastNameAtBirth || m.LastNameCurrent) : '';
-    return a ? 'The ' + a + (b && b.toLowerCase() !== a.toLowerCase() ? '/' + b : '') + ' family' : 'A WikiTree family';
+    return a ? T('The {a}{x} family', { a: a, x: b && b.toLowerCase() !== a.toLowerCase() ? '/' + b : '' }) : T('A WikiTree family');
   }
 
   /* ---------- loading ---------- */
@@ -385,7 +386,7 @@
       const el = FO.ui.el;
       waitEl = el('div', { class: 'wt-wait', role: 'status', 'aria-live': 'polite' },
         el('div', { class: 'wt-wait-card' }, el('div', { class: 'wt-spin', 'aria-hidden': 'true' }),
-          el('div', { class: 'caps', text: 'From WikiTree' }), el('p', { class: 'wt-wait-line' })));
+          el('div', { class: 'caps', text: T('From WikiTree') }), el('p', { class: 'wt-wait-line' })));
       document.body.append(waitEl);
     }
     if (line != null) waitEl.querySelector('.wt-wait-line').textContent = line;
@@ -395,24 +396,24 @@
   let busyNow = false;
   FO.loadWikiTree = async function (input, anc, desc, progress, sib) {
     const key = FO.wikitreeKey(input);
-    if (!key) throw new Error('Please enter a WikiTree ID, such as Savoie-2387.');
-    if (busyNow) throw new Error('A tree is already being fetched.');
+    if (!key) throw new Error(T('Please enter a WikiTree ID, such as Savoie-2387.'));
+    if (busyNow) throw new Error(T('A tree is already being fetched.'));
     busyNow = true;
     try {
       sib = sib !== false;
       anc = Math.max(0, Math.min(MAX.anc, Math.round(+anc) || 0));
       desc = Math.max(0, Math.min(MAX.desc, Math.round(+desc) || 0));
-      let stage = 'Asking WikiTree for ' + key + '…';
+      let stage = T('Asking WikiTree for {key}…', { key: key });
       waiting(true, stage);
-      const tick = n => { const line = stage + ' ' + FO.ui.fmt(n) + ' people so far.'; waiting(true, line); if (progress) progress(n, line); };
+      const tick = n => { const line = T('{stage} {n} people so far.', { stage: stage, n: FO.ui.fmt(n) }); waiting(true, line); if (progress) progress(n, line); };
       tick.stage = t => { stage = t; };
       const { people, rootId } = await fetchTree(key, anc, desc, sib, tick);
-      waiting(true, 'Drawing ' + FO.ui.fmt(people.size) + ' people…');
+      waiting(true, T('Drawing {size} people…', { size: FO.ui.fmt(people.size) }));
       await new Promise(r => setTimeout(r, 30));   // let the card show before the drawing starts
       const title = familyTitle(people, rootId);
       const text = FO.wikitreeToGedcom(people, rootId, title, { sib, desc });
       const root = people.get(rootId);
-      if (!FO.loadText(text, title, 'wikitree')) throw new Error('WikiTree sent no people that could be drawn.');
+      if (!FO.loadText(text, title, 'wikitree')) throw new Error(T('WikiTree sent no people that could be drawn.'));
       FO.state.wikitree = { key: root && root.Name || key, anc, desc, sib };
       return { count: people.size, key: root && root.Name || key };
     } finally { busyNow = false; waiting(false); }
@@ -436,10 +437,10 @@
     const ui = FO.ui, el = ui.el;
     const opts = (from, to, sel, word) => {
       const s = el('select');
-      for (let i = from; i <= to; i++) s.append(el('option', { value: i, text: i === 0 ? 'None' : i + ' ' + (i === 1 ? word : word + 's'), selected: i === sel ? 'selected' : null }));
+      for (let i = from; i <= to; i++) s.append(el('option', { value: i, text: i === 0 ? T('None') : (i === 1 ? T('{n} generation', { n: i }) : T('{n} generations', { n: i })), selected: i === sel ? 'selected' : null }));
       return s;
     };
-    const id = el('input', { type: 'text', placeholder: 'e.g. Savoie-2387', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'off', spellcheck: 'false', list: 'wt-ids', 'aria-label': 'WikiTree ID', value: FO.prefs.get('wt.id', '') });
+    const id = el('input', { type: 'text', placeholder: T('e.g. Savoie-2387'), autocomplete: 'off', autocorrect: 'off', autocapitalize: 'off', spellcheck: 'false', list: 'wt-ids', 'aria-label': T('WikiTree ID'), value: FO.prefs.get('wt.id', '') });
     const ids = el('datalist', { id: 'wt-ids' });
     const used = el('div', { class: 'wt-recent' });
     const anc = opts(1, MAX.anc, FO.prefs.num('wt.anc', DEF.anc, 1, MAX.anc), 'generation');
@@ -447,13 +448,13 @@
     const sib = el('input', { type: 'checkbox' });
     sib.checked = FO.prefs.get('wt.sib', 1, [0, 1]) === 1;
     const msg = el('p', { class: 'wt-msg', role: 'status' });
-    const go = el('button', { type: 'submit', class: 'pill small', text: 'Draw this family' });
+    const go = el('button', { type: 'submit', class: 'pill small', text: T('Draw this family') });
     const form = el('form', { class: 'wt-form' },
-      el('label', {}, el('span', { text: 'WikiTree ID' }), id), ids, used,
+      el('label', {}, el('span', { text: T('WikiTree ID') }), id), ids, used,
       el('div', { class: 'wt-row' },
-        el('label', {}, el('span', { text: 'Ancestors' }), anc),
-        el('label', {}, el('span', { text: 'Descendants' }), desc)),
-      el('label', { class: 'wt-check' }, sib, el('span', { text: 'Brothers and sisters of each ancestor, with their husbands and wives' })),
+        el('label', {}, el('span', { text: T('Ancestors') }), anc),
+        el('label', {}, el('span', { text: T('Descendants') }), desc)),
+      el('label', { class: 'wt-check' }, sib, el('span', { text: T('Brothers and sisters of each ancestor, with their husbands and wives') })),
       el('div', { class: 'row' }, go), msg);
     // the "Used before" chips: one click draws that family again with the choices used last time
     const showUsed = () => {
@@ -462,14 +463,14 @@
       list.forEach(x => ids.append(el('option', { value: x.id })));
       used.innerHTML = '';
       if (!list.length) return;
-      used.append(el('small', { text: 'Used before' }));
+      used.append(el('small', { text: T('Used before') }));
       list.slice(0, SHOW).forEach(x => {
-        const what = (x.a || DEF.anc) + ' generations of ancestors, ' + (x.d ? x.d + ' of descendants' : 'no descendants') + (x.s ? ', with brothers and sisters' : '');
+        const what = T('{x} generations of ancestors, {x2}{x3}', { x: x.a || DEF.anc, x2: x.d ? T('{d} of descendants', { d: x.d }) : T('no descendants'), x3: x.s ? T(', with brothers and sisters') : '' });
         used.append(el('span', { class: 'namechip' },
-          el('button', { type: 'button', class: 'go', text: x.id, title: 'Draw ' + x.id + ' again: ' + what, onclick: () => {
+          el('button', { type: 'button', class: 'go', text: x.id, title: T('Draw {id} again: {what}', { id: x.id, what: what }), onclick: () => {
             id.value = x.id; anc.value = x.a || DEF.anc; desc.value = x.d || 0; sib.checked = !!x.s; form.requestSubmit();
           } }),
-          el('button', { type: 'button', class: 'x', text: '×', title: 'Forget ' + x.id, 'aria-label': 'Forget ' + x.id, onclick: () => { forget(x.id); showUsed(); } })));
+          el('button', { type: 'button', class: 'x', text: '×', title: T('Forget {id}', { id: x.id }), 'aria-label': T('Forget {id}', { id: x.id }), onclick: () => { forget(x.id); showUsed(); } })));
       });
     };
     showUsed();
@@ -477,25 +478,25 @@
     form.addEventListener('submit', async e => {
       e.preventDefault();
       const key = FO.wikitreeKey(id.value);
-      if (!key) { msg.textContent = 'Please enter a WikiTree ID, such as Savoie-2387, or paste a profile address.'; id.focus(); return; }
+      if (!key) { msg.textContent = T('Please enter a WikiTree ID, such as Savoie-2387, or paste a profile address.'); id.focus(); return; }
       FO.prefs.set('wt.id', key); FO.prefs.set('wt.anc', +anc.value); FO.prefs.set('wt.desc', +desc.value); FO.prefs.set('wt.sib', sib.checked ? 1 : 0);
-      go.disabled = true; msg.textContent = 'Asking WikiTree for ' + key + '…';
+      go.disabled = true; msg.textContent = T('Asking WikiTree for {key}…', { key: key });
       try {
         const r = await FO.loadWikiTree(key, anc.value, desc.value, (n, line) => { msg.textContent = line; }, sib.checked);
         msg.textContent = '';
         remember(r.key, anc.value, desc.value, sib.checked); showUsed();
         FO.closeMenus();
-        ui.toast('Loaded ' + ui.fmt(r.count) + ' people from WikiTree, starting from ' + r.key + '. Nothing is stored.');
+        ui.toast(T('Loaded {count} people from WikiTree, starting from {key}. Nothing is stored.', { count: ui.fmt(r.count), key: r.key }));
       } catch (err) {
         msg.textContent = err.message || String(err);
       } finally { go.disabled = false; }
     });
     menu.append(
-      el('div', { class: 'caps', text: 'From WikiTree' }),
-      el('h3', { text: 'Draw any family on WikiTree' }),
-      el('p', { class: 'muted', text: 'Type a WikiTree ID, or paste the address of a profile, and choose how far to go. Descendants and brothers and sisters make trees much larger: the more you ask for, the longer WikiTree takes to answer.' }),
+      el('div', { class: 'caps', text: T('From WikiTree') }),
+      el('h3', { text: T('Draw any family on WikiTree') }),
+      el('p', { class: 'muted', text: T('Type a WikiTree ID, or paste the address of a profile, and choose how far to go. Descendants and brothers and sisters make trees much larger: the more you ask for, the longer WikiTree takes to answer.') }),
       form,
-      el('p', { class: 'muted small-print', text: 'Only what WikiTree shows to everyone is fetched, and people who may be living stay hidden. Nothing is stored: the tree is kept only while this page is open, and this browser remembers only the IDs you used and your choices. Data from WikiTree.com, shared by its community of genealogists.' }));
+      el('p', { class: 'muted small-print', text: T('Only what WikiTree shows to everyone is fetched, and people who may be living stay hidden. Nothing is stored: the tree is kept only while this page is open, and this browser remembers only the IDs you used and your choices. Data from WikiTree.com, shared by its community of genealogists.') }));
     return { id, anc, desc, form, showUsed };
   }
 
@@ -517,7 +518,7 @@
       const key = FO.wikitreeKey(q.get('wt'));
       if (key) {
         FO.loadWikiTree(key, q.get('anc') || DEF.anc, q.get('desc') || DEF.desc, null, q.get('sib') !== '0')
-          .then(r => { remember(r.key, FO.state.wikitree.anc, FO.state.wikitree.desc, FO.state.wikitree.sib); panel.showUsed(); FO.ui.toast('Loaded ' + FO.ui.fmt(r.count) + ' people from WikiTree, starting from ' + r.key + '. Nothing is stored.'); })
+          .then(r => { remember(r.key, FO.state.wikitree.anc, FO.state.wikitree.desc, FO.state.wikitree.sib); panel.showUsed(); FO.ui.toast(T('Loaded {count} people from WikiTree, starting from {key}. Nothing is stored.', { count: FO.ui.fmt(r.count), key: r.key })); })
           .catch(err => FO.ui.toast(err.message || String(err)));
       }
     }

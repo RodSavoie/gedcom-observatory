@@ -4,6 +4,7 @@
 (function () {
   'use strict';
   const FO = window.FO, ui = FO.ui, el = ui.el, svg = ui.svg, C = FO.C;
+  const T = FO.T;
 
   // how the map looks: change these to taste
   const LAND = '#F7F4EE', COAST = '#B9B09F', BORDER = '#CFC7B8';
@@ -29,8 +30,8 @@
     const inPeriod = p => o.period === 'all' || (year(p) != null && Math.floor(year(p) / 100) * 100 === +o.period);
     const ppl = all.filter(inPeriod);
     const msg = (text) => { const t = svg('text', { x: W / 2, y: H / 2, 'text-anchor': 'middle', style: 'font-size:16px;fill:#3D4B5E' }); t.textContent = text; root.append(t); };
-    if (!ppl.length) { msg(o.what === 'birth' ? 'No birthplaces recorded for this period.' : 'No places of death recorded for this period.'); hint.textContent = ''; return; }
-    msg('Finding the places on the map…');
+    if (!ppl.length) { msg(o.what === 'birth' ? T('No birthplaces recorded for this period.') : T('No places of death recorded for this period.')); hint.textContent = ''; return; }
+    msg(T('Finding the places on the map…'));
     const token = o.token = {};
     const everyPlace = new Set();
     o.data.people.forEach(p => { if (p.hidden) return; if (p.b && p.b.place) everyPlace.add(p.b.place); if (p.d && p.d.place) everyPlace.add(p.d.place); });
@@ -38,7 +39,7 @@
       if (o.cancelled && o.cancelled(token)) return;
       root.innerHTML = '';
       draw(world, locate);
-    }).catch(err => { root.innerHTML = ''; msg('The map could not be loaded (' + err.message + ').'); });
+    }).catch(err => { root.innerHTML = ''; msg(T('The map could not be loaded ({message}).', { message: err.message })); });
 
     function draw(world, locate) {
       // the map is framed on all the family's places, births and deaths of every period, so it stays put when the
@@ -121,19 +122,19 @@
         const c = svg('circle', Object.assign({ cx: x, cy: y, r: Math.max(2.5, r0(s.n)), fill: col, 'fill-opacity': region ? 0.08 : BUBBLE_OPACITY, stroke: region || sea ? col : '#FFFFFF', 'stroke-width': region ? 1.3 : sea ? SEA_RING : 0.9, 'stroke-opacity': region ? 0.75 : 0.9, style: 'cursor:pointer' }, ns));
         if (region) c.setAttribute('stroke-dasharray', '4 3');
         if (sea) c.setAttribute('stroke-dasharray', '1.5 2.5');
-        const what = o.what === 'birth' ? (s.n === 1 ? ' birth' : ' births') : (s.n === 1 ? ' death' : ' deaths');
+        const what = o.what === 'birth' ? (s.n === 1 ? T(' birth') : T(' births')) : (s.n === 1 ? T(' death') : T(' deaths'));
         const yrs = d3.extent(s.people.map(year).filter(y => y != null));
         const others = s.spell.size - 1;
         const lines = [ui.fmt(s.n) + what + (yrs[0] != null ? ', ' + (yrs[0] === yrs[1] ? yrs[0] : yrs[0] + '–' + yrs[1]) : '')];
-        if (sea) lines.push('Recorded as “' + ui.esc(s.top) + '”' + (others ? ' and ' + others + ' other wording' + (others > 1 ? 's' : '') : ''));
-        else if (others) lines.push('and ' + others + ' other spelling' + (others > 1 ? 's' : '') + ' of this place');
-        if (region) lines.push('Known only as “' + ui.esc(s.label) + '”: shown at the centre of the region');
+        if (sea) lines.push(T('Recorded as “{top}”{x}', { top: ui.esc(s.top), x: others ? T(' and {others} other wording{x}', { others: others, x: others > 1 ? 's' : '' }) : '' }));
+        else if (others) lines.push(T('and {others} other spelling{x} of this place', { others: others, x: others > 1 ? 's' : '' }));
+        if (region) lines.push(T('Known only as “{label}”: shown at the centre of the region', { label: ui.esc(s.label) }));
         if (sea) lines.push(ui.esc(s.note));
-        if (s.approx) lines.push('Village placed at the centre of its département');
+        if (s.approx) lines.push(T('Village placed at the centre of its département'));
         const tip = '<b>' + ui.esc(sea ? s.label : s.top) + '</b><span>' + lines.join('<br>') + '</span>';
         c.addEventListener('mousemove', e => { c.setAttribute('fill-opacity', region ? 0.2 : 0.85); ui.tip(tip, e.clientX, e.clientY); });
         c.addEventListener('mouseleave', () => { c.setAttribute('fill-opacity', region ? 0.08 : BUBBLE_OPACITY); ui.untip(); });
-        c.addEventListener('click', () => FO.showList(sea ? s.label : s.top, ui.fmt(s.n) + what + (region ? ', known only by region' : ''), s.people.slice().sort((a, b) => (year(a) || 0) - (year(b) || 0))));
+        c.addEventListener('click', () => FO.showList(sea ? s.label : s.top, ui.fmt(s.n) + what + (region ? T(', known only by region') : ''), s.people.slice().sort((a, b) => (year(a) || 0) - (year(b) || 0))));
         bubbles.append(c);
         return [c, s];
       });
@@ -177,19 +178,16 @@
 
       // sources, as GeoNames' licence asks
       const credit = svg('text', { x: 12, y: 18, style: 'font-size:10.5px;fill:#7C8088;paint-order:stroke;stroke:#F7F4EE;stroke-width:3px;stroke-linejoin:round' });
-      credit.textContent = 'Map: Natural Earth. Places: GeoNames (CC BY 4.0), Natural Resources Canada, INSEE.';
+      credit.textContent = T('Map: Natural Earth. Places: GeoNames (CC BY 4.0), Natural Resources Canada, INSEE.');
       root.append(credit);
       root.append(svg('rect', { x: 0.5, y: 0.5, width: W - 1, height: H - 1, rx: 4, fill: 'none', stroke: FRAME, 'stroke-opacity': FRAME_OPACITY, 'pointer-events': 'none' }));
 
       const placed = ppl.length - missing - atRegion - atSea;
-      const noun = o.what === 'birth' ? 'births' : 'deaths';
-      hint.textContent = ui.fmt(ppl.length) + ' ' + noun + ' with a place recorded: ' + ui.fmt(placed) + ' found at a town or village' +
-        (approx ? ' (' + ui.fmt(approx) + ' French villages at the centre of their département)' : '') + ', ' + ui.fmt(atRegion) + ' known only by region' +
-        (o.regions ? ' (dashed rings at the region’s centre)' : ' (not shown)') + (atSea ? ', ' + ui.fmt(atSea) + ' at sea (dotted rings, on the crossing they were most likely on)' : '') + (missing ? ', ' + ui.fmt(missing) + ' not found (a name the map does not know)' : '') +
-        '. Bubbles grow with the number of people. Scroll to zoom, drag to move, click a bubble to list the people.';
-      if (o.onLegend) o.onLegend([{ label: o.what === 'birth' ? 'Births at a place' : 'Deaths at a place', color: col }]
-        .concat(atSea ? [{ label: o.what === 'birth' ? 'Born at sea' : 'Died at sea', color: col, sea: true }] : [])
-        .concat(atRegion && o.regions ? [{ label: 'Known only by region', color: col, line: true }] : []));
+      const noun = o.what === 'birth' ? T('births') : T('deaths');
+      hint.textContent = T('{length} {noun} with a place recorded: {placed} found at a town or village{x}, {atRegion} known only by region{x2}{x3}{x4}. Bubbles grow with the number of people. Scroll to zoom, drag to move, click a bubble to list the people.', { length: ui.fmt(ppl.length), noun: noun, placed: ui.fmt(placed), x: approx ? T(' ({approx} French villages at the centre of their département)', { approx: ui.fmt(approx) }) : '', atRegion: ui.fmt(atRegion), x2: o.regions ? T(' (dashed rings at the region’s centre)') : T(' (not shown)'), x3: atSea ? T(', {atSea} at sea (dotted rings, on the crossing they were most likely on)', { atSea: ui.fmt(atSea) }) : '', x4: missing ? T(', {missing} not found (a name the map does not know)', { missing: ui.fmt(missing) }) : '' });
+      if (o.onLegend) o.onLegend([{ label: o.what === 'birth' ? T('Births at a place') : T('Deaths at a place'), color: col }]
+        .concat(atSea ? [{ label: o.what === 'birth' ? T('Born at sea') : T('Died at sea'), color: col, sea: true }] : [])
+        .concat(atRegion && o.regions ? [{ label: T('Known only by region'), color: col, line: true }] : []));
     }
   };
 })();

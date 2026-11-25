@@ -1,9 +1,10 @@
 /* Back to top: a quiet arrow at the bottom right. It appears once the page (or a view that scrolls on its own,
    such as By the Numbers) has been scrolled down, and glides back to the top with a quick ease-in-out. */
 (function () {
+  const T = window.FO && window.FO.T ? window.FO.T : (s => s);   // js/i18n.js
   const SHOW_AFTER = 320;   // pixels scrolled before the arrow appears
   const btn = document.createElement('button');
-  btn.className = 'to-top'; btn.type = 'button'; btn.title = 'Back to top'; btn.setAttribute('aria-label', 'Back to top');
+  btn.className = 'to-top'; btn.type = 'button'; btn.title = T('Back to top'); btn.setAttribute('aria-label', T('Back to top'));
   btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 14l6-6 6 6"/></svg>';
 
   let scroller = null;   // whatever was scrolled last: the page itself, or a view's own scrolling area

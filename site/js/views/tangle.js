@@ -2,6 +2,7 @@
 (function () {
   'use strict';
   const FO = window.FO, ui = FO.ui, el = ui.el, svg = ui.svg, C = FO.C;
+  const T = FO.T;
 
   /* The bubbles' look, in one place. Opacity runs from 0 (see-through) to 1 (solid): 0.85 is 85%. */
   const BUBBLE_FILL = '#eee';          // the inside of each bubble (in Original; each design has its own tone of it, 'bubble' in designs.js)
@@ -9,10 +10,10 @@
   const BUBBLE_HOVER = '#FFE8CF';      // the inside while the pointer is over it
 
   FO.view({
-    id: 'tangle', order: 6, title: 'The Tangle',
-    card: 'Surnames as circles, tied together by the marriages between them.',
-    how: {"see": "Each circle is a surname and each thread is a marriage between two surnames. Families that married each other often are pulled close together, so crowded knots show tightly linked families.", "marks": ["A bigger circle means more people carry that surname. The red circle is the home person’s surname.", "A thread’s thickness is the number of marriages between the two surnames; the faintest threads are single marriages.", "A pink ring around a circle means some marriages joined two people who both had that surname."], "can": ["Point at a circle to light up the families it married into. Click a circle or a thread to list the couples.", "Choose a surname from the list above the picture, or open the most-married pairs.", "Drag any circle to see how it is tied in: its threads pull its neighbours along, and it springs back gently when you let go. Reset layout lets every circle settle again and zooms back out to the whole picture. Use the slider to show more or fewer surnames, and scroll to zoom."], "care": "Only marriages where both partners have a surname are drawn, and marriages of living people are left out. Spellings that differ only by accents are treated as one name."},
-    blurb: 'Each circle is a surname, sized by how many people carry it. A thread joins two surnames whenever a couple married across them; thicker threads mean more couples. Click a circle or a thread to list the couples.',
+    id: 'tangle', order: 6, title: T('The Tangle'),
+    card: T('Surnames as circles, tied together by the marriages between them.'),
+    how: {"see": T("Each circle is a surname and each thread is a marriage between two surnames. Families that married each other often are pulled close together, so crowded knots show tightly linked families."), "marks": [T("A bigger circle means more people carry that surname. The red circle is the home person’s surname."), T("A thread’s thickness is the number of marriages between the two surnames; the faintest threads are single marriages."), T("A pink ring around a circle means some marriages joined two people who both had that surname.")], "can": [T("Point at a circle to light up the families it married into. Click a circle or a thread to list the couples."), T("Choose a surname from the list above the picture, or open the most-married pairs."), T("Drag any circle to see how it is tied in: its threads pull its neighbours along, and it springs back gently when you let go. Reset layout lets every circle settle again and zooms back out to the whole picture. Use the slider to show more or fewer surnames, and scroll to zoom.")], "care": T("Only marriages where both partners have a surname are drawn, and marriages of living people are left out. Spellings that differ only by accents are treated as one name.")},
+    blurb: T('Each circle is a surname, sized by how many people carry it. A thread joins two surnames whenever a couple married across them; thicker threads mean more couples. Click a circle or a thread to list the couples.'),
     icon: '<path d="M18 20 L44 16 M18 20 L28 44 M44 16 L28 44 M44 16 L52 40 M28 44 L52 40" stroke="#C9C1B1" stroke-width="2"/><path d="M18 20 L28 44" stroke="#A35139" stroke-width="2.6"/><circle cx="18" cy="20" r="9" fill="#fff"/><circle cx="44" cy="16" r="6" fill="#fff"/><circle cx="28" cy="44" r="8" fill="#fff"/><circle cx="52" cy="40" r="5" fill="#fff"/>',
     render(v) {
       const s = v.state, data = FO.scoped(v.data);
@@ -20,7 +21,7 @@
       const sn = FO.surnameCanon(data.people);
       const count = d3.rollup(data.people.filter(p => p.surname && !p.hidden), x => x.length, sn);
       const all = [...count.entries()].sort((a, b) => b[1] - a[1]);
-      if (all.length < 2) { ui.empty(v.stage, 'Not enough surnames', 'This file has fewer than two surnames, so there is nothing to tangle.'); return; }
+      if (all.length < 2) { ui.empty(v.stage, T('Not enough surnames'), T('This file has fewer than two surnames, so there is nothing to tangle.')); return; }
       // how many surnames: 36 to start, up to MAX_SURNAMES; a link can ask for a number (#/tangle?surnames=100)
       const MAX_SURNAMES = 100;
       const asked = parseInt(FO.hashParam('surnames'), 10);
@@ -36,7 +37,7 @@
           .sort((x, y) => (x.my || x.husb.est || 0) - (y.my || y.husb.est || 0));
       }
       function listCouples(title, fams) {
-        FO.showList(title, fams.length + (fams.length === 1 ? ' couple' : ' couples'), fams.map(f => el('li', {}, el('span', {}, ui.plink(f.husb), ' and ', ui.plink(f.wife)), el('small', { text: f.my ? 'm. ' + f.my : '' }))));
+        FO.showList(title, fams.length + (fams.length === 1 ? T(' couple') : T(' couples')), fams.map(f => el('li', {}, el('span', {}, ui.plink(f.husb), T(' and '), ui.plink(f.wife)), el('small', { text: f.my ? 'm. ' + f.my : '' }))));
       }
 
       function build() {
@@ -78,9 +79,9 @@
         const lg = svg('g', { stroke: THREAD, 'stroke-linecap': 'round' }), ng = svg('g');
         const lines = shown.map(l => {
           const ln = svg('line', { x1: l.source.x, y1: l.source.y, x2: l.target.x, y2: l.target.y, 'stroke-width': ws(l.n), 'stroke-opacity': l.n === 1 ? .22 : .34, style: 'cursor:pointer' });
-          ln.addEventListener('mousemove', e => { ln.setAttribute('stroke', C.red); ln.setAttribute('stroke-opacity', .8); ui.tip('<b>' + ui.esc(l.source.id) + ' and ' + ui.esc(l.target.id) + '</b><span>' + l.n + (l.n === 1 ? ' couple' : ' couples') + '</span>', e.clientX, e.clientY); });
+          ln.addEventListener('mousemove', e => { ln.setAttribute('stroke', C.red); ln.setAttribute('stroke-opacity', .8); ui.tip(T('<b>{id} and {id2}</b><span>{n}{x}</span>', { id: ui.esc(l.source.id), id2: ui.esc(l.target.id), n: l.n, x: l.n === 1 ? T(' couple') : T(' couples') }), e.clientX, e.clientY); });
           ln.addEventListener('mouseleave', () => { ln.setAttribute('stroke', THREAD); ln.setAttribute('stroke-opacity', l.n === 1 ? .22 : .34); ui.untip(); });
-          ln.addEventListener('click', () => listCouples(l.source.id + ' and ' + l.target.id, couplesOf(l.source.id, l.target.id)));
+          ln.addEventListener('click', () => listCouples(T('{id} and {id2}', { id: l.source.id, id2: l.target.id }), couplesOf(l.source.id, l.target.id)));
           lg.append(ln);
           return { l, ln };
         });
@@ -97,10 +98,10 @@
           gg.addEventListener('mousemove', e => {
             c.setAttribute('fill', BUBBLE_HOVER);
             lines.forEach(x => { const on = x.l.source === n || x.l.target === n; x.ln.setAttribute('stroke-opacity', on ? .85 : .1); });
-            ui.tip('<b>' + ui.esc(n.id) + '</b><span>' + ui.fmt(n.n) + ' people' + (same.get(n.id) ? '<br>' + same.get(n.id) + (same.get(n.id) === 1 ? ' marriage' : ' marriages') + ' between two people of this name' : '') + '</span>', e.clientX, e.clientY);
+            ui.tip(T('<b>{id}</b><span>{n} people{x}</span>', { id: ui.esc(n.id), n: ui.fmt(n.n), x: same.get(n.id) ? T('<br>{get}{x} between two people of this name', { get: same.get(n.id), x: same.get(n.id) === 1 ? T(' marriage') : T(' marriages') }) : '' }), e.clientX, e.clientY);
           });
           gg.addEventListener('mouseleave', () => { c.setAttribute('fill', BUBBLE_FILL); lines.forEach(x => x.ln.setAttribute('stroke-opacity', x.l.n === 1 ? .22 : .34)); ui.untip(); });
-          gg.addEventListener('click', e => { if (!e.defaultPrevented) listCouples('Couples with the name ' + n.id, couplesOf(n.id)); });
+          gg.addEventListener('click', e => { if (!e.defaultPrevented) listCouples(T('Couples with the name {id}', { id: n.id }), couplesOf(n.id)); });
           let moved = false;
           // drag a circle: its threads pull its neighbours along gently; let go and it springs back into the picture
           d3.select(gg).call(d3.drag()
@@ -132,15 +133,15 @@
         if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) sim.alpha(0.12).restart();
         unpin = () => { nodes.forEach(n => { if (n.back) { n.back.stop(); n.back = null; } n.fx = null; n.fy = null; }); sim.alphaTarget(0).alpha(0.5).restart(); };
         topPairs = shown.slice().sort((a, b) => b.n - a.n).slice(0, 30);
-        chooser.innerHTML = ''; chooser.append(el('option', { value: '', text: 'Choose a surname…' })); nodes.slice().sort((a, b) => a.id.localeCompare(b.id)).forEach(n => chooser.append(el('option', { value: n.id, text: n.id + ' (' + n.n + ')' })));
-        hint.textContent = N + ' most common surnames of ' + ui.fmt(all.length) + ', joined by ' + ui.fmt(shown.length) + ' threads' + (minN > 1 ? ' (single marriages left out to keep it readable)' : '') + '. Drag any circle to see how it is tied in; it springs back when you let go. Scroll to zoom.';
+        chooser.innerHTML = ''; chooser.append(el('option', { value: '', text: T('Choose a surname…') })); nodes.slice().sort((a, b) => a.id.localeCompare(b.id)).forEach(n => chooser.append(el('option', { value: n.id, text: n.id + ' (' + n.n + ')' })));
+        hint.textContent = T('{N} most common surnames of {length}, joined by {length2} threads{x}. Drag any circle to see how it is tied in; it springs back when you let go. Scroll to zoom.', { N: N, length: ui.fmt(all.length), length2: ui.fmt(shown.length), x: minN > 1 ? T(' (single marriages left out to keep it readable)') : '' });
       }
       let topPairs = [], unpin = () => {};
-      const chooser = el('select', { 'aria-label': 'Choose a surname', onchange: () => { if (chooser.value) listCouples('Couples with the name ' + chooser.value, couplesOf(chooser.value)); } });
+      const chooser = el('select', { 'aria-label': T('Choose a surname'), onchange: () => { if (chooser.value) listCouples(T('Couples with the name {value}', { value: chooser.value }), couplesOf(chooser.value)); } });
       v.controls.append(ui.scopeSeg());
-      v.controls.append(el('label', { class: 'ctl' }, chooser), ui.button('Most-married pairs', () => FO.showList('Most-married pairs of surnames', 'Click a pair to list its couples', topPairs.map(l => el('li', {}, el('button', { type: 'button', class: 'plink', text: l.source.id + ' × ' + l.target.id, onclick: () => listCouples(l.source.id + ' and ' + l.target.id, couplesOf(l.source.id, l.target.id)) }), el('small', { text: l.n + (l.n === 1 ? ' marriage' : ' marriages') }))))));
-      v.controls.append(ui.button('Reset layout', () => { unpin(); d3.select(root).transition().duration(500).call(zoom.transform, d3.zoomIdentity); }));
-      v.controls.append(ui.range('Surnames shown', Math.min(8, all.length), Math.min(MAX_SURNAMES, all.length), N, n => { N = n; FO.setHashParam('surnames', n); build(); }));
+      v.controls.append(el('label', { class: 'ctl' }, chooser), ui.button(T('Most-married pairs'), () => FO.showList(T('Most-married pairs of surnames'), T('Click a pair to list its couples'), topPairs.map(l => el('li', {}, el('button', { type: 'button', class: 'plink', text: l.source.id + ' × ' + l.target.id, onclick: () => listCouples(T('{id} and {id2}', { id: l.source.id, id2: l.target.id }), couplesOf(l.source.id, l.target.id)) }), el('small', { text: l.n + (l.n === 1 ? T(' marriage') : T(' marriages')) }))))));
+      v.controls.append(ui.button(T('Reset layout'), () => { unpin(); d3.select(root).transition().duration(500).call(zoom.transform, d3.zoomIdentity); }));
+      v.controls.append(ui.range(T('Surnames shown'), Math.min(8, all.length), Math.min(MAX_SURNAMES, all.length), N, n => { N = n; FO.setHashParam('surnames', n); build(); }));
       build();
       return () => { if (sim) { sim.stop(); sim.nodes().forEach(n => n.back && n.back.stop()); } };
     }

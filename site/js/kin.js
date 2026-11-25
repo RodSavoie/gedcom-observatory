@@ -2,6 +2,8 @@
 (function (root) {
   'use strict';
   const FO = (root.FO = root.FO || {});
+  const T = (s, v) => FO.T ? FO.T(s, v) : v ? s.replace(/\{(\w+)\}/g, (m, k) => k in v ? v[k] : m) : s;
+  const FR = () => FO.lang === 'fr';
   const MAXG = 60;
 
   /* Ancestors by generation. Returns { min: Map(person -> nearest generation),
@@ -80,18 +82,45 @@
     }
     return cls;
   };
-  FO.KIN_LABEL = { home: 'Home person', ancestor: 'Direct ancestor', descendant: 'Descendant', relative: 'Blood relative', inlaw: 'Married to a relative', other: 'Not related by blood' };
+  FO.KIN_LABEL = { home: T('Home person'), ancestor: T('Direct ancestor'), descendant: T('Descendant'), relative: T('Blood relative'), inlaw: T('Married to a relative'), other: T('Not related by blood') };
 
   /* ---------- relationship naming ---------- */
   FO.ord = function (n) {
+    if (FR()) return n === 1 ? '1er' : n + 'e';
     const s = ['th', 'st', 'nd', 'rd'], v = n % 100;
     return n + (s[(v - 20) % 10] || s[v] || s[0]);
   };
   const greats = (n, base) => n <= 0 ? base : n === 1 ? 'great-' + base : FO.ord(n) + ' great-' + base;
   const sx = (sex, m, f, u) => sex === 'M' ? m : sex === 'F' ? f : u;
 
+  /* The same in French, which agrees with the person's sex and has its own names for cousins:
+     cousin germain (1st), cousin au 2e degré (2nd)…; "removed" is (décalé d'une génération). */
+  const relLabelFr = function (da, db, sex, half) {
+    const f = sex === 'F', u = sex !== 'M' && sex !== 'F';
+    const g = (m, fem, unk) => u ? unk : f ? fem : m;
+    const h = half ? 'demi-' : '';
+    const arr = n => n <= 0 ? '' : n === 1 ? 'arrière-' : n + 'e arrière-';
+    if (da === 0 && db === 0) return 'même personne';
+    if (da === 0) {
+      if (db === 1) return g('père', 'mère', 'parent');
+      return arr(db - 2) + g('grand-père', 'grand-mère', 'grand-parent');
+    }
+    if (db === 0) {
+      if (da === 1) return g('fils', 'fille', 'enfant');
+      return arr(da - 2) + g('petit-fils', 'petite-fille', 'petit-enfant');
+    }
+    if (da === 1 && db === 1) return h + g('frère', 'sœur', 'frère ou sœur');
+    if (da === 1) return h + (db === 2 ? '' : db === 3 ? 'grand-' : arr(db - 3) + 'grand-') + g('oncle', 'tante', 'oncle ou tante');
+    if (db === 1) return h + (da === 2 ? '' : da === 3 ? g('petit-', 'petite-', 'petit-') : arr(da - 3) + g('petit-', 'petite-', 'petit-')) + g('neveu', 'nièce', 'neveu ou nièce');
+    const deg = Math.min(da, db) - 1, rem = Math.abs(da - db);
+    const base = deg === 1 ? g('cousin germain', 'cousine germaine', 'cousin ou cousine germain(e)') : g('cousin', 'cousine', 'cousin ou cousine') + ' au ' + deg + 'e degré';
+    const off = rem === 0 ? '' : ' (' + g('décalé', 'décalée', 'décalé(e)') + (rem === 1 ? ' d’une génération' : ' de ' + rem + ' générations') + ')';
+    return h + base + off;
+  };
+
   /* A is the <label> of B, where da/db are generations up to the common ancestor. */
   FO.relLabel = function (da, db, sex, half) {
+    if (FR()) return relLabelFr(da, db, sex, half);
     const h = half ? 'half-' : '';
     if (da === 0 && db === 0) return 'same person';
     if (da === 0) {
@@ -224,15 +253,16 @@
     const res = { blood: [], marriage: [] };
     if (a === b) return res;
     res.blood = FO.bloodRelations(a, b, limit || 12);
-    if (a.spouses.includes(b)) res.marriage.push({ text: sx(a.sex, 'husband', 'wife', 'spouse'), direct: true });
+    const spouseWord = p => sx(p.sex, T('husband'), T('wife'), T('spouse'));
+    if (a.spouses.includes(b)) res.marriage.push({ text: spouseWord(a), direct: true });
     if (!res.blood.length && !res.marriage.length) {
       for (const s of a.spouses) {
         const r = FO.bloodRelations(s, b, 1)[0];
-        if (r) res.marriage.push({ text: sx(a.sex, 'husband', 'wife', 'spouse') + ' of ' + s.name + ', who is the ' + r.label + ' of ' + b.name, through: s, rel: r, total: r.da + r.db });
+        if (r) res.marriage.push({ text: T('{spouse} of {name}, who is the {label} of {other}', { spouse: spouseWord(a), name: s.name, label: r.label, other: b.name, _sex: s.sex }), through: s, rel: r, total: r.da + r.db });
       }
       for (const t of b.spouses) {
         const r = FO.bloodRelations(a, t, 1)[0];
-        if (r) res.marriage.push({ text: r.label + ' of ' + t.name + ', the ' + sx(t.sex, 'husband', 'wife', 'spouse') + ' of ' + b.name, through: t, rel: r, total: r.da + r.db });
+        if (r) res.marriage.push({ text: T('{label} of {name}, the {spouse} of {other}', { label: r.label, name: t.name, spouse: spouseWord(t), other: b.name, _sex: t.sex }), through: t, rel: r, total: r.da + r.db });
       }
       res.marriage.sort((p, q) => (p.total || 0) - (q.total || 0));
       res.marriage = res.marriage.slice(0, 4);

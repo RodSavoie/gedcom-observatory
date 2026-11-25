@@ -3,13 +3,17 @@
 (function (root) {
   'use strict';
   const FO = (root.FO = root.FO || {});
+  // the words shown to readers go through T() (js/i18n.js); in Node (tools/scrub.js) they stay in English
+  const T = (s, v) => FO.T ? FO.T(s, v) : v ? s.replace(/\{(\w+)\}/g, (m, k) => k in v ? v[k] : m) : s;
 
   FO.LIVING_YEARS = 110;
   const MONTHS = {
     JAN: 1, FEB: 2, FEV: 2, MAR: 3, APR: 4, AVR: 4, MAY: 5, MAI: 5, JUN: 6, JUL: 7,
     AUG: 8, AOU: 8, SEP: 9, OCT: 10, NOV: 11, DEC: 12
   };
-  const MONTH_NAMES = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const MONTH_NAMES = ['', T('Jan'), T('Feb'), T('Mar'), T('Apr'), T('May'), T('Jun'), T('Jul'), T('Aug'), T('Sep'), T('Oct'), T('Nov'), T('Dec')];
+  // "bet 1650 and 1660", "from 1650 to 1660": the linking words, in the reader's language
+  const RANGE_WORDS = { bet: T('between'), between: T('between'), and: T('and'), from: T('from'), to: T('to') };
   const QUAL = { ABT: 'about', ABOUT: 'about', CAL: 'about', EST: 'about', CIRCA: 'about', C: 'about', BEF: 'before', AFT: 'after', BET: 'between', FROM: 'from' };
 
   const strip = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -31,10 +35,10 @@
     }
     if (y == null) return { raw, y: null, m: null, d: null, q, text: raw };
     let text = (d && m ? d + ' ' : '') + (m ? MONTH_NAMES[m] + ' ' : '') + y;
-    if (q === 'about') text = 'about ' + text;
-    else if (q === 'before') text = 'before ' + text;
-    else if (q === 'after') text = 'after ' + text;
-    else if (q === 'between' || q === 'from') text = raw.toLowerCase().replace(/\b([a-z]{3})\b/g, s => MONTHS[s.toUpperCase()] ? MONTH_NAMES[MONTHS[s.toUpperCase()]] : s);
+    if (q === 'about') text = T('about {date}', { date: text });
+    else if (q === 'before') text = T('before {date}', { date: text });
+    else if (q === 'after') text = T('after {date}', { date: text });
+    else if (q === 'between' || q === 'from') text = raw.toLowerCase().replace(/\b([a-z]{2,7})\b/g, s => MONTHS[s.slice(0, 3).toUpperCase()] && s.length === 3 ? MONTH_NAMES[MONTHS[s.toUpperCase()]] : RANGE_WORDS[s] || s);
     return { raw, y, m, d, q, text };
   };
 
@@ -328,7 +332,7 @@
           p.hidden = true; p.given = p.flagPrivate ? 'Private' : 'Living'; p.surname = ''; p.b = null; p.d = null; p.by = null; p.dy = null; p.url = null;
         }
       }
-      p.name = p.flagPrivate ? 'Private' : p.hidden ? 'Living person' : ((p.given + ' ' + p.surname).trim() || 'Unknown');
+      p.name = p.flagPrivate ? T('Private') : p.hidden ? T('Living person') : ((p.given + ' ' + p.surname).trim() || T('Unknown'));
     }
     for (const f of families) {
       if ((f.husb && f.husb.hidden) || (f.wife && f.wife.hidden)) f.m = null;
@@ -370,7 +374,8 @@
 
   FO.lifespan = function (p) {
     if (p.hidden) return '';
-    const b = p.by != null ? (p.b.date.q ? 'c. ' : '') + p.by : '', d = p.dy != null ? (p.d.date.q ? 'c. ' : '') + p.dy : '';
+    const c = T('c. ');   // "circa": the year is approximate
+    const b = p.by != null ? (p.b.date.q ? c : '') + p.by : '', d = p.dy != null ? (p.d.date.q ? c : '') + p.dy : '';
     if (!b && !d) return '';
     return (b || '?') + ' - ' + (d || (p.dead ? '?' : ''));
   };

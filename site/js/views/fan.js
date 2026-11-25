@@ -2,6 +2,7 @@
 (function () {
   'use strict';
   const FO = window.FO, ui = FO.ui, el = ui.el, svg = ui.svg, C = FO.C;
+  const T = FO.T;
   const LIVING_FILL = 'rgba(0, 0, 0, 0.05)';   // a living person's place on the fan: half-transparent white
 
   FO.pedigreeSlots = function (home, G, cap) {
@@ -20,8 +21,8 @@
   // open arc at radius r; angles clockwise from 12 o'clock
   const arcLine = (r, a, b) => `M${r * Math.sin(a)},${-r * Math.cos(a)}A${r},${r} 0 ${Math.abs(b - a) > Math.PI ? 1 : 0} ${b > a ? 1 : 0} ${r * Math.sin(b)},${-r * Math.cos(b)}`;
   const fitName = (p, maxc) => {
-    if (p.flagPrivate) return 'Private';
-    if (p.hidden) return 'Living';
+    if (p.flagPrivate) return T('Private');
+    if (p.hidden) return T('Living');
     const first = (p.given || '').split(' ')[0];
     const opts = [p.name, (first + ' ' + p.surname).trim(), first && p.surname ? first[0] + '. ' + p.surname : '', p.surname || first, first];
     for (const o of opts) if (o && o.length <= maxc) return o;
@@ -30,15 +31,15 @@
   };
 
   FO.view({
-    id: 'fan', order: 2, title: 'Ancestor Fan',
-    card: 'Rings of ancestors around one person, with repeats edged in red.',
-    how: {"see": "A fan of the home person’s recorded ancestors. The home person is the circle in the middle and each ring outward is one generation further back, with the father’s side on the left and the mother’s side on the right.", "marks": ["Each wedge is one ancestor. Its colour shows birthplace, surname, how often that person appears (from once to more than twenty times, pale to deep), or era, depending on the Colour button.", "A red edge means one person fills more than one place. That happens when cousins married, so the same ancestor sits on both sides. Point at one and every place they fill stays bright while the rest fades.", "A pale empty place means no ancestor is recorded there yet. A white wedge may be a living person and shows no name.", "The small numbers along the left edge count generations back: 1 is parents, 2 is grandparents."], "can": ["Point at a wedge to read a short card and light up every place that person fills.", "Click for full details; double-click to make that person the home person.", "Change the number of rings, or the colouring, with the controls above the picture. Scroll to zoom."], "care": "Only recorded ancestors are drawn, and no more than fourteen rings. Names appear only where they fit."},
-    blurb: s => 'Each ring is one generation back from ' + s.home.name + '; fathers to the left of each pair, mothers to the right. A red edge marks someone who fills more than one place, which happens when cousins marry.',
+    id: 'fan', order: 2, title: T('Ancestor Fan'),
+    card: T('Rings of ancestors around one person, with repeats edged in red.'),
+    how: {"see": T("A fan of the home person’s recorded ancestors. The home person is the circle in the middle and each ring outward is one generation further back, with the father’s side on the left and the mother’s side on the right."), "marks": [T("Each wedge is one ancestor. Its colour shows birthplace, surname, how often that person appears (from once to more than twenty times, pale to deep), or era, depending on the Colour button."), T("A red edge means one person fills more than one place. That happens when cousins married, so the same ancestor sits on both sides. Point at one and every place they fill stays bright while the rest fades."), T("A pale empty place means no ancestor is recorded there yet. A white wedge may be a living person and shows no name."), T("The small numbers along the left edge count generations back: 1 is parents, 2 is grandparents.")], "can": [T("Point at a wedge to read a short card and light up every place that person fills."), T("Click for full details; double-click to make that person the home person."), T("Change the number of rings, or the colouring, with the controls above the picture. Scroll to zoom.")], "care": T("Only recorded ancestors are drawn, and no more than fourteen rings. Names appear only where they fit.")},
+    blurb: s => T('Each ring is one generation back from {name}; fathers to the left of each pair, mothers to the right. A red edge marks someone who fills more than one place, which happens when cousins marry.', { name: s.home.name }),
     icon: '<path d="M8 44 A24 24 0 0 1 56 44" /><path d="M16 44 A16 16 0 0 1 48 44"/><path d="M24 44 A8 8 0 0 1 40 44"/><path d="M32 20 V36 M15 27 L26.5 38.5 M49 27 L37.5 38.5"/><path d="M40.5 21.5 A24 24 0 0 1 53.5 33" stroke="#A35139" stroke-width="2.4"/><circle cx="32" cy="44" r="3" fill="#1B2632"/>',
     render(v) {
       const s = v.state, home = s.home;
       const maxDepth = FO.kin().anc.gens.length - 1;
-      if (maxDepth < 1) { ui.empty(v.stage, 'No parents recorded', home.name + ' has no parents in this file, so there is no fan to draw. Pick another person from The family menu.'); return; }
+      if (maxDepth < 1) { ui.empty(v.stage, T('No parents recorded'), T('{name} has no parents in this file, so there is no fan to draw. Pick another person from The family menu.', { name: home.name })); return; }
       // v.hero: the home page picture, always Surname colouring and 8 generations, with the legend beside it
       const hero = !!v.hero;
       let G = hero ? Math.min(8, maxDepth) : FO.prefs.num('fan.gen', Math.min(8, maxDepth), 2, Math.min(14, maxDepth)),
@@ -52,7 +53,7 @@
       // repeat ancestors: one neutral step, then six warm steps from pale to deep (the ramp follows the site's palette)
       const ramp = d3.piecewise(d3.interpolateRgb, ['#F9D3A6', '#E8975A', '#A35139', '#6E2F1D']);
       const REP = ['#D5CFC2'].concat([0, 0.22, 0.44, 0.64, 0.83, 1].map(ramp));
-      const REP_LABELS = ['one', 'two', 'three', 'four', 'five to nine', 'ten to twenty', 'more than twenty'];
+      const REP_LABELS = ['one', 'two', 'three', 'four', T('five to nine'), T('ten to twenty'), T('more than twenty')];
       const repBin = n => (n <= 4 ? n - 1 : n <= 9 ? 4 : n <= 20 ? 5 : 6);
 
       function draw() {
@@ -89,20 +90,20 @@
         if (mode === 'place') {
           const cat = FO.topCategories([...new Set(anc)], p => FO.region(p.b && p.b.place));
           fill = p => p.hidden ? LIVING_FILL : cat.color(p);
-          legend = ['Born in', cat.legend];
+          legend = [T('Born in'), cat.legend];
         } else if (mode === 'surname') {
           const sn = FO.surnameCanon(anc);
           const cat = FO.topCategories([...new Set(anc)], p => (p.hidden ? null : sn(p)));
           fill = p => p.hidden ? LIVING_FILL : cat.color(p);
-          legend = ['Surname', cat.legend];
+          legend = [T('Surname'), cat.legend];
         } else if (mode === 'repeat') {
           fill = p => p.hidden ? LIVING_FILL : REP[repBin(count.get(p))];
-          legend = ['Places this person fills', REP.map((c, i) => ({ label: REP_LABELS[i], color: c }))];
+          legend = [T('Places this person fills'), REP.map((c, i) => ({ label: REP_LABELS[i], color: c }))];
         } else if (mode === 'century') {
           const ys = anc.filter(p => p.est != null).map(p => p.est);
           const sc = d3.scaleLinear().domain([d3.min(ys), d3.max(ys)]).range(['#2C3B4D', '#E6EAEE']).interpolate(d3.interpolateRgb);
           fill = p => p.hidden ? LIVING_FILL : p.est != null ? sc(p.est) : '#fff';
-          legend = ['Born', [{ label: 'around ' + d3.min(ys), color: '#2C3B4D' }, { label: 'around ' + Math.round((d3.min(ys) + d3.max(ys)) / 2), color: sc((d3.min(ys) + d3.max(ys)) / 2) }, { label: 'around ' + d3.max(ys), color: '#E6EAEE' }]];
+          legend = [T('Born'), [{ label: T('around {ys}', { ys: d3.min(ys) }), color: '#2C3B4D' }, { label: T('around {x}', { x: Math.round((d3.min(ys) + d3.max(ys)) / 2) }), color: sc((d3.min(ys) + d3.max(ys)) / 2) }, { label: T('around {ys}', { ys: d3.max(ys) }), color: '#E6EAEE' }]];
         } else { fill = () => '#fff'; legend = null; }
         // opaque, softened fills: translucent wedges leave seams where they meet
         const soften = mode === 'place' || mode === 'surname' ? 0.42 : 0;
@@ -181,22 +182,22 @@
           if (tuck || side) {
             const L = svg('g', { transform: `translate(${lx},${Math.max(18, cy - R + 8)})`, class: 'fan-legend' });
             const tt = svg('text', { x: 0, y: 12, style: 'font-size:13px;font-weight:500;fill:#1B2632' }); tt.textContent = legend[0]; L.append(tt);
-            legend[1].concat([{ label: 'Red edge: fills more than one place', color: C.red, line: true }]).forEach((it, k) => {
+            legend[1].concat([{ label: T('Red edge: fills more than one place'), color: C.red, line: true }]).forEach((it, k) => {
               const y = 26 + k * 21;
               L.append(it.line ? svg('line', { x1: 0, y1: y + 7, x2: 12, y2: y + 7, stroke: it.color, 'stroke-width': 2.5 }) : svg('circle', { cx: 6, cy: y + 7, r: 5, fill: it.color }));
               const t = svg('text', { x: 20, y: y + 11, style: 'font-size:12px;fill:#1B2632' }); t.textContent = it.label + (it.count != null ? ' (' + ui.fmt(it.count) + ')' : ''); L.append(t);
             });
             root.append(L); heroLegend = L;
           }
-        } else if (legend) legendBox = FO.legend(v.stage, legend[0], legend[1].concat([{ label: 'Red edge: fills more than one place', color: C.red, line: true }]));
+        } else if (legend) legendBox = FO.legend(v.stage, legend[0], legend[1].concat([{ label: T('Red edge: fills more than one place'), color: C.red, line: true }]));
         if (hero) return;   // no side card or note on the home page
         // pedigree-collapse summary
         const distinctN = new Set(anc).size, repeatsN = anc.length - distinctN;
         sideBox = el('div', { class: 'sidecard' });
-        sideBox.append(el('h3', { text: repeatsN ? 'Cousins married in this tree' : 'No ancestor appears twice' }),
-          el('div', { class: 'kpis' }, el('div', {}, el('b', { text: ui.fmt(anc.length) }), el('span', { text: 'places filled' })), el('div', {}, el('b', { text: ui.fmt(distinctN) }), el('span', { text: 'different people' })), el('div', { class: 'hot' }, el('b', { text: ui.fmt(repeatsN) }), el('span', { text: 'repeats' }))),
-          el('p', { text: repeatsN ? 'When cousins marry, the ancestors they share fill more than one place. Genealogists call it pedigree collapse.' : 'Every place in these rings is filled by a different person.' }));
-        const tb = el('table', {}, el('tr', {}, el('th', { text: 'Generation' }), el('th', { text: 'Possible' }), el('th', { text: 'Filled' }), el('th', { text: 'People' })));
+        sideBox.append(el('h3', { text: repeatsN ? T('Cousins married in this tree') : T('No ancestor appears twice') }),
+          el('div', { class: 'kpis' }, el('div', {}, el('b', { text: ui.fmt(anc.length) }), el('span', { text: T('places filled') })), el('div', {}, el('b', { text: ui.fmt(distinctN) }), el('span', { text: T('different people') })), el('div', { class: 'hot' }, el('b', { text: ui.fmt(repeatsN) }), el('span', { text: T('repeats') }))),
+          el('p', { text: repeatsN ? T('When cousins marry, the ancestors they share fill more than one place. Genealogists call it pedigree collapse.') : T('Every place in these rings is filled by a different person.') }));
+        const tb = el('table', {}, el('tr', {}, el('th', { text: T('Generation') }), el('th', { text: T('Possible') }), el('th', { text: T('Filled') }), el('th', { text: T('People') })));
         for (let i = 1; i <= G; i++) {
           const inGen = slots.filter(t => t.g === i), ppl = new Set(inGen.map(t => t.p)).size;
           tb.append(el('tr', { class: ppl < inGen.length ? 'rep' : '' }, el('td', { text: i }), el('td', { text: ui.fmt(Math.pow(2, i)) }), el('td', { text: ui.fmt(inGen.length) }), el('td', { text: ui.fmt(ppl) })));
@@ -207,17 +208,17 @@
         // nearest repeated ancestors, leaving out the parents of someone already listed
         const near = [...firstGen.entries()].sort((a, b) => a[1] - b[1] || count.get(b[0]) - count.get(a[0])).slice(0, 8);
         if (near.length) {
-          sideBox.append(el('h3', { text: 'Where the lines first rejoin', style: { marginTop: '14px' } }));
+          sideBox.append(el('h3', { text: T('Where the lines first rejoin'), style: { marginTop: '14px' } }));
           const ul = el('ul');
           near.forEach(([p, gen]) => {
-            const li = el('li', {}, el('span', {}, ui.plink(p)), el('small', { text: count.get(p) + ' places, from ring ' + gen }));
+            const li = el('li', {}, el('span', {}, ui.plink(p)), el('small', { text: T('{get} places, from ring {gen}', { get: count.get(p), gen: gen }) }));
             li.addEventListener('mouseenter', () => light(p)); li.addEventListener('mouseleave', () => light(null));
             ul.append(li);
           });
           sideBox.append(ul);
         }
         v.stage.append(sideBox);
-        hint.textContent = 'Hover to light up every place a person fills. Click for details, double-click to make someone the home person, scroll to zoom.' + (FO.kin().anc.gens.length - 1 > G ? ' More ancestors are recorded beyond ring ' + G + '.' : '');
+        hint.textContent = T('Hover to light up every place a person fills. Click for details, double-click to make someone the home person, scroll to zoom.{x}', { x: FO.kin().anc.gens.length - 1 > G ? T(' More ancestors are recorded beyond ring {G}.', { G: G }) : '' });
       }
 
       const hint = el('div', { class: 'hint' });
@@ -253,7 +254,7 @@
         if (i == null) { light(null); ui.untip(); return; }
         const t = slots[+i];
         const n = light(t.p);
-        ui.tip(ui.personTip(t.p, (t.g === 1 ? 'Parent' : FO.relLabel(0, t.g, t.p.sex)) + (n > 1 ? ' · appears ' + n + ' times here' : '')), e.clientX, e.clientY);
+        ui.tip(ui.personTip(t.p, (t.g === 1 ? T('Parent') : FO.relLabel(0, t.g, t.p.sex)) + (n > 1 ? T(' · appears {n} times here', { n: n }) : '')), e.clientX, e.clientY);
       };
       root.addEventListener('mousemove', over);
       root.addEventListener('mouseleave', () => over({ target: root }));
@@ -269,13 +270,13 @@
         clearTimeout(clickTimer); FO.setHome(slots[+i].p);
       });
       v.controls.append(
-        ui.range('Generations', 2, Math.min(14, maxDepth), G, n => { G = n; FO.prefs.set('fan.gen', n); draw(); }),
-        el('span', { class: 'ctl' }, el('span', { text: 'Colour' }), ui.seg([{ v: 'place', label: 'Birthplace' }, { v: 'surname', label: 'Surname' }, { v: 'repeat', label: 'Repeat ancestors' }, { v: 'century', label: 'Era' }], mode, m => { mode = m; FO.prefs.set('fan.colour', m); draw(); })),
+        ui.range(T('Generations'), 2, Math.min(14, maxDepth), G, n => { G = n; FO.prefs.set('fan.gen', n); draw(); }),
+        el('span', { class: 'ctl' }, el('span', { text: T('Colour') }), ui.seg([{ v: 'place', label: T('Birthplace') }, { v: 'surname', label: T('Surname') }, { v: 'repeat', label: T('Repeat ancestors') }, { v: 'century', label: T('Era') }], mode, m => { mode = m; FO.prefs.set('fan.colour', m); draw(); })),
         el('span', { class: 'ctl-group' },
-          ui.button('Reset zoom', () => d3.select(root).transition().duration(500).call(zoom.transform, d3.zoomIdentity)),
-          ui.button('Save as SVG', () => {
+          ui.button(T('Reset zoom'), () => d3.select(root).transition().duration(500).call(zoom.transform, d3.zoomIdentity)),
+          ui.button(T('Save as SVG'), () => {
             const slug = s => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-            FO.saveSVG(root, { title: 'Ancestor Fan', legend: legendBox, file: 'ancestor-fan-' + slug(FO.state.home && FO.state.home.name) });
+            FO.saveSVG(root, { title: T('Ancestor Fan'), legend: legendBox, file: 'ancestor-fan-' + slug(FO.state.home && FO.state.home.name) });
           })));
       return () => ro.disconnect();
     }
