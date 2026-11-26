@@ -85,7 +85,7 @@
     return el('label', { class: 'ctl' }, el('span', { text: label }), inp, out);
   };
   ui.select = function (label, options, value, onChange) {
-    const sel = el('select', { 'aria-label': label, onchange: () => onChange(sel.value) });
+    const sel = el('select', { 'aria-label': label, onchange: () => FO.busy(() => onChange(sel.value)) });
     options.forEach(o => { const op = el('option', { value: o.v, text: o.label }); if (String(o.v) === String(value)) op.selected = true; sel.append(op); });
     return el('label', { class: 'ctl' }, label ? el('span', { text: label }) : null, sel);
   };
@@ -195,6 +195,47 @@
     t.textContent = msg; t.style.display = 'block';
     clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.style.display = 'none'), 4200);
   };
+
+  /* ---------- busy bar ----------
+     A thin bar slides along the top of the window while the site is working, so a click that takes a moment (a view
+     being drawn, the map finding its places) is plainly seen to have landed. It appears only when the work lasts
+     longer than BUSY_DELAY_MS, so quick clicks do not flicker. Its look (height, colour) is .busy-bar in style.css. */
+  const BUSY_DELAY_MS = 150;
+  const BUSY = true;            // false turns the bar off everywhere
+  let busyN = 0, busyBar = null;
+  FO.busyStart = function () {
+    if (!BUSY) return;
+    if (!busyBar) { busyBar = el('div', { class: 'busy-bar', 'aria-hidden': 'true', style: { '--busy-delay': BUSY_DELAY_MS + 'ms' } }, el('i')); document.body.append(busyBar); }
+    if (!busyN++) document.documentElement.classList.add('busy');
+  };
+  FO.busyEnd = function () {
+    if (!BUSY || !busyN) return;
+    if (!--busyN) document.documentElement.classList.remove('busy');
+  };
+  // after the next frame is on screen, so the bar is showing before the work starts (a hidden tab draws no frames)
+  const afterPaint = f => { let done = false; const go = () => { if (!done) { done = true; f(); } }; requestAnimationFrame(() => setTimeout(go, 0)); setTimeout(go, 250); };
+  /* FO.busy(fn): show the bar, then do fn; FO.busyWhile(promise): show the bar until the promise settles */
+  FO.busy = function (fn) {
+    FO.busyStart();
+    afterPaint(() => { try { fn(); } catch (e) { console.error(e); } finally { FO.busyEnd(); } });
+  };
+  FO.busyWhile = function (pr) { FO.busyStart(); const end = () => FO.busyEnd(); Promise.resolve(pr).then(end, end); return pr; };
+  /* Any press on something clickable starts the bar at once (the press itself gives it time to show), and the bar
+     goes when the work the click started is done; a press that turns into a drag (panning a chart) stops it. */
+  const CLICKABLE = 'a[href], button, select, summary, label, [role="button"], [role="link"], [onclick]';
+  let press = null;
+  const endPress = () => { if (!press) return; const pr = press; press = null; clearTimeout(pr.safety); setTimeout(FO.busyEnd, 0); };
+  document.addEventListener('pointerdown', e => {
+    endPress();
+    if (e.button !== 0 || !(e.target instanceof Element)) return;
+    const t = e.target.closest(CLICKABLE) || e.target;
+    if (!t.closest(CLICKABLE) && getComputedStyle(t).cursor !== 'pointer') return;
+    if (t.closest('a[target="_blank"], a[href^="mailto:"], input[type="range"]')) return;
+    FO.busyStart();
+    press = { x: e.clientX, y: e.clientY, safety: setTimeout(endPress, 10000) };
+  }, true);
+  document.addEventListener('pointermove', e => { if (press && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 6) endPress(); }, true);
+  ['pointerup', 'pointercancel', 'dragstart'].forEach(n => document.addEventListener(n, endPress, true));
 
   /* ---------- kin helpers with caching ---------- */
   let kinCache = null;
@@ -656,7 +697,7 @@
     const fam = familyOf(id) || defaultFamily();
     if (atBoot !== true) { closeMenus(); ui.toast(T('Loading {label}…', { label: fam.label })); }
     // "no-cache": the browser checks with the server first, so an updated file is always the one shown
-    fetch(fam.file, { cache: 'no-cache' }).then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+    FO.busyWhile(fetch(fam.file, { cache: 'no-cache' }).then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); }))
       // at start-up, a family the visitor asked for while this one was loading (a WikiTree link) wins
       .then(buf => {
         if (atBoot === true && FO.state.source && FO.state.source !== 'builtin') return;
@@ -709,7 +750,7 @@
     window.addEventListener('dragleave', () => { depth = Math.max(0, depth - 1); if (!depth) drop.classList.remove('on'); });
     window.addEventListener('dragover', e => e.preventDefault());
     window.addEventListener('drop', e => { e.preventDefault(); depth = 0; drop.classList.remove('on'); if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]); });
-    window.addEventListener('hashchange', render);
+    window.addEventListener('hashchange', () => FO.busy(render));
     render();
     // ?family=acadians opens one of the site's other families; a WikiTree link (?wt=) is handled in wikitree.js
     const asked = new URLSearchParams(location.search).get('family');

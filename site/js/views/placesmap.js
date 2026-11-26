@@ -76,7 +76,7 @@
   FO.MAP_LAYERS = [['colours', T('Colours')], ['relief', T('Relief')], ['grid', T('Latitude and longitude')], ['borders', T('Old borders')]];
   FO.MAP_LAYERS_DEFAULT = LAYERS_DEFAULT;
   const files = {};
-  const fetchLayer = f => files[f] || (files[f] = fetch('data/map/' + f + '?v=' + LAYERS_VERSION).then(r => (r.ok ? r.json() : null)).catch(() => null).then(j => { if (!j) delete files[f]; return j; }));
+  const fetchLayer = f => files[f] || (files[f] = FO.busyWhile(fetch('data/map/' + f + '?v=' + LAYERS_VERSION)).then(r => (r.ok ? r.json() : null)).catch(() => null).then(j => { if (!j) delete files[f]; return j; }));
   const loaded = {};   // the layers' files once here
 
   /* opts: {stage, root (svg), hint, data (scoped), what: 'birth'|'death', period: 'all'|century, regions: bool,
@@ -95,7 +95,7 @@
     const token = o.token = {};
     const everyPlace = new Set();
     o.data.people.forEach(p => { if (p.hidden) return; if (p.b && p.b.place) everyPlace.add(p.b.place); if (p.d && p.d.place) everyPlace.add(p.d.place); });
-    FO.geoLoad([...everyPlace]).then(({ world, locate }) => {
+    FO.busyWhile(FO.geoLoad([...everyPlace])).then(({ world, locate }) => {
       if (o.cancelled && o.cancelled(token)) return;
       root.innerHTML = '';
       draw(world, locate);

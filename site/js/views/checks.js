@@ -88,22 +88,15 @@
       }
     }
     for (const p of loopers) if (!p.hidden) add('loop', [p], Q('Is {p} really recorded as their own ancestor?', { p }, { _sex: p.sex }), T('Following the recorded parents upward leads back to the same person. One of the parent links in that circle is wrong.'));
-    // possible duplicates: same name, same birth year
-    const groups = d3.group(data.people.filter(p => !p.hidden && p.by != null && p.surname && p.given && !/^unknown$/i.test(p.given)), p => FO.norm(p.name) + '|' + p.by);
-    for (const [, g] of groups) {
-      if (g.length < 2) continue;
-      add('duplicates', g, g.length > 2 ? Q('Are {a} and {b} (and {n} more) the same person entered twice?', { a: g[0], b: g[1] }, { n: g.length - 2 }) : Q('Are {a} and {b} the same person entered twice?', { a: g[0], b: g[1] }),
-        g[0].father && g[1].father && g[0].father === g[1].father ? T('Same name and the same birth year, {y}; same father too, so perhaps a child named after a sibling who died young.', { y: g[0].by }) : T('Same name and the same birth year, {y}.', { y: g[0].by }));
-    }
     return out;
   }
 
-  const CATS = [['all', T('Everything')], ['dates', T('Unlikely lifespans')], ['parents', T('Parents’ ages')], ['marriage', T('Marriages')], ['siblings', T('Births too close')], ['duplicates', T('Possible duplicates')], ['loop', T('Own ancestor')]];
+  const CATS = [['all', T('Everything')], ['dates', T('Unlikely lifespans')], ['parents', T('Parents’ ages')], ['marriage', T('Marriages')], ['siblings', T('Births too close')], ['loop', T('Own ancestor')]];
 
   FO.view({
     id: 'checks', order: 12, title: T('Things Worth Checking'),
     card: T('Dates that do not add up, put as questions to look into.'),
-    how: {"see": T("A list of entries in this tree that deserve a second look, grouped by kind. Each line is put as a question and says what the file records."), "marks": [T("Parents’ ages: a child born before a parent was about 13, after a mother was 52 or a father 75, or after a parent’s death."), T("Unlikely lifespans: a death before a birth, or a life of more than 105 years."), T("Marriages before 13 or after death; births too close together; two people with the same name and birth year; someone recorded as their own ancestor.")], "can": [T("Use Show to see one kind at a time."), T("Click a name to open that person here, or, where the file carries a profile link (a WikiTree export does), use the link under each question to open that profile in a new tab and correct it.")], "care": T("Nothing here is certainly wrong. Approximate dates are given a few years’ leeway, and some unusual entries are true.")},
+    how: {"see": T("A list of entries in this tree that deserve a second look, grouped by kind. Each line is put as a question and says what the file records."), "marks": [T("Parents’ ages: a child born before a parent was about 13, after a mother was 52 or a father 75, or after a parent’s death."), T("Unlikely lifespans: a death before a birth, or a life of more than 105 years."), T("Marriages before 13 or after death; births too close together; someone recorded as their own ancestor.")], "can": [T("Use Show to see one kind at a time."), T("Click a name to open that person here, or, where the file carries a profile link (a WikiTree export does), use the link under each question to open that profile in a new tab and correct it.")], "care": T("Nothing here is certainly wrong. Approximate dates are given a few years’ leeway, and some unusual entries are true.")},
     blurb: T('Nothing here is certainly wrong. These are places where the dates on record are unlikely enough to deserve a second look at the sources. Approximate dates are given extra leeway.'),
     icon: '<circle cx="32" cy="32" r="22" stroke="#A35139" stroke-width="2"/><path d="M25 25 a7 7 0 1 1 10 6 c-2 1.4 -3 3 -3 6" stroke="#A35139" stroke-width="2.4"/><circle cx="32" cy="44" r="1.6" fill="#A35139" stroke="none"/>',
     render(v) {

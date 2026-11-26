@@ -315,6 +315,14 @@ table.tbl td button { background: none; border: 0; padding: 0; cursor: pointer; 
 .drop.on { display: grid; }
 .toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 12px 22px; font-size: 14px; z-index: 300; display: none; max-width: 90vw; }
 .loading { display: grid; place-items: center; min-height: 60vh; color: var(--ink-2); }
+/* the busy bar along the top of the window (app.js, "busy bar"): it fades in after --busy-delay and slides until the
+   work is done; both moves run off the main thread, so the bar keeps moving while a heavy view is being drawn */
+.busy-bar { position: fixed; top: 0; left: 0; right: 0; height: 4px; z-index: 400; overflow: hidden; pointer-events: none; display: none; }
+html.busy .busy-bar { display: block; animation: busy-in .2s ease-out var(--busy-delay, 150ms) both; }
+.busy-bar i { position: absolute; top: 0; bottom: 0; left: 0; width: 34%; background: var(--teal); border-radius: 2px; will-change: transform; animation: busy-slide 1.1s cubic-bezier(.45, 0, .55, 1) infinite; }
+@keyframes busy-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes busy-slide { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
+@media (prefers-reduced-motion: reduce) { .busy-bar i { width: 100%; animation: none; opacity: .7; } }
 
 @media (max-width: 900px) {
   .hero { grid-template-columns: 1fr; min-height: 0; }
