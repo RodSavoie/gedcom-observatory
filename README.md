@@ -7,8 +7,8 @@ researching.
 
 See it live at **[cognitiveoverload.com](https://cognitiveoverload.com/)**. It opens on the
 Acadians and their spouses, about 27,000 people from the
-[WikiTree Acadians Project](https://www.wikitree.com/wiki/Project:Acadians); the Acadians alone
-and my own Savoie · Breau family can be opened from the menu.
+[WikiTree Acadians Project](https://www.wikitree.com/wiki/Project:Acadians); the Acadians alone,
+the Nicole Nunes Acadians Memorial List and my own Savoie · Breau family can be opened from the menu.
 
 - **Plain static files.** HTML, CSS and JavaScript, with no build step and no framework.
 - **Private by design.** A file you load is read inside your own browser. Nothing is uploaded.
@@ -49,7 +49,7 @@ A link can open the site on a given family, design or view, and the parameters c
 
 | Parameter | Does |
 |---|---|
-| `?family=savoie`, `acadians`, `acadians-plus` | opens one of the families on the site |
+| `?family=savoie`, `acadians`, `acadians-plus`, `memorial` | opens one of the families on the site |
 | `?design=ochre`, `mineral`, `sage`, `slate`, `aurora`, `gilt`, `harbour` | switches the design (and remembers it) |
 | `?lang=fr`, `?lang=en` | opens the site in French or English (and remembers it) |
 | `?wt=Savoie-2387&anc=10&desc=1&sib=0` | draws a family from WikiTree (see below) |
@@ -74,8 +74,8 @@ then open <http://localhost:8000>. (The Contact me form needs PHP; with PHP inst
 Upload the **contents** of the `site` folder to any ordinary web host, at the root or in a
 sub-folder such as `/family/`. All paths are relative, so either works.
 
-The families on the site are in `site/data/`: `AcadiansPlus.GED.txt`, `Acadians.GED.txt` and
-`family.ged.txt` (Savoie · Breau). They end in `.txt` because some web hosts refuse to serve
+The families on the site are in `site/data/`: `AcadiansPlus.GED.txt`, `Acadians.GED.txt`,
+`NicoleMemorialList.GED.txt` and `family.ged.txt` (Savoie · Breau). They end in `.txt` because some web hosts refuse to serve
 `.ged` files; each is an ordinary GEDCOM. They are listed in `FAMILIES` in `site/js/app.js`,
 and `DEFAULT_FAMILY` just above it names the one the site opens on. Visitors always get the
 newest copy of a file, so replacing one in `site/data/` is enough to update it.
