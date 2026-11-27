@@ -56,7 +56,7 @@
   // Relief: soft shadows and highlights on mountains and on the sea floor, as if lit from the north-west (data/map/relief.json,
   // traced from ETOPO1 by tools/build-map-relief.py). Each of the six levels of shadow and four of light adds this much.
   const SHADE = '#6A6052';         // the shadows on land (each design has its own: shade in js/designs.js); at sea they take DEPTH
-  const RELIEF_LAND_SHADOW = 0.025, RELIEF_LAND_LIGHT = 0.05, RELIEF_SEA_SHADOW = 0.05, RELIEF_SEA_LIGHT = 0.025;
+  const RELIEF_LAND_SHADOW = 0.035, RELIEF_LAND_LIGHT = 0.07, RELIEF_SEA_SHADOW = 0.035, RELIEF_SEA_LIGHT = 0.06;
   const GRID = '#8FA8BD', GRID_OPACITY = 0.35, GRID_STEP = 5;   // the latitude and longitude grid: colour, strength, degrees apart
   const OLD_COLOURS = { fr: '#3B6EA5', gb: '#B5473A', es: '#C9921F', us: '#5E7186', ca: '#7C5A8E', mx: '#6E8B3D', ru: '#3F8C7A' };
   const OLD_FILL = 0.15;           // old borders: how strongly each colony is tinted
