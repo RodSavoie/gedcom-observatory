@@ -14,7 +14,7 @@ const W = 2161, H = 1081;   // the grid, west to east and north to south
 const LEVELS = { landShadow: ['relief-land.f32', -1, [0.012, 0.02, 0.032, 0.05, 0.07, 0.1]], landLight: ['relief-land.f32', 1, [0.02, 0.03, 0.05, 0.08]],
   seaShadow: ['relief-sea.f32', -1, [0.008, 0.012, 0.02, 0.03, 0.042, 0.06]], seaLight: ['relief-sea.f32', 1, [0.01, 0.015, 0.025, 0.04]] };
 // how much the shapes are smoothed (square degrees), the smallest kept, and the grid the points are rounded to
-const SIMPLIFY = 0.20, SMALLEST = 0.05, GRID = 200000;
+const SIMPLIFY = 0.001, SMALLEST = 0.001, GRID = 200000;
 
 /* d3 draws a ring clockwise as the inside of a shape and anticlockwise as the outside: outer rings are set clockwise,
    holes anticlockwise, measured flat on longitude and latitude */
