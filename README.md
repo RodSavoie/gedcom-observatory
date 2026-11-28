@@ -121,11 +121,16 @@ The map wraps around east and west (`WRAP` in the same place), and its
 | Layer | Files in `site/data/map/` | Built by |
 |---|---|---|
 | Colours (on for new visitors): a light blue sea, darker where it is deeper (200 m, then 1 to 6 km), land a shade darker than the page, and glaciers and ice shelves almost white | `layers.json` | `tools/build-map-layers.js`, from Natural Earth |
-| Relief: soft shadows and light on mountains and the sea floor, as if lit from the north-west, drawn as shapes so they stay sharp at any zoom | `relief.json` | `tools/build-map-relief.py`, then `tools/build-map-relief.js`, from ETOPO1 |
+| Relief: continuous shaded land and seabed, with finer detail in Atlantic Canada as you zoom in | `hillshade-v1/` | `tools/build-hillshade-tiles.py`, from NOAA NCEI ETOPO 2022 |
 | Latitude and longitude, every 5° | none: drawn by the page | |
 | Old borders: North America in six eras, 1632–1713, 1713–1763, 1763–1783, 1784–1803, 1803–1867 and 1867–1949 | `history.json` | `tools/build-map-history.js` |
 
-Each design has its own sea, deep-water, land, ice and relief-shadow colours (`sea`, `depth`, `land`, `ice` and `shade` in each palette
+Relief requests only visible WebP tiles. The global overview covers zoom levels 0–4, with 15 arc-second coverage of the Maritimes at levels 6–8. Lower-resolution tiles fill in while finer tiles load and across the rest of the world.
+For a comparison, append `&relief=legacy` to a map link with `layers=colours,relief`.
+Rebuilding requires NumPy, SciPy, Pillow, a [NOAA ERDDAP world export](https://oceanwatch.pifsc.noaa.gov/erddap/griddap/ETOPO_2022_v1_60s.html) in NetCDF-3 with stride 5 on both axes, and the N45W060, N45W075, N60W060 and N60W075 [15 arc-second surface GeoTIFFs](https://www.ngdc.noaa.gov/mgg/global/relief/ETOPO2022/data/15s/15s_surface_elev_gtif/).
+Run `python tools/build-hillshade-tiles.py --world path/to/world.nc --region path/to/geotiffs` from the checkout.
+
+Each design has its own sea, deep-water, land, ice and legacy relief-shadow colours (`sea`, `depth`, `land`, `ice` and `shade` in each palette
 in `site/js/designs.js`). The old borders are drawn by hand from treaty lines and cut out of today's
 provinces and states, so they follow the coast; they are approximate, and the page says so. Each
 era's colonies, their names in English and French, their colours and where their names sit are

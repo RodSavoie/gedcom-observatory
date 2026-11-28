@@ -62,6 +62,7 @@
   const OLD_FILL = 0.15;           // old borders: how strongly each colony is tinted
   const OLD_LINE = '#6B5E50';      // and the colour of the borders between them
   const OLD_ERA_FOR = { 1600: '1632', 1700: '1713', 1800: '1803', 1900: '1867', 2000: '1867', all: '1713' };   // the era shown for each period, unless one is picked
+  const TILE_MANIFEST = FO.hillshadeManifest;
   const LAYERS_VERSION = 7;        // raise when a layer's files are rebuilt, so browsers fetch the new ones
 
   // the eras of the old borders (data/map/history.json, built by tools/build-map-history.js)
@@ -153,8 +154,35 @@
       const COPIES = WRAP ? [-1, 0, 1] : [0];
       const era = layers.has('borders') ? (o.era && o.era !== 'auto' ? o.era : OLD_ERA_FOR[o.period] || OLD_ERA_FOR.all) : null;
       const relief = layers.has('relief');
-      const want = (coloured ? ['layers.json'] : []).concat(relief ? ['relief.json'] : [], era ? ['history.json'] : []);
-      want.forEach(f => { if (!loaded[f]) fetchLayer(f).then(j => { if (j && !loaded[f]) { loaded[f] = j; if (under.isConnected) { drawBase(current); legend(); } } }); });
+      let legacyRelief = relief && FO.hashParam('relief') === 'legacy', drawTiles = null, tileFrame = 0;
+      let credit = null;
+      const onMap = () => under.isConnected && !(o.cancelled && o.cancelled(token));
+      function loadLayer(file) {
+        return (loaded[file] ? Promise.resolve(loaded[file]) : fetchLayer(file)).then(j => {
+          if (j) loaded[file] = j;
+          return j;
+        });
+      }
+      function repaintTiles() {
+        if (!onMap() || tileFrame) return;
+        tileFrame = requestAnimationFrame(() => { tileFrame = 0; if (onMap() && !queued) paint(); });
+      }
+      function useTiles(manifest) {
+        drawTiles = FO.hillshadeTiles(manifest, worldW, proj([0, 0])[1] - worldW / 2, repaintTiles);
+      }
+      const want = (coloured ? ['layers.json'] : []).concat(era ? ['history.json'] : []);
+      if (relief && !legacyRelief) {
+        if (loaded[TILE_MANIFEST]) useTiles(loaded[TILE_MANIFEST]);
+        else loadLayer(TILE_MANIFEST).then(manifest => {
+          if (!onMap()) return;
+          if (manifest) { useTiles(manifest); drawBase(current); updateCredit(); }
+          else { legacyRelief = true; refreshLayer('relief.json'); }
+        });
+      } else if (legacyRelief) want.push('relief.json');
+      function refreshLayer(file) {
+        loadLayer(file).then(j => { if (j && onMap()) { drawBase(current); legend(); updateCredit(); } });
+      }
+      want.forEach(file => { if (!loaded[file]) refreshLayer(file); });
       let current = null, oldLabels = [];
       // the layers' shapes do not change with the coastline, so they are worked out once and kept for later drawings
       const shapes = new Map();
@@ -177,12 +205,13 @@
           if (depth.objects[k]) add(once('depth' + k, () => shape(path(topojson.feature(depth, depth.objects[k])))), { fill: DEPTH, alpha: DEPTH_OPACITY });
         });
         // the relief: shadows and light, at sea under the land and on land clipped to the coast
-        const rel = relief && loaded['relief.json'];
+        const rel = legacyRelief && loaded['relief.json'];
         const shading = (key, colour, opacity, how) => { if (rel && rel.objects[key]) once('relief' + key, () => topojson.feature(rel, rel.objects[key]).features.map(f => shape(path(f)))).forEach(p => add(p, Object.assign({ fill: colour, alpha: opacity }, how))); };
         shading('seaShadow', DEPTH, RELIEF_SEA_SHADOW); shading('seaLight', '#FFFFFF', RELIEF_SEA_LIGHT);
         landShape = shape(path(countries) + (lakes ? path(lakes) : ''));
         add(landShape, { fill: coloured ? LAND_COLOURED : LAND, rule: 'evenodd' });
         shading('landShadow', SHADE, RELIEF_LAND_SHADOW, { clip: true }); shading('landLight', '#FFFFFF', RELIEF_LAND_LIGHT, { clip: true });
+        if (drawTiles) items.push({ hillshade: true });
         if (depth && depth.objects.ice) add(once('ice', () => shape(path(topojson.feature(depth, depth.objects.ice)))), { fill: ICE, stroke: DEPTH, strokeAlpha: ICE_EDGE, width: 0.6 });
         const hist = era && loaded['history.json'];
         const eraData = hist && hist.eras.find(e => e.id === era);
@@ -239,6 +268,7 @@
               if (clipped) ctx.restore(); else { ctx.save(); ctx.clip(landShape, 'evenodd'); }
               clipped = !clipped;
             }
+            if (it.hillshade) drawTiles(ctx, x0 + off, W, H, t);
             if (it.fill) { ctx.globalAlpha = it.alpha == null ? 1 : it.alpha; ctx.fillStyle = it.fill; ctx.fill(it.p, it.rule || 'nonzero'); }
             if (it.stroke) {
               ctx.globalAlpha = it.strokeAlpha == null ? 1 : it.strokeAlpha; ctx.strokeStyle = it.stroke;
@@ -396,8 +426,20 @@
       step();
 
       // sources, as GeoNames' licence asks
-      const credit = svg('text', { x: 12, y: 18, style: 'font-size:10.5px;fill:#7C8088;paint-order:stroke;stroke:#F7F4EE;stroke-width:3px;stroke-linejoin:round' });
-      credit.textContent = T('Map: Natural Earth. Places: GeoNames (CC BY 4.0), Natural Resources Canada, INSEE.') + (relief ? ' ' + T('Relief: ETOPO1 (NOAA), via Fatiando a Terra (CC BY 4.0).') : '');
+      function updateCredit() {
+        if (!credit) return;
+        const source = drawTiles ? T('Relief: NOAA NCEI ETOPO 2022.')
+          : legacyRelief && loaded['relief.json'] ? T('Relief: ETOPO1 (NOAA), via Fatiando a Terra (CC BY 4.0).') : '';
+        const base = T('Map: Natural Earth. Places: GeoNames (CC BY 4.0), Natural Resources Canada, INSEE.');
+        credit.textContent = base + (source && W >= 600 ? ' ' + source : '');
+        if (source && W < 600) {
+          const line = svg('tspan', { x: 12, dy: 13 });
+          line.textContent = source;
+          credit.append(line);
+        }
+      }
+      credit = svg('text', { x: 12, y: 18, style: 'font-size:10.5px;fill:#7C8088;paint-order:stroke;stroke:#F7F4EE;stroke-width:3px;stroke-linejoin:round' });
+      updateCredit();
       root.append(credit);
       root.append(svg('rect', { x: 0.5, y: 0.5, width: W - 1, height: H - 1, rx: 4, fill: 'none', stroke: FRAME, 'stroke-opacity': FRAME_OPACITY, 'pointer-events': 'none' }));
 
