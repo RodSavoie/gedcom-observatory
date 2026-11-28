@@ -18,6 +18,8 @@ The files in `site/data/map/` are built by `tools/build-map-data.js` from these 
 |---|---|---|
 | Natural Earth, 1:10m countries (via the world-atlas package), states and provinces, lakes and rivers | the base map | Public domain |
 | Natural Earth, 1:10m bathymetry, glaciated areas and Antarctic ice shelves | the sea's depth and the ice in the map's Colours layer | Public domain |
+| Protomaps [PMTiles](https://github.com/protomaps/PMTiles), JavaScript 4.5.0 and Python 3.8.1 | browser range reader and build-time writer for the worldwide archive | BSD 3-Clause |
+| [fflate](https://github.com/101arrowz/fflate), bundled with PMTiles JS | decoding the PMTiles directory | MIT |
 | NOAA National Centers for Environmental Information, ETOPO 2022 Global Relief Model (doi:10.25921/fd45-gt74) | Relief WebP tiles, including 15 arc-second detail in Atlantic Canada | Free to use and redistribute |
 | ETOPO1 (NOAA, public domain), as the 10 arc-minute grid prepared by Fatiando a Terra (github.com/fatiando-data/earth-topography-10arcmin, doi:10.5281/zenodo.5882203) | the map's Relief layer, traced from it; credited on the map when the layer is on | CC BY 4.0 |
 | GeoNames, cities500 (via the cities-500-structured package) and region names (via cities.json) | place names and coordinates worldwide | Creative Commons Attribution 4.0 (geonames.org) |

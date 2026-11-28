@@ -69,6 +69,19 @@ python -m http.server 8000
 then open <http://localhost:8000>. (The Contact me form needs PHP; with PHP installed,
 `php -S localhost:8000` runs it too.)
 
+## Build and publish worldwide relief
+
+After the site code has deployed, run **Actions → Build and publish worldwide relief → Run workflow**
+on the `main` branch. It uses the existing SiteGround deployment secrets. The workflow downloads NOAA's
+288 ETOPO 2022 surface GeoTIFFs, renders worldwide WebP tiles through zoom 8 and publishes one versioned
+PMTiles archive. It verifies HTTP byte ranges at both ends of the archive before publishing the
+manifest that turns on worldwide detail. The archive lives on SiteGround outside Git.
+
+For a local build, use Python 3.14 and install `numpy scipy Pillow pmtiles==3.8.1`. From the checkout run
+`python tools/build-global-hillshade.py --source-cache path/to/noaa --out path/to/world.pmtiles`.
+The source cache keeps downloaded GeoTIFFs for later builds. Adding `--sample` builds an Atlantic Canada
+test archive using the four pilot GeoTIFFs already present in the cache.
+
 ## Put it on your own website
 
 Upload the **contents** of the `site` folder to any ordinary web host, at the root or in a
@@ -125,7 +138,7 @@ The map wraps around east and west (`WRAP` in the same place), and its
 | Latitude and longitude, every 5° | none: drawn by the page | |
 | Old borders: North America in six eras, 1632–1713, 1713–1763, 1763–1783, 1784–1803, 1803–1867 and 1867–1949 | `history.json` | `tools/build-map-history.js` |
 
-Relief requests only visible WebP tiles. The global overview covers zoom levels 0–4, with 15 arc-second coverage of the Maritimes at levels 6–8. Lower-resolution tiles fill in while finer tiles load and across the rest of the world.
+Relief requests only visible WebP tiles. The site has a global overview at zoom levels 0–4 and 15 arc-second detail for the Maritimes at levels 6–8. When the worldwide archive is published, detailed tiles cover the full extent of the Mercator map through zoom level 8. The browser uses the overview or cached tiles while detailed tiles arrive.
 For a comparison, append `&relief=legacy` to a map link with `layers=colours,relief`.
 Rebuilding requires NumPy, SciPy, Pillow, a [NOAA ERDDAP world export](https://oceanwatch.pifsc.noaa.gov/erddap/griddap/ETOPO_2022_v1_60s.html) in NetCDF-3 with stride 5 on both axes, and the N45W060, N45W075, N60W060 and N60W075 [15 arc-second surface GeoTIFFs](https://www.ngdc.noaa.gov/mgg/global/relief/ETOPO2022/data/15s/15s_surface_elev_gtif/).
 Run `python tools/build-hillshade-tiles.py --world path/to/world.nc --region path/to/geotiffs` from the checkout.

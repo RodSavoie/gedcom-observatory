@@ -15,4 +15,7 @@
   <FilesMatch "\.(woff2|jpe?g|png|webp|svg|ico)$">
     Header set Cache-Control "public, max-age=604800"
   </FilesMatch>
+  <FilesMatch "^(hillshade-world-v1-[0-9-]+\.pmtiles|pmtiles-4\.5\.0\.js)$">
+    Header set Cache-Control "public, max-age=604800, immutable"
+  </FilesMatch>
 </IfModule>

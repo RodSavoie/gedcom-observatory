@@ -1,0 +1,122 @@
+name: Build and publish worldwide relief
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: worldwide-relief
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check SiteGround configuration
+        env:
+          SITEGROUND_HOST: ${{ secrets.SITEGROUND_HOST }}
+          SITEGROUND_USER: ${{ secrets.SITEGROUND_USER }}
+          SITEGROUND_SSH_KEY: ${{ secrets.SITEGROUND_SSH_KEY }}
+          SITEGROUND_PATH: ${{ secrets.SITEGROUND_PATH }}
+        run: |
+          for item in SITEGROUND_HOST SITEGROUND_USER SITEGROUND_SSH_KEY SITEGROUND_PATH; do
+            if [[ -z "${!item}" ]]; then
+              echo "::error::$item is required by the existing SiteGround deployment"
+              exit 1
+            fi
+          done
+          if [[ "$SITEGROUND_PATH" != *public_html* ]]; then
+            echo "::error::SITEGROUND_PATH needs to point inside public_html"
+            exit 1
+          fi
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+
+      - name: Prepare the archive tools
+        run: |
+          python -m pip install numpy scipy Pillow 'pmtiles==3.8.1'
+          mkdir -p "$RUNNER_TEMP/worldwide-relief"
+          cd "$RUNNER_TEMP/worldwide-relief"
+          npm pack 'pmtiles@4.5.0' --ignore-scripts --silent
+          tar -xOf pmtiles-4.5.0.tgz package/dist/pmtiles.js > pmtiles-client.js
+          test -s pmtiles-client.js
+          npm pack 'fflate@0.8.2' --ignore-scripts --silent
+          curl -fsSL --retry 2 --max-time 30 https://raw.githubusercontent.com/protomaps/PMTiles/main/LICENSE > LICENSE-pmtiles.txt
+          tar -xOf fflate-0.8.2.tgz package/LICENSE > LICENSE-fflate.txt
+          {
+            printf '/* PMTiles browser library and bundled fflate license notices\n'
+            cat LICENSE-pmtiles.txt LICENSE-fflate.txt
+            printf '\n*/\n'
+            cat pmtiles-client.js
+          } > pmtiles-4.5.0.js
+          node --check pmtiles-4.5.0.js
+
+      - name: Build the worldwide WebP archive
+        run: |
+          work="$RUNNER_TEMP/worldwide-relief"
+          archive="hillshade-world-v1-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT.pmtiles"
+          python tools/build-global-hillshade.py --source-cache "$work/noaa" --out "$work/$archive"
+          printf '{"archive":"%s"}\n' "$archive" > "$work/hillshade-world.json"
+
+      - name: Publish the archive and check HTTP ranges
+        env:
+          HOST: ${{ secrets.SITEGROUND_HOST }}
+          SG_USER: ${{ secrets.SITEGROUND_USER }}
+          KEY: ${{ secrets.SITEGROUND_SSH_KEY }}
+          DEST: ${{ secrets.SITEGROUND_PATH }}
+        run: |
+          work="$RUNNER_TEMP/worldwide-relief"
+          archive="hillshade-world-v1-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT.pmtiles"
+          suffix="$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          remote="$SG_USER@$HOST"
+          directory="${DEST%/}/data/map"
+          printf -v quoted_directory '%q' "$directory"
+          chmod 700 "$work"
+          printf '%s\n' "$KEY" | tr -d '\r' > "$work/siteground-key"
+          chmod 600 "$work/siteground-key"
+          trap 'rm -f "$work/siteground-key"' EXIT
+          ssh-keyscan -T 10 -p 18765 -H "$HOST" > "$work/known-hosts"
+          transport=(ssh -p 18765 -i "$work/siteground-key" -o BatchMode=yes -o "UserKnownHostsFile=$work/known-hosts" -o StrictHostKeyChecking=yes)
+          printf -v rsync_shell '%q ' "${transport[@]}"
+          "${transport[@]}" "$remote" "test -d $quoted_directory"
+
+          rsync -rt --protect-args --chmod=F644 -e "$rsync_shell" \
+            "$work/$archive" "$remote:$directory/.$archive.upload"
+          rsync -rt --protect-args --chmod=F644 -e "$rsync_shell" \
+            "$work/pmtiles-4.5.0.js" "$remote:$directory/.pmtiles-$suffix.upload"
+          "${transport[@]}" "$remote" "cd $quoted_directory && mv -- .$archive.upload $archive"
+          "${transport[@]}" "$remote" "cd $quoted_directory && mv -- .pmtiles-$suffix.upload pmtiles-4.5.0.js"
+
+          url="https://cognitiveoverload.com/data/map/$archive"
+          head -c 127 "$work/$archive" > "$work/header-expected"
+          size=$(stat -c %s "$work/$archive")
+          tail -c 32 "$work/$archive" > "$work/tail-expected"
+          check_range() {
+            status=$(curl -fsS --retry 2 --retry-delay 2 --max-time 45 \
+              --max-filesize "$2" --range "$1" --output "$work/range" --write-out '%{http_code}' "$url")
+            if [[ "$status" != 206 ]] || ! cmp -s "$work/range" "$3"; then
+              echo "::error::SiteGround did not serve the requested PMTiles range"
+              return 1
+            fi
+          }
+          check_range '0-126' 127 "$work/header-expected"
+          check_range "$((size-32))-$((size-1))" 32 "$work/tail-expected"
+
+          curl -fsS --retry 2 --max-time 30 "https://cognitiveoverload.com/data/map/pmtiles-4.5.0.js" > "$work/live-client"
+          cmp "$work/pmtiles-4.5.0.js" "$work/live-client"
+
+          rsync -rt --protect-args --chmod=F644 -e "$rsync_shell" \
+            "$work/hillshade-world.json" "$remote:$directory/.hillshade-world-$suffix.upload"
+          "${transport[@]}" "$remote" "cd $quoted_directory && mv -- .hillshade-world-$suffix.upload hillshade-world.json"
+          curl -fsS --retry 2 --max-time 30 -H 'Cache-Control: no-cache' \
+            "https://cognitiveoverload.com/data/map/hillshade-world.json?v=$suffix" > "$work/live-manifest"
+          cmp "$work/hillshade-world.json" "$work/live-manifest"
+          echo "Published worldwide relief ($size bytes). Two HTTP range checks passed." >> "$GITHUB_STEP_SUMMARY"
